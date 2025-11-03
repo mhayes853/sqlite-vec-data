@@ -10,8 +10,17 @@ let package = Package(
     .library(name: "SQLiteVecData", targets: ["SQLiteVecData"])
   ],
   dependencies: [
-    .package(url: "https://github.com/pointfreeco/sqlite-data", from: "1.3.0"),
-    .package(url: "https://github.com/pointfreeco/swift-structured-queries", from: "0.25.1")
+    .package(url: "https://github.com/pointfreeco/swift-tagged", from: "0.10.0"),
+    .package(
+      url: "https://github.com/pointfreeco/sqlite-data",
+      from: "1.3.0",
+      traits: ["SQLiteDataTagged"]
+    ),
+    .package(
+      url: "https://github.com/pointfreeco/swift-structured-queries",
+      from: "0.25.1",
+      traits: ["StructuredQueriesTagged"]
+    )
   ],
   targets: [
     .target(name: "CSQLiteVec"),
