@@ -95,11 +95,11 @@ extension Array where Element == Float {
 // MARK: - Helpers
 
 private func pack(_ a: UInt8, _ b: UInt8, _ c: UInt8, _ d: UInt8) -> Float {
-  Float(bitPattern: UInt32(d) | (UInt32(c) << 8) | (UInt32(b) << 16) | (UInt32(a) << 24))
+  Float(bitPattern: UInt32(a) | (UInt32(b) << 8) | (UInt32(c) << 16) | (UInt32(d) << 24))
 }
 
 private func unpack(_ float: Float) -> (UInt8, UInt8, UInt8, UInt8) {
-  let bits = float.bitPattern.bigEndian
+  let bits = float.bitPattern.littleEndian
   let a = UInt8(bits & 0xFF)
   let b = UInt8((bits >> 8) & 0xFF)
   let c = UInt8((bits >> 16) & 0xFF)

@@ -2,8 +2,8 @@ import CustomDump
 import SQLiteVecData
 import Testing
 
-@Suite("FloatArrayBytesRepresentation tests")
-struct FloatArrayBytesRepresentationTests {
+@Suite("FloatArrayVectorBytesRepresentation tests")
+struct FloatArrayVectorBytesRepresentationTests {
   private let database = try! DatabaseQueue()
 
   init() throws {
