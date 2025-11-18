@@ -172,7 +172,7 @@ import StructuredQueriesCore
   // MARK: - QueryBindable
 
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension EmbeddingVector: QueryBindable {
+  extension EmbeddingVector: QueryBindable, QueryDecodable, QueryRepresentable {
     public var queryBinding: QueryBinding {
       [count of Float].VectorBytesRepresentation(queryOutput: self.array).queryBinding
     }
