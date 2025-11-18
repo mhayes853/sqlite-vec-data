@@ -20,7 +20,8 @@ let package = Package(
       url: "https://github.com/pointfreeco/swift-structured-queries",
       from: "0.25.1",
       traits: ["StructuredQueriesTagged"]
-    )
+    ),
+    .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "1.4.3")
   ],
   targets: [
     .target(name: "CSQLiteVec"),
@@ -38,6 +39,12 @@ let package = Package(
         .product(name: "SQLiteData", package: "sqlite-data")
       ]
     ),
-    .testTarget(name: "SQLiteVecDataTests", dependencies: ["SQLiteVecData"])
+    .testTarget(
+      name: "SQLiteVecDataTests",
+      dependencies: [
+        "SQLiteVecData",
+        .product(name: "IssueReportingTestSupport", package: "xctest-dynamic-overlay")
+      ]
+    )
   ]
 )
