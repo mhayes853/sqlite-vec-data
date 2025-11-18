@@ -65,6 +65,56 @@ struct FloatArrayVectorBytesRepresentationTests {
         }
       }
     }
+
+    @Test("Converts Embedding Vector To And From Bytes")
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func convertEmbeddingVectorToAndFromBytes() async throws {
+      try await self.database.write { db in
+        let record = TestEmbeddingVectorRecord(
+          embeddings: EmbeddingVector([1, 2, 3, 4, 5, 6, 7, 8])
+        )
+        let insertedRecord = try TestEmbeddingVectorRecord.insert { record }
+          .returning { $0 }
+          .fetchOne(db)
+        expectNoDifference(record, insertedRecord)
+      }
+    }
+
+    @Test("Throws Error When Bytes Are Too Large For Embedding Vector")
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func throwsErrorWhenBytesAreTooLargeForEmbeddingVector() async throws {
+      try await self.database.write { db in
+        let record = TestEmbeddingVectorRecord(
+          embeddings: EmbeddingVector([1, 2, 3, 4, 5, 6, 7, 8])
+        )
+        try TestEmbeddingVectorRecord.insert { record }.execute(db)
+        #expect(throws: Error.self) {
+          try #sql(
+            "SELECT embeddings FROM TestEmbeddings",
+            as: EmbeddingVector<4>.self
+          )
+          .fetchOne(db)
+        }
+      }
+    }
+
+    @Test("Throws Error When Bytes Are Too Short For Embedding Vector")
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func throwsErrorWhenBytesAreTooShortForEmbeddingVector() async throws {
+      try await self.database.write { db in
+        let record = TestEmbeddingVectorRecord(
+          embeddings: EmbeddingVector([1, 2, 3, 4, 5, 6, 7, 8])
+        )
+        try TestEmbeddingVectorRecord.insert { record }.execute(db)
+        #expect(throws: Error.self) {
+          try #sql(
+            "SELECT embeddings FROM TestEmbeddings",
+            as: EmbeddingVector<16>.self
+          )
+          .fetchOne(db)
+        }
+      }
+    }
   #endif
 
   @Test("Converts Float Array To And From Bytes")
@@ -91,5 +141,11 @@ private struct TestEmbeddingRecord: Hashable, Sendable, Vec0 {
   private struct TestInlineEmbeddingRecord: Vec0 {
     @Column(as: [8 of Float].VectorBytesRepresentation.self)
     var embeddings: [8 of Float]
+  }
+
+  @Table("TestEmbeddings")
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  private struct TestEmbeddingVectorRecord: Hashable, Vec0 {
+    var embeddings: EmbeddingVector<8>
   }
 #endif

@@ -1,3 +1,5 @@
+import StructuredQueriesCore
+
 #if canImport(Darwin)
   import Darwin
 #elseif canImport(Android)
@@ -165,5 +167,21 @@
 
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension EmbeddingVector: RandomAccessCollection {
+  }
+
+  // MARK: - QueryBindable
+
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  extension EmbeddingVector: QueryBindable {
+    public var queryBinding: QueryBinding {
+      [count of Float].VectorBytesRepresentation(queryOutput: self.array).queryBinding
+    }
+
+    public init(decoder: inout some QueryDecoder) throws {
+      guard let bytes = try decoder.decode([count of Float].VectorBytesRepresentation.self) else {
+        throw QueryDecodingError.missingRequiredColumn
+      }
+      self.init(bytes)
+    }
   }
 #endif
