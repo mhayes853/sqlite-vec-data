@@ -10,6 +10,10 @@ let package = Package(
     .library(name: "SQLiteVecData", targets: ["SQLiteVecData"]),
     .library(name: "SQLiteVecDataTestSupport", targets: ["SQLiteVecDataTestSupport"])
   ],
+  traits: [
+    .default(enabledTraits: ["NEON"]),
+    .trait(name: "NEON", description: "Enable NEON vector implementations on ARM.")
+  ],
   dependencies: [
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/pointfreeco/swift-tagged", from: "0.10.0"),
@@ -32,11 +36,7 @@ let package = Package(
       // we cannot declare here.
       exclude: ["sqlite-vec.c"],
       cSettings: [
-        .define(
-          "SQLITE_VEC_ENABLE_NEON",
-          to: "1",
-          .when(platforms: [.iOS, .macOS, .tvOS, .watchOS, .visionOS])
-        )
+        .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["NEON"]))
       ]
     ),
     .target(

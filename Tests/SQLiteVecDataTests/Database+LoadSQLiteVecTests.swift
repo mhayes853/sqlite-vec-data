@@ -25,4 +25,23 @@ struct DatabaseLoadSQLiteVecTests {
       }
     }
   }
+
+  @Test("Builds With NEON For The Active Architecture")
+  func buildsWithNEONForActiveArchitecture() async throws {
+    let database = try DatabaseQueue()
+    let buildFlags = try await database.write { db in
+      #if canImport(Darwin)
+        try db.loadSQLiteVecExtension()
+      #endif
+
+      return try #sql("SELECT vec_debug()", as: String.self).fetchOne(db)
+    }
+    let debugDescription = try #require(buildFlags)
+
+    #if arch(arm64)
+      #expect(debugDescription.contains("neon"))
+    #elseif arch(x86_64)
+      #expect(!debugDescription.contains("neon"))
+    #endif
+  }
 }
