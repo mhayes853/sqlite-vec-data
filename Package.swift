@@ -10,6 +10,14 @@ let package = Package(
     .library(name: "SQLiteVecData", targets: ["SQLiteVecData"]),
     .library(name: "SQLiteVecDataTestSupport", targets: ["SQLiteVecDataTestSupport"])
   ],
+  traits: [
+    .default(enabledTraits: ["NEON"]),
+    .trait(name: "NEON", description: "Enable NEON vector implementations on ARM."),
+    .trait(
+      name: "AVX",
+      description: "Enable AVX vector implementations on AVX-capable x86 processors."
+    )
+  ],
   dependencies: [
     .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
     .package(url: "https://github.com/pointfreeco/swift-tagged", from: "0.10.0"),
@@ -32,11 +40,8 @@ let package = Package(
       // we cannot declare here.
       exclude: ["sqlite-vec.c"],
       cSettings: [
-        .define(
-          "SQLITE_VEC_ENABLE_NEON",
-          to: "1",
-          .when(platforms: [.iOS, .macOS, .tvOS, .watchOS, .visionOS])
-        )
+        .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["NEON"])),
+        .define("SQLITE_VEC_ENABLE_AVX", to: "1", .when(traits: ["AVX"]))
       ]
     ),
     .target(
@@ -66,6 +71,9 @@ let package = Package(
         "SQLiteVecDataTestSupport",
         .product(name: "StructuredQueriesTestSupport", package: "swift-structured-queries"),
         .product(name: "IssueReportingTestSupport", package: "xctest-dynamic-overlay")
+      ],
+      swiftSettings: [
+        .define("SQLITE_VEC_AVX_ENABLED", .when(traits: ["AVX"]))
       ]
     )
   ]
