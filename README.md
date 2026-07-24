@@ -195,6 +195,10 @@ let query = Embedding
 
 `SQLiteVecDataTestSupport` provides Swift Testing helpers for downstream packages, including the `.sqliteVecAutoExtension` suite trait for Linux test setup.
 
+## Package Traits
+
+The library ships with `NEON` (enabled by default) and `AVX` traits for SIMD in the vendored SQLite Vec code on both ARM and x86 respectively.
+
 ## Documentation
 
 The documentation for releases and main are available here.
