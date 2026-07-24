@@ -33,6 +33,8 @@ jobs:
           apt-get install -y libsqlite3-dev
       - name: "Test Swift Package on Linux"
         run: swift test
+      - name: "Test AVX Trait on Linux"
+        run: swift test --traits AVX
 
   linux-arm64:
     name: Linux ARM64

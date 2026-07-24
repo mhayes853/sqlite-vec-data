@@ -26,8 +26,8 @@ struct DatabaseLoadSQLiteVecTests {
     }
   }
 
-  @Test("Builds With NEON For The Active Architecture")
-  func buildsWithNEONForActiveArchitecture() async throws {
+  @Test("Builds With Enabled SIMD Traits For The Active Architecture")
+  func buildsWithEnabledSIMDTraitsForActiveArchitecture() async throws {
     let database = try DatabaseQueue()
     let buildFlags = try await database.write { db in
       #if canImport(Darwin)
@@ -40,8 +40,14 @@ struct DatabaseLoadSQLiteVecTests {
 
     #if arch(arm64)
       #expect(debugDescription.contains("neon"))
+      #expect(!debugDescription.contains("avx"))
     #elseif arch(x86_64)
       #expect(!debugDescription.contains("neon"))
+      #if SQLITE_VEC_AVX_ENABLED
+        #expect(debugDescription.contains("avx"))
+      #else
+        #expect(!debugDescription.contains("avx"))
+      #endif
     #endif
   }
 }
