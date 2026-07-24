@@ -1,3 +1,4 @@
+import CustomDump
 import GRDB
 import SQLiteVecData
 import SQLiteVecDataTestSupport
@@ -39,14 +40,14 @@ struct DatabaseLoadSQLiteVecTests {
     let debugDescription = try #require(buildFlags)
 
     #if arch(arm64)
-      #expect(debugDescription.contains("neon"))
-      #expect(!debugDescription.contains("avx"))
+      expectNoDifference(debugDescription.contains("neon"), true)
+      expectNoDifference(debugDescription.contains("avx"), false)
     #elseif arch(x86_64)
-      #expect(!debugDescription.contains("neon"))
+      expectNoDifference(debugDescription.contains("neon"), false)
       #if SQLITE_VEC_AVX_ENABLED
-        #expect(debugDescription.contains("avx"))
+        expectNoDifference(debugDescription.contains("avx"), true)
       #else
-        #expect(!debugDescription.contains("avx"))
+        expectNoDifference(debugDescription.contains("avx"), false)
       #endif
     #endif
   }
