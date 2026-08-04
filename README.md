@@ -1,4 +1,5 @@
 # SQLiteVecData
+
 [![CI](https://github.com/mhayes853/sqlite-vec-data/actions/workflows/ci.yml/badge.svg)](https://github.com/mhayes853/sqlite-vec-data/actions/workflows/ci.yml)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
@@ -113,6 +114,53 @@ let query = Embedding.select {
 }
 ```
 
+### Iterate over vector elements
+
+Use `vecEach()` to iterate over a vector's indexed elements with SQLite Vec's `vec_each`
+virtual table.
+
+```swift
+let query = Embedding
+  .join(Embedding.columns.embedding.vecEach()) { _, _ in true }
+  .select { embedding, element in
+    (embedding.label, element.rowid, element.value)
+  }
+```
+
+`vecEach()` constrains SQLite Vec's hidden `vector` column, so it can also be used in correlated
+subqueries. For example, filter to rows containing a negative element:
+
+```swift
+let query = Embedding
+  .where {
+    $0.embedding.vecEach()
+      .where { $0.value.lt(Float(0)) }
+      .exists()
+  }
+  .select(\.label)
+```
+
+Or aggregate a vector's elements:
+
+```swift
+let query = Embedding.select {
+  (
+    $0.label,
+    $0.embedding.vecEach().count(),
+    $0.embedding.vecEach().select { $0.value.max() }
+  )
+}
+```
+
+Use `Vec.each(_:)` to iterate over a bound vector without a table:
+
+```swift
+let vector: [Float].VectorBytesRepresentation = [1, -2, 3]
+let query = Vec.each(vector)
+  .order { $0.rowid }
+  .select { ($0.rowid, $0.value) }
+```
+
 ## Testing
 
 ### Apple platforms
@@ -202,6 +250,7 @@ The library ships with `NEON` (enabled by default) and `AVX` traits for SIMD in 
 ## Documentation
 
 The documentation for releases and main are available here.
+
 * [SQLiteVecData (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/sqlitevecdata/)
 * [SQLiteVecData (0.x.x)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/~/documentation/sqlitevecdata/)
 * [StructuredQueriesSQLiteVecCore (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriessqliteveccore/)

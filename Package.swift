@@ -23,13 +23,13 @@ let package = Package(
     .package(url: "https://github.com/pointfreeco/swift-tagged", from: "0.10.0"),
     .package(
       url: "https://github.com/pointfreeco/swift-structured-queries",
-      from: "0.31.1",
-      traits: ["StructuredQueriesTagged"]
+      from: "0.35.0",
+      traits: ["Tagged"]
     ),
     .package(
       url: "https://github.com/pointfreeco/sqlite-data",
-      from: "1.6.1",
-      traits: ["SQLiteDataTagged"]
+      from: "1.9.0",
+      traits: ["Tagged"]
     ),
     .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "1.4.3")
   ],
