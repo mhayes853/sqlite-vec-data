@@ -17,12 +17,7 @@ struct `VecEach tests` {
         try db.loadSQLiteVecExtension()
       #endif
       try #sql(
-        """
-        CREATE VIRTUAL TABLE VecEachEmbeddings USING vec0(
-          embedding float[3],
-          label text
-        );
-        """,
+        "CREATE VIRTUAL TABLE VecEachEmbeddings USING vec0(embedding float[3], label text)",
         as: Void.self
       )
       .execute(db)
@@ -33,8 +28,8 @@ struct `VecEach tests` {
     }
   }
 
-  @Test
-  func `Vec Each Binds A Vector`() async throws {
+  @Test("Vec Each Binds A Vector")
+  func vecEachBindsAVector() async throws {
     let rows = try await self.database.read { db in
       let vector: [Float].VectorBytesRepresentation = [1, -2, 3]
       return try Vec.each(vector).order { $0.rowid }.fetchAll(db)
@@ -44,8 +39,8 @@ struct `VecEach tests` {
     expectNoDifference(rows.map(\.value), [1, -2, 3])
   }
 
-  @Test
-  func `Vec Each Counts Elements`() async throws {
+  @Test("Vec Each Counts Elements")
+  func vecEachCountsElements() async throws {
     let query = VecEachEmbedding.select {
       ($0.label, $0.embedding.vecEach().count())
     }
@@ -70,8 +65,8 @@ struct `VecEach tests` {
     }
   }
 
-  @Test
-  func `Vec Each Aggregates Elements`() async throws {
+  @Test("Vec Each Aggregates Elements")
+  func vecEachAggregatesElements() async throws {
     let query = VecEachEmbedding.select {
       ($0.label, $0.embedding.vecEach().select { $0.value.max() })
     }
@@ -96,8 +91,8 @@ struct `VecEach tests` {
     }
   }
 
-  @Test
-  func `Vec Each Filters Elements`() async throws {
+  @Test("Vec Each Filters Elements")
+  func vecEachFiltersElements() async throws {
     let query = VecEachEmbedding
       .where {
         Vec.each($0.embedding)
@@ -127,8 +122,8 @@ struct `VecEach tests` {
     }
   }
 
-  @Test
-  func `Vec Each Returns Indexed Elements`() async throws {
+  @Test("Vec Each Returns Indexed Elements")
+  func vecEachReturnsIndexedElements() async throws {
     let query = VecEachEmbedding
       .join(VecEachEmbedding.columns.embedding.vecEach()) { _, _ in true }
       .select { ($0.label, $1.rowid, $1.value) }
