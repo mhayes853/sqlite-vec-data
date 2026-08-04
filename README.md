@@ -265,7 +265,7 @@ If you want to use SQLiteVecData in a SwiftPM project, add it to your `Package.s
 
 ```swift
 dependencies: [
-  .package(url: "https://github.com/mhayes853/sqlite-vec-data", from: "0.4.0")
+  .package(url: "https://github.com/mhayes853/sqlite-vec-data", from: "0.5.0")
 ]
 ```
 
