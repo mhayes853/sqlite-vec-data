@@ -9,6 +9,7 @@ let package = Package(
   products: [
     .library(name: "SQLiteVecData", targets: ["SQLiteVecData"]),
     .library(name: "CSQLiteVec", targets: ["CSQLiteVec"]),
+    .library(name: "StructuredQueriesSQLiteVecCore", targets: ["StructuredQueriesSQLiteVecCore"]),
     .library(name: "SQLiteVecDataTestSupport", targets: ["SQLiteVecDataTestSupport"])
   ],
   traits: [
