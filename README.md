@@ -4,7 +4,8 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
 
-SQLiteData interoperability with [sqlite-vec](https://github.com/asg017/sqlite-vec).
+SQLiteData interoperability with [sqlite-vec](https://github.com/asg017/sqlite-vec), and
+StructuredQueries helpers for [Turso/libSQL native vector search](https://docs.turso.tech/features/ai-and-embeddings).
 
 ## Overview
 
@@ -235,13 +236,92 @@ let query = Embedding
   .select { ($0.id, $0.distance) }
 ```
 
+`EmbeddingVector64<N>`, `EmbeddingVector16<N>`, and `BinaryEmbeddingVector<N>` provide the same
+collection and Codable support for other scalars. Floating-point vectors use element-wise
+comparison: signed zeros compare equal and NaNs compare unequal. This replaces the original
+float32 memory comparison.
+
+`Vec.bit` and `Vec.quantizeBinary` now return `[Bool].PackedBitsRepresentation` by default.
+Their `as:` overloads require a packed-bit representation. This corrects the previous float32
+result representation, which could discard binary data during decoding.
+
 ## Targets
 
 `SQLiteVecData` is the main integration target that couples SQLiteData with sqlite-vec. It also exports `StructuredQueriesSQLiteVecCore`.
 
 `StructuredQueriesSQLiteVecCore` is a standalone set of query helpers that model sqlite-vec features in StructuredQueries. Use this if you don't plan to use `SQLiteData` directly.
 
+`StructuredQueriesTursoVecCore` provides native Turso/libSQL vector conversions, distance
+functions, JSON extraction, vector index markers, and `vector_top_k` queries. It generates SQL
+and bindings for use with a compatible database driver.
+
+`StructuredQueriesVectorCore` contains reusable `EmbeddingVector`, `VectorBytesRepresentable`,
+numeric and binary vector types, and their byte representations. Both vector query targets export
+it, so existing SQLiteVec imports continue to expose these types.
+
 `SQLiteVecDataTestSupport` provides Swift Testing helpers for downstream packages, including the `.sqliteVecAutoExtension` suite trait for Linux test setup.
+
+## Turso Vector Queries
+
+Add the `StructuredQueriesTursoVecCore` product and import it alongside `StructuredQueriesSQLite`:
+
+```swift
+import StructuredQueriesSQLite
+import StructuredQueriesTursoVecCore
+
+@Table("movies")
+struct Movie: TursoVectorTable {
+  var title: String
+  var year: Int
+  @Column(as: [Float].VectorBytesRepresentation.self)
+  var embedding: [Float]
+}
+
+let queryVector: [Float].VectorBytesRepresentation = [0.064, 0.777, 0.661, 0.687]
+let query = Movie
+  .order { $0.embedding.distanceCosine(to: queryVector).asc() }
+  .limit(5)
+  .select { ($0.title, $0.embedding.distanceCosine(to: queryVector)) }
+```
+
+Create the table with an `F32_BLOB(4)` embedding column. Use `TursoVec.vector32` for JSON inputs,
+or bind the shared float representations directly. Other precisions decode to numeric arrays:
+
+| Format | Swift values | Column representation |
+| --- | --- | --- |
+| Float64 | `[Double]` | `[Double].VectorBytesRepresentation` |
+| Float16 | `[Float16]` | `[Float16].VectorBytesRepresentation` |
+| Bfloat16 | `[Float]` | `[Float].BFloat16Representation` |
+| Quantized float8 | `[Float]` | `[Float].Float8Representation` |
+| Binary | `[Bool]` | `[Bool].TursoBytesRepresentation` |
+
+Fixed-size alternatives are `EmbeddingVector64<N>`, `EmbeddingVector16<N>`, and
+`BinaryEmbeddingVector<N>`, with the corresponding nested representations. Use the existing
+`EmbeddingVector<N>` with `.BFloat16Representation` or `.Float8Representation` for compressed
+storage. Those encodings are lossy: reading returns the reconstructed values. Conversion helpers
+accept a matching `as:` representation for fixed-size results, and typed distances require
+matching encodings. Binary vectors do not support L2 distance.
+
+The shared float32 representation agrees with SQLiteVec on little-endian platforms. Binary values
+are shared too, but SQLiteVec uses `.PackedBitsRepresentation` (dimensions divisible by eight),
+while Turso uses `.TursoBytesRepresentation` to preserve dimension metadata.
+
+For indexed search, create an index with `TursoVec.index` and query it with `TursoVec.topK`:
+
+```swift
+let marker = TursoVec.index(Movie.columns.embedding)
+let createIndex = #sql("CREATE INDEX movies_idx ON movies (\(marker))", as: Void.self)
+
+let neighbors = TursoVec.topK(index: "movies_idx", vector: queryVector, k: 3)
+let query = Movie
+  .where { $0.rowid.in(neighbors) && $0.year.gte(2020) }
+  .select { ($0.title, $0.year) }
+```
+
+These helpers follow [Turso's vector documentation](https://docs.turso.tech/features/ai-and-embeddings).
+Indexed search is approximate, filters apply after selecting neighbors, and `IN` subqueries
+need an explicit `order` when ordering matters. Tests verify the generated SQL and bindings
+without connecting to Turso.
 
 ## Package Traits
 
@@ -255,6 +335,8 @@ The documentation for releases and main are available here.
 * [SQLiteVecData (0.x.x)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/~/documentation/sqlitevecdata/)
 * [StructuredQueriesSQLiteVecCore (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriessqliteveccore/)
 * [StructuredQueriesSQLiteVecCore (0.x.x)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/~/documentation/structuredqueriessqliteveccore/)
+* [StructuredQueriesTursoVecCore (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/)
+* [StructuredQueriesVectorCore (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
 
 ## Installation
 
@@ -274,6 +356,10 @@ Then add the product to any target that needs it.
 ```swift
 .product(name: "SQLiteVecData", package: "sqlite-vec-data")
 ```
+
+For Turso query helpers, use the `StructuredQueriesTursoVecCore` product instead. Add the
+`StructuredQueriesSQLite` product from `swift-structured-queries` if your target uses the `@Table`,
+`@Column`, or `#sql` macros.
 
 ## License
 

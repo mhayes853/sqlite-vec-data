@@ -122,6 +122,22 @@ struct FloatArrayVectorBytesRepresentationTests {
     }
   #endif
 
+  @Test
+  func `Decodes SQLiteVec Binary Quantization Into Logical Bits`() async throws {
+    // https://alexgarcia.xyz/sqlite-vec/api-reference.html#vec_quantize_binary
+    let vector: [Float].VectorBytesRepresentation = [1, -1, 1, -1, -1, -1, -1, 1]
+    try await self.database.read { db in
+      let query = #sql(
+        "SELECT \(Vec.quantizeBinary(vector))",
+        as: [Bool].PackedBitsRepresentation.self
+      )
+      expectNoDifference(
+        try query.fetchOne(db),
+        [true, false, true, false, false, false, false, true]
+      )
+    }
+  }
+
   @Test("Converts Float Array To And From Bytes")
   func convertFloatArrayToAndFromBytes() async throws {
     try await self.database.write { db in

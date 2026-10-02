@@ -83,7 +83,10 @@ let query = Vec.each(vector)
 
 ## EmbeddingVector
 
-``EmbeddingVector`` is a Hashable and Codable fixed-length array alternative to `InlineArray`. It is available on iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, and visionOS 26.0, and it can be stored in vec0 tables or used directly as a query binding.
+`EmbeddingVector` is a Hashable and Codable fixed-length array alternative to `InlineArray`.
+It is provided by the re-exported `StructuredQueriesVectorCore` module, alongside the float
+vector byte representations. It is available on iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0,
+and visionOS 26.0, and it can be stored in vec0 tables or used directly as a query binding.
 
 ```swift
 @Table("Embeddings")
@@ -97,3 +100,19 @@ let query = Embedding
   .where { $0.embedding.match(queryVector) }
   .select { ($0.id, $0.distance) }
 ```
+
+## Binary vectors
+
+Use `[Bool].PackedBitsRepresentation` or `BinaryEmbeddingVector<N>.PackedBitsRepresentation`
+for SQLiteVec binary blobs. They store logical bits without format metadata; binding requires
+a dimension count divisible by eight.
+
+```swift
+let queryVector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+let query = Vec.bit(queryVector)
+```
+
+`Vec.bit` and `Vec.quantizeBinary` return this representation by default. Their `as:` overloads
+accept matching packed-bit representations, including fixed-size vectors. This replaces the
+previous float32 result representation, which could discard short binary blobs while decoding.
+Turso's binary representation includes different metadata and cannot be used in its place.

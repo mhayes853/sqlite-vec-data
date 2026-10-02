@@ -10,6 +10,8 @@ let package = Package(
     .library(name: "SQLiteVecData", targets: ["SQLiteVecData"]),
     .library(name: "CSQLiteVec", targets: ["CSQLiteVec"]),
     .library(name: "StructuredQueriesSQLiteVecCore", targets: ["StructuredQueriesSQLiteVecCore"]),
+    .library(name: "StructuredQueriesTursoVecCore", targets: ["StructuredQueriesTursoVecCore"]),
+    .library(name: "StructuredQueriesVectorCore", targets: ["StructuredQueriesVectorCore"]),
     .library(name: "SQLiteVecDataTestSupport", targets: ["SQLiteVecDataTestSupport"])
   ],
   traits: [
@@ -47,8 +49,22 @@ let package = Package(
       ]
     ),
     .target(
+      name: "StructuredQueriesVectorCore",
+      dependencies: [
+        .product(name: "StructuredQueriesCore", package: "swift-structured-queries")
+      ]
+    ),
+    .target(
       name: "StructuredQueriesSQLiteVecCore",
       dependencies: [
+        "StructuredQueriesVectorCore",
+        .product(name: "StructuredQueriesSQLiteCore", package: "swift-structured-queries")
+      ]
+    ),
+    .target(
+      name: "StructuredQueriesTursoVecCore",
+      dependencies: [
+        "StructuredQueriesVectorCore",
         .product(name: "StructuredQueriesSQLiteCore", package: "swift-structured-queries")
       ]
     ),
@@ -64,6 +80,15 @@ let package = Package(
       name: "SQLiteVecDataTestSupport",
       dependencies: [
         "SQLiteVecData"
+      ]
+    ),
+    .testTarget(
+      name: "StructuredQueriesTursoVecCoreTests",
+      dependencies: [
+        "StructuredQueriesTursoVecCore",
+        "StructuredQueriesSQLiteVecCore",
+        .product(name: "StructuredQueriesSQLite", package: "swift-structured-queries"),
+        .product(name: "StructuredQueriesTestSupport", package: "swift-structured-queries")
       ]
     ),
     .testTarget(
