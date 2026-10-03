@@ -485,7 +485,7 @@ public enum Vec {
   ///
   /// ```swift
   /// let query = Embedding.select {
-  ///   Vec.bit($0.embedding, as: [Float].VectorBytesRepresentation.self)
+  ///   Vec.bit($0.embedding, as: [Bool].PackedBitsRepresentation.self)
   /// }
   /// ```
   ///
@@ -496,11 +496,11 @@ public enum Vec {
   public static func bit<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<some VectorBytesRepresentable>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
     SQLQueryExpression("vec_bit(\(expression))")
   }
 
-  /// Converts a vector expression to a bit representation and returns the result as a float vector.
+  /// Converts a vector expression to a bit representation and returns logical bits.
   /// This calls sqlite-vec's `vec_bit` function.
   ///
   /// ```swift
@@ -513,8 +513,8 @@ public enum Vec {
   /// - Returns: A query expression for the converted vector.
   public static func bit(
     _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
-    Self.bit(expression, as: [Float].VectorBytesRepresentation.self)
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation> {
+    Self.bit(expression, as: [Bool].PackedBitsRepresentation.self)
   }
 
   /// Converts a vector expression to an int8 representation and returns the result in the requested type.
@@ -605,7 +605,7 @@ public enum Vec {
   ///
   /// ```swift
   /// let query = Embedding.select {
-  ///   Vec.quantizeBinary($0.embedding, as: [Float].VectorBytesRepresentation.self)
+  ///   Vec.quantizeBinary($0.embedding, as: [Bool].PackedBitsRepresentation.self)
   /// }
   /// ```
   ///
@@ -616,11 +616,11 @@ public enum Vec {
   public static func quantizeBinary<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<some VectorBytesRepresentable>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
     SQLQueryExpression("vec_quantize_binary(\(expression))")
   }
 
-  /// Quantizes a vector expression to a binary representation and returns the result as a float vector.
+  /// Quantizes a vector expression to a binary representation and returns logical bits.
   /// This calls sqlite-vec's `vec_quantize_binary` function.
   ///
   /// ```swift
@@ -633,7 +633,7 @@ public enum Vec {
   /// - Returns: A query expression for the quantized vector.
   public static func quantizeBinary(
     _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
-    Self.quantizeBinary(expression, as: [Float].VectorBytesRepresentation.self)
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation> {
+    Self.quantizeBinary(expression, as: [Bool].PackedBitsRepresentation.self)
   }
 }

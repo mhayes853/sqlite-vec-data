@@ -353,8 +353,15 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   /// ```
   ///
   /// - Returns: A query expression for the bit vector.
-  public func bit() -> some QueryExpression<Value> {
-    Vec.bit(self, as: Value.self)
+  public func bit() -> some QueryExpression<[Bool].PackedBitsRepresentation> {
+    Vec.bit(self)
+  }
+
+  /// Returns logical bits using a matching packed-bit representation.
+  public func bit<T: VectorBytesRepresentable & QueryBindable>(
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
+    Vec.bit(self, as: result)
   }
 
   /// Converts the vector stored in this column to an int8 representation.
@@ -400,7 +407,14 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   /// ```
   ///
   /// - Returns: A query expression for the quantized vector.
-  public func quantizeBinary() -> some QueryExpression<Value> {
-    Vec.quantizeBinary(self, as: Value.self)
+  public func quantizeBinary() -> some QueryExpression<[Bool].PackedBitsRepresentation> {
+    Vec.quantizeBinary(self)
+  }
+
+  /// Returns logical bits using a matching packed-bit representation.
+  public func quantizeBinary<T: VectorBytesRepresentable & QueryBindable>(
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
+    Vec.quantizeBinary(self, as: result)
   }
 }
