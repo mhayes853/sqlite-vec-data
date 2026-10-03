@@ -493,10 +493,10 @@ public enum Vec {
   ///   - expression: The vector expression to convert.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the converted vector.
-  public static func bit<T: EncodedVector>(
+  public static func bit<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<some VectorBytesRepresentable>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == PackedBitsVectorEncoding {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
     SQLQueryExpression("vec_bit(\(expression))")
   }
 
@@ -613,10 +613,10 @@ public enum Vec {
   ///   - expression: The vector expression to quantize.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the quantized vector.
-  public static func quantizeBinary<T: EncodedVector>(
+  public static func quantizeBinary<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<some VectorBytesRepresentable>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == PackedBitsVectorEncoding {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
     SQLQueryExpression("vec_quantize_binary(\(expression))")
   }
 

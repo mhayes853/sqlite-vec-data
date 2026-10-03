@@ -36,10 +36,10 @@ public enum TursoVec {
   ///   - expression: A JSON array string or an encoded vector blob.
   ///   - result: A representation that decodes little-endian, 32-bit float bytes.
   /// - Returns: A query expression for the converted vector.
-  public static func vector32<T: EncodedVector>(
+  public static func vector32<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == Float32VectorEncoding {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.Float32 {
     SQLQueryExpression("vector32(\(expression))")
   }
 
@@ -57,7 +57,7 @@ public enum TursoVec {
   /// Converts a JSON or vector blob expression to a 64-bit vector with `vector64`.
   ///
   /// - Parameter expression: A JSON array string or an encoded vector blob.
-  /// - Returns: A query expression decoded as numeric or logical vector elements.
+  /// - Returns: A query expression decoded as an array of doubles.
   public static func vector64(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Double].VectorBytesRepresentation> {
@@ -66,17 +66,17 @@ public enum TursoVec {
 
   /// Converts a vector with `vector64`, using a matching array or fixed-size representation.
   /// The representation validates the blob's format and the fixed-size vector's dimensions.
-  public static func vector64<T: EncodedVector>(
+  public static func vector64<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == Float64VectorEncoding {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.Float64 {
     SQLQueryExpression("vector64(\(expression))")
   }
 
   /// Converts a JSON or vector blob expression to a half-precision vector with `vector16`.
   ///
   /// - Parameter expression: A JSON array string or an encoded vector blob.
-  /// - Returns: A query expression decoded as numeric or logical vector elements.
+  /// - Returns: A query expression decoded as an array of half-precision floats.
   public static func vector16(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Float16].VectorBytesRepresentation> {
@@ -85,17 +85,17 @@ public enum TursoVec {
 
   /// Converts a vector with `vector16`, using a matching array or fixed-size representation.
   /// The representation validates the blob's format and the fixed-size vector's dimensions.
-  public static func vector16<T: EncodedVector>(
+  public static func vector16<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == Float16VectorEncoding {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.Float16 {
     SQLQueryExpression("vector16(\(expression))")
   }
 
   /// Converts a JSON or vector blob expression to a bfloat16 vector with `vectorb16`.
   ///
   /// - Parameter expression: A JSON array string or an encoded vector blob.
-  /// - Returns: A query expression decoded as numeric or logical vector elements.
+  /// - Returns: A query expression decoded as an array of floats.
   public static func vectorb16(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Float].BFloat16Representation> {
@@ -104,17 +104,17 @@ public enum TursoVec {
 
   /// Converts a vector with `vectorb16`, using a matching array or fixed-size representation.
   /// The representation validates the blob's format and the fixed-size vector's dimensions.
-  public static func vectorb16<T: EncodedVector>(
+  public static func vectorb16<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == BFloat16VectorEncoding {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.BFloat16 {
     SQLQueryExpression("vectorb16(\(expression))")
   }
 
   /// Converts a JSON or vector blob expression to a quantized 8-bit vector with `vector8`.
   ///
   /// - Parameter expression: A JSON array string or an encoded vector blob.
-  /// - Returns: A query expression decoded as numeric or logical vector elements.
+  /// - Returns: A query expression decoded as an array of reconstructed floats.
   public static func vector8(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Float].Float8Representation> {
@@ -123,17 +123,17 @@ public enum TursoVec {
 
   /// Converts a vector with `vector8`, using a matching array or fixed-size representation.
   /// The representation validates the blob's format and the fixed-size vector's dimensions.
-  public static func vector8<T: EncodedVector>(
+  public static func vector8<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == Float8VectorEncoding {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.Float8 {
     SQLQueryExpression("vector8(\(expression))")
   }
 
   /// Converts a JSON or vector blob expression to a binary vector with `vector1bit`.
   ///
   /// - Parameter expression: A JSON array string or an encoded vector blob.
-  /// - Returns: A query expression decoded as numeric or logical vector elements.
+  /// - Returns: A query expression decoded as an array of logical bits.
   public static func vector1bit(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Bool].TursoBytesRepresentation> {
@@ -142,10 +142,10 @@ public enum TursoVec {
 
   /// Converts a vector with `vector1bit`, using a matching array or fixed-size representation.
   /// The representation validates the blob's format and the fixed-size vector's dimensions.
-  public static func vector1bit<T: EncodedVector>(
+  public static func vector1bit<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == TursoBitsVectorEncoding {
+  ) -> some QueryExpression<T> where T.Format == VectorFormat.TursoBits {
     SQLQueryExpression("vector1bit(\(expression))")
   }
 
@@ -179,11 +179,26 @@ public enum TursoVec {
   ///   - expression: The vector expression to compare.
   ///   - vector: A JSON, blob, or converted vector expression to compare.
   /// - Returns: A query expression for the cosine distance.
-  public static func distanceCosine<L: EncodedVector, R: EncodedVector>(
+  public static func distanceCosine<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == R.Encoding, L.Encoding: TursoVectorEncoding {
+  where L.Format == R.Format, L.Scalar: BinaryFloatingPoint {
+    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
+  }
+
+  /// Returns distance between Turso binary vectors with matching dimensions.
+  public static func distanceCosine<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where L.Format == R.Format, L.Format == VectorFormat.TursoBits {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -196,18 +211,34 @@ public enum TursoVec {
   }
 
   /// Compares an encoded vector with JSON. The database checks type and dimensionality.
-  public static func distanceCosine<L: EncodedVector>(
+  public static func distanceCosine<L: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<String>
-  ) -> some QueryExpression<Double> where L.Encoding: TursoVectorEncoding {
+  ) -> some QueryExpression<Double> where L.Scalar: BinaryFloatingPoint {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
   /// Compares JSON with an encoded vector. The database checks type and dimensionality.
-  public static func distanceCosine<L: EncodedVector>(
+  public static func distanceCosine<L: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<String>,
     to vector: some QueryExpression<L>
-  ) -> some QueryExpression<Double> where L.Encoding: TursoVectorEncoding {
+  ) -> some QueryExpression<Double> where L.Scalar: BinaryFloatingPoint {
+    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
+  }
+
+  /// Compares Turso binary storage with JSON, with database format and dimension checks.
+  public static func distanceCosine<L: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<String>
+  ) -> some QueryExpression<Double> where L.Format == VectorFormat.TursoBits {
+    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
+  }
+
+  /// Compares JSON with Turso binary storage, with database format and dimension checks.
+  public static func distanceCosine<L: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<String>,
+    to vector: some QueryExpression<L>
+  ) -> some QueryExpression<Double> where L.Format == VectorFormat.TursoBits {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -220,11 +251,14 @@ public enum TursoVec {
   ///   - expression: The vector expression to compare.
   ///   - vector: A JSON, blob, or converted vector expression to compare.
   /// - Returns: A query expression for the L2 distance.
-  public static func distanceL2<L: EncodedVector, R: EncodedVector>(
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == R.Encoding, L.Encoding: TursoVectorEncoding & L2VectorEncoding {
+  where L.Format == R.Format, L.Scalar: BinaryFloatingPoint {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -237,18 +271,18 @@ public enum TursoVec {
   }
 
   /// Compares an encoded vector with JSON. The database checks type and dimensionality.
-  public static func distanceL2<L: EncodedVector>(
+  public static func distanceL2<L: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<String>
-  ) -> some QueryExpression<Double> where L.Encoding: TursoVectorEncoding & L2VectorEncoding {
+  ) -> some QueryExpression<Double> where L.Scalar: BinaryFloatingPoint {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
   /// Compares JSON with an encoded vector. The database checks type and dimensionality.
-  public static func distanceL2<L: EncodedVector>(
+  public static func distanceL2<L: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<String>,
     to vector: some QueryExpression<L>
-  ) -> some QueryExpression<Double> where L.Encoding: TursoVectorEncoding & L2VectorEncoding {
+  ) -> some QueryExpression<Double> where L.Scalar: BinaryFloatingPoint {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -271,10 +305,29 @@ public enum TursoVec {
     _ column: Column,
     settings: [String] = []
   ) -> some QueryExpression<Void>
-  where Column.Value: EncodedVector, Column.Value.Encoding: TursoVectorEncoding {
-    let columnName = QueryFragment(quote: column.name)
-    let arguments = ([columnName] + settings.map { QueryFragment(quote: $0, delimiter: .text) })
-      .joined(separator: ", ")
-    return SQLQueryExpression("libsql_vector_idx(\(arguments))")
+  where
+    Column.Value: VectorBytesRepresentable & QueryBindable,
+    Column.Value.Scalar: BinaryFloatingPoint
+  {
+    vectorIndex(columnName: column.name, settings: settings)
   }
+
+  /// Marks a Turso binary column for an index. SQLiteVec packed bits use a different layout.
+  public static func index<Column: TableColumnExpression>(
+    _ column: Column,
+    settings: [String] = []
+  ) -> some QueryExpression<Void>
+  where
+    Column.Value: VectorBytesRepresentable & QueryBindable,
+    Column.Value.Format == VectorFormat.TursoBits
+  {
+    vectorIndex(columnName: column.name, settings: settings)
+  }
+}
+
+private func vectorIndex(columnName: String, settings: [String]) -> some QueryExpression<Void> {
+  let column = QueryFragment(quote: columnName)
+  let arguments = ([column] + settings.map { QueryFragment(quote: $0, delimiter: .text) })
+    .joined(separator: ", ")
+  return SQLQueryExpression("libsql_vector_idx(\(arguments))")
 }

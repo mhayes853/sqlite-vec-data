@@ -79,6 +79,14 @@ The Turso target adds `.TursoBytesRepresentation` to both value types. It includ
 format and dimension metadata and supports partial-byte lengths. It also adds
 `.BFloat16Representation` and `.Float8Representation` to float32 arrays and fixed-size vectors.
 
-These named representations use ``VectorQueryRepresentation`` to keep scalar values separate
-from encodings. Custom vector values and encodings can conform to ``VectorValue`` and
-``VectorEncoding``.
+### Format matching
+
+The named representations are concrete wrappers that conform to ``VectorBytesRepresentable``.
+Its `Scalar` and `Format` associated types let query helpers compare byte layouts and distinguish
+floating-point operations from binary operations. ``VectorFormat`` provides type identities such
+as `Float32`, `BFloat16`, `PackedBits`, and `TursoBits`; serialization stays in internal helpers.
+
+``VectorScalar`` selects the default format for Float, Double, and Float16. Together with
+`TursoVectorTable` in the Turso module, these are the three vector abstraction protocols. The
+value and representation names above remain the public entry points for modeling columns,
+binding values, and selecting fixed-size results.

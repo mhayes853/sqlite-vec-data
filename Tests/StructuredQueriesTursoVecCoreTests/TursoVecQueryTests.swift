@@ -182,6 +182,31 @@ struct `TursoVec Query tests` {
   }
 
   @Test
+  func `Uses Binary Column Helpers And A Turso Binary Index`() {
+    // https://docs.turso.tech/features/ai-and-embeddings#functions
+    // https://docs.turso.tech/features/ai-and-embeddings#vector-index
+    let query = EncodedMovie.select {
+      ($0.bit.toJSON(), $0.bit.distanceCosine(to: "[1,-1,1,-1]"))
+    }
+    let prepared = query.query.prepare { "?\($0)" }
+    expectNoDifference(
+      prepared.sql,
+      """
+      SELECT vector_extract("encoded_movies"."bit"), vector_distance_cos("encoded_movies"."bit", ?1)
+      FROM "encoded_movies"
+      """
+    )
+    expectNoDifference(prepared.bindings, [.text("[1,-1,1,-1]")])
+    let marker = TursoVec.index(EncodedMovie.columns.bit)
+    expectNoDifference(marker.queryFragment.prepare { "?\($0)" }.sql, "libsql_vector_idx(\"bit\")")
+    let vector: [Bool].TursoBytesRepresentation = [true, false, true, false]
+    expectNoDifference(
+      TursoVec.distanceCosine("[1,-1,1,-1]", to: vector).queryFragment.prepare { "?\($0)" }.sql,
+      "vector_distance_cos(?1, ?2)"
+    )
+  }
+
+  @Test
   func `Creates A Documented Vector Index`() {
     // https://docs.turso.tech/features/ai-and-embeddings#vector-index
     let expression = TursoVec.index(Movie.columns.embedding)

@@ -77,7 +77,7 @@ These call `vector_distance_cos` and `vector_distance_l2`. Both vectors must hav
 and dimensionality. Smaller distances indicate more similar vectors; L2 distance is unsupported
 for 1-bit vectors.
 
-Use ``TursoVec/distanceCosine(_:to:)-(QueryExpression,QueryExpression)`` and ``TursoVec/distanceL2(_:to:)-(QueryExpression,QueryExpression)`` directly for tables
+Use `TursoVec.distanceCosine(_:to:)` and `TursoVec.distanceL2(_:to:)` directly for tables
 without the ``TursoVectorTable`` conformance, or to compare converted expressions.
 
 ### Extract and convert vectors
@@ -161,7 +161,7 @@ representations cannot be interchanged in a Turso query.
 
 ### Create a vector index
 
-Use ``TursoVec/index(_:settings:)`` inside `CREATE INDEX` to generate the `libsql_vector_idx`
+Use `TursoVec.index(_:settings:)` inside `CREATE INDEX` to generate the `libsql_vector_idx`
 marker from Turso's [index example](https://docs.turso.tech/features/ai-and-embeddings#vector-index):
 
 ```swift

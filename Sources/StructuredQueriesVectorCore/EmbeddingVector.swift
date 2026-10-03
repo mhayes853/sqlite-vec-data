@@ -217,10 +217,8 @@ import StructuredQueriesCore
   public typealias BinaryEmbeddingVector<let count: Int> = FixedEmbeddingVector<count, Bool>
 
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension FixedEmbeddingVector: VectorValue {
-    public var vectorElements: [Scalar] { Array(self) }
-
-    public init(vectorElements: [Scalar]) throws {
+  extension FixedEmbeddingVector {
+    package init(vectorElements: [Scalar]) throws {
       guard vectorElements.count == Self.count else {
         throw VectorDecodingError.dimensionMismatch(
           expected: Self.count,
@@ -233,14 +231,29 @@ import StructuredQueriesCore
 
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension FixedEmbeddingVector: VectorBytesRepresentable where Scalar: VectorScalar {
-    public typealias VectorBytesRepresentation = VectorQueryRepresentation<
-      Self, Scalar.BytesEncoding
-    >
-  }
+    public typealias Format = Scalar.Format
 
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension FixedEmbeddingVector: EncodedVector where Scalar == Float {
-    public typealias Encoding = Float32VectorEncoding
-  }
+    /// The scalar's default blob representation with fixed-dimension validation.
+    public struct VectorBytesRepresentation:
+      Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
+    {
+      public typealias Scalar = Element
+      public typealias Format = Element.Format
+      public typealias VectorBytesRepresentation = Self
+      public var queryOutput: FixedEmbeddingVector<count, Element>
 
+      public init(queryOutput: FixedEmbeddingVector<count, Element>) {
+        self.queryOutput = queryOutput
+      }
+
+      public var queryBinding: QueryBinding {
+        [Element].VectorBytesRepresentation(queryOutput: Array(self.queryOutput)).queryBinding
+      }
+
+      public init(decoder: inout some QueryDecoder) throws {
+        let elements = try [Element].VectorBytesRepresentation(decoder: &decoder).queryOutput
+        try self.init(queryOutput: FixedEmbeddingVector<count, Element>(vectorElements: elements))
+      }
+    }
+  }
 #endif

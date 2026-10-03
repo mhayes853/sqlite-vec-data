@@ -29,6 +29,53 @@ struct `Vector Representation tests` {
   }
 
   @Test
+  func `Preserves IEEE Bit Patterns Through Scalar Dispatch`() throws {
+    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // Signed zero, the least subnormal, infinity, and a signaling NaN retain their IEEE bits.
+    let floatBits: [UInt32] = [0x8000_0000, 1, 0x7f80_0000, 0x7f80_0123]
+    let doubleBits: [UInt64] = [
+      0x8000_0000_0000_0000, 1, 0x7ff0_0000_0000_0000, 0x7ff0_0000_0000_0123
+    ]
+    let halfBits: [UInt16] = [0x8000, 1, 0x7c00, 0x7c23]
+    let floatBytes: [UInt8] = [0, 0, 0, 128, 1, 0, 0, 0, 0, 0, 128, 127, 35, 1, 128, 127]
+    let doubleBytes: [UInt8] = [
+      0, 0, 0, 0, 0, 0, 0, 128, 1, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 240, 127, 35, 1, 0, 0, 0, 0, 240, 127, 2
+    ]
+    let halfBytes: [UInt8] = [0, 128, 1, 0, 0, 124, 35, 124, 5]
+    expectNoDifference(
+      [Float].VectorBytesRepresentation(queryOutput: floatBits.map { Float(bitPattern: $0) })
+        .queryBinding,
+      .blob(floatBytes)
+    )
+    expectNoDifference(
+      [Double].VectorBytesRepresentation(queryOutput: doubleBits.map { Double(bitPattern: $0) })
+        .queryBinding,
+      .blob(doubleBytes)
+    )
+    expectNoDifference(
+      [Float16].VectorBytesRepresentation(queryOutput: halfBits.map { Float16(bitPattern: $0) })
+        .queryBinding,
+      .blob(halfBytes)
+    )
+    var floatDecoder = BlobQueryDecoder(bytes: floatBytes)
+    var doubleDecoder = BlobQueryDecoder(bytes: doubleBytes)
+    var halfDecoder = BlobQueryDecoder(bytes: halfBytes)
+    expectNoDifference(
+      try floatDecoder.decode([Float].VectorBytesRepresentation.self)?.map(\.bitPattern),
+      floatBits
+    )
+    expectNoDifference(
+      try doubleDecoder.decode([Double].VectorBytesRepresentation.self)?.map(\.bitPattern),
+      doubleBits
+    )
+    expectNoDifference(
+      try halfDecoder.decode([Float16].VectorBytesRepresentation.self)?.map(\.bitPattern),
+      halfBits
+    )
+  }
+
+  @Test
   func `Accepts The Optional Turso Float32 Tag`() throws {
     // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
     var decoder = BlobQueryDecoder(bytes: [0, 0, 128, 63, 1])
@@ -166,6 +213,35 @@ struct `Vector Representation tests` {
   }
 
   #if swift(>=6.2)
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Uses Concrete Inline Representations For Each Precision`() throws {
+      // https://docs.turso.tech/features/ai-and-embeddings#types
+      let doubles = [2 of Double].VectorBytesRepresentation(queryOutput: [1, -2])
+      let halves = [2 of Float16].VectorBytesRepresentation(queryOutput: [1, -2])
+      expectNoDifference(
+        doubles.queryBinding,
+        [Double].VectorBytesRepresentation(queryOutput: [1, -2]).queryBinding
+      )
+      expectNoDifference(
+        halves.queryBinding,
+        [Float16].VectorBytesRepresentation(queryOutput: [1, -2]).queryBinding
+      )
+      expectNoDifference(doubles, [2 of Double].VectorBytesRepresentation(queryOutput: [1, -2]))
+      expectNoDifference(
+        halves.hashValue,
+        [2 of Float16].VectorBytesRepresentation(queryOutput: [1, -2]).hashValue
+      )
+      var decoder = BlobQueryDecoder(bytes: [0, 60, 0, 192, 5])
+      expectNoDifference(
+        try decoder.decode([2 of Float16].VectorBytesRepresentation.self).map { [$0[0], $0[1]] },
+        [1, -2]
+      )
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 1, actual: 2)) {
+        _ = try [1 of Float16].VectorBytesRepresentation(decoder: &decoder)
+      }
+    }
+
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Compares Floating Point Elements With Swift Semantics`() {
