@@ -30,8 +30,8 @@ let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
 SQLiteVec float columns on little-endian platforms. SQLiteVec reads native float memory, so the
 formats are not interchangeable on big-endian systems.
 
-`[Double].VectorBytesRepresentation` and `[Float16].VectorBytesRepresentation` use Turso's
-float64 and float16 blob formats, including their type metadata. These formats are not supported
+`[Double].VectorBytesRepresentation` and `[Float16].VectorBytesRepresentation` use tagged
+float64 and libSQL's float16 blob formats, including their type metadata. These formats are not supported
 by SQLiteVec float columns. Decoding validates byte lengths and format tags instead of silently
 discarding incomplete elements.
 
@@ -77,7 +77,10 @@ because this format cannot preserve partial-byte lengths.
 
 The Turso target adds `.TursoBytesRepresentation` to both value types. It includes Turso's binary
 format and dimension metadata and supports partial-byte lengths. It also adds
-`.BFloat16Representation` and `.Float8Representation` to float32 arrays and fixed-size vectors.
+`.BFloat16Representation`, `.Float8Representation`, and `.SparseRepresentation` to float32 arrays
+and fixed-size vectors. Bfloat16 and float16 blobs require libSQL; sparse float32 blobs require
+the Rust-based Turso engine. The sparse representation exposes dense Swift values and stores
+only nonzero components in the database.
 
 ### Format matching
 
@@ -86,7 +89,8 @@ Its `Scalar` and `Format` associated types let query helpers compare byte layout
 floating-point operations from binary operations. ``VectorFormat`` provides type identities such
 as `Float32`, `BFloat16`, `PackedBits`, and `TursoBits`; serialization stays in internal helpers.
 
-``VectorScalar`` selects the default format for Float, Double, and Float16. Together with
-`TursoVectorTable` in the Turso module, these are the three vector abstraction protocols. The
-value and representation names above remain the public entry points for modeling columns,
-binding values, and selecting fixed-size results.
+``VectorScalar`` selects the default format for Float, Double, and Float16. It and
+``VectorBytesRepresentable`` are the two vector abstraction protocols. The value and representation
+names above are the public entry points for modeling columns, binding values, and selecting
+fixed-size results. Engine-specific functions live in the `TursoVec`, `LibSQLVec`, and `Vec`
+namespaces; tables need no additional Turso or libSQL conformance.

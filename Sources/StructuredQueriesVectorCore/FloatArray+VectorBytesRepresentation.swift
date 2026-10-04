@@ -6,7 +6,8 @@ extension Array where Element: VectorScalar {
   /// The scalar's default vector blob representation.
   ///
   /// Float uses raw float32 bytes, shared with SQLiteVec on little-endian platforms. Double and
-  /// Float16 use Turso's tagged float64 and float16 formats, respectively.
+  /// Float16 use tagged float64 and float16 formats, respectively. Float64 is supported by Turso
+  /// and libSQL; float16 requires libSQL.
   public struct VectorBytesRepresentation:
     Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
   {

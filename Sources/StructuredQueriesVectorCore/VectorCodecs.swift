@@ -25,7 +25,7 @@ enum Float64VectorCodec {
   }
 }
 
-/// Little-endian IEEE float16 values followed by Turso's float16 type byte.
+/// Little-endian IEEE float16 values followed by libSQL's float16 type byte.
 enum Float16VectorCodec {
   static func encode(_ elements: [Float16]) -> [UInt8] {
     elements.flatMap { littleEndianBytes($0.bitPattern) } + [5]

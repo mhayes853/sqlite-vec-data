@@ -7,9 +7,101 @@ import Testing
 @Suite
 struct `Vector Representation tests` {
   @Test
+  func `Stores The Documented Sparse Values Indices And Dimensions`() throws {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
+    // Layout: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs#L315
+    // Serialization: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs#L15
+    let vector: [Float].SparseRepresentation = [0, 0, 1.5, 0, 0, 2.5]
+    let fixture: [UInt8] = [
+      0, 0, 192, 63, 0, 0, 32, 64,
+      2, 0, 0, 0, 5, 0, 0, 0,
+      6, 0, 0, 0, 9
+    ]
+    expectNoDifference(vector.queryBinding, .blob(fixture))
+    var decoder = BlobQueryDecoder(bytes: fixture)
+    expectNoDifference(try decoder.decode([Float].SparseRepresentation.self), vector.queryOutput)
+  }
+
+  @Test
+  func `Preserves Sparse Dimensions When Every Value Is Zero`() throws {
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs#L15
+    let zero: [Float].SparseRepresentation = [0, -0.0, 0, 0]
+    expectNoDifference(zero.queryBinding, .blob([4, 0, 0, 0, 9]))
+    var decoder = BlobQueryDecoder(bytes: [4, 0, 0, 0, 9])
+    expectNoDifference(
+      try decoder.decode([Float].SparseRepresentation.self)?.map(\.bitPattern),
+      [UInt32](repeating: 0, count: 4)
+    )
+    let empty = [Float].SparseRepresentation(queryOutput: [Float]())
+    expectNoDifference(empty.queryBinding, .blob([0, 0, 0, 0, 9]))
+    var emptyDecoder = BlobQueryDecoder(bytes: [0, 0, 0, 0, 9])
+    expectNoDifference(try emptyDecoder.decode([Float].SparseRepresentation.self), [Float]())
+  }
+
+  @Test
+  func `Preserves Nonzero Sparse IEEE Bit Patterns`() throws {
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/convert.rs#L19
+    let bits: [UInt32] = [0, 1, 0, 0x7f80_0123]
+    let vector = [Float].SparseRepresentation(queryOutput: bits.map { Float(bitPattern: $0) })
+    let fixture: [UInt8] = [
+      1, 0, 0, 0, 35, 1, 128, 127,
+      1, 0, 0, 0, 3, 0, 0, 0,
+      4, 0, 0, 0, 9
+    ]
+    expectNoDifference(vector.queryBinding, .blob(fixture))
+    var decoder = BlobQueryDecoder(bytes: fixture)
+    expectNoDifference(
+      try decoder.decode([Float].SparseRepresentation.self)?.map(\.bitPattern),
+      bits
+    )
+  }
+
+  @Test(arguments: [
+    [UInt8](), [9], [0, 0, 0, 0, 1], [0, 0, 0, 9],
+    [0, 0, 128, 63, 3, 0, 0, 0, 3, 0, 0, 0, 9],
+    [0, 0, 128, 63, 0, 0, 0, 0, 0, 0, 0, 0, 9],
+    [0, 0, 128, 63, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 9],
+    [0, 0, 128, 63, 0, 0, 0, 64, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 9]
+  ])
+  func `Rejects Malformed Sparse Lengths Tags And Indices`(_ fixture: [UInt8]) {
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs#L315
+    // Validate the sorted, unique, in-range indices required by sparse operations.
+    var decoder = BlobQueryDecoder(bytes: fixture)
+    #expect(throws: VectorDecodingError.invalidBytes) {
+      _ = try [Float].SparseRepresentation(decoder: &decoder)
+    }
+  }
+
+  #if swift(>=6.2)
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Validates Fixed Sparse Dimensions`() throws {
+      // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
+      let vector = EmbeddingVector<6>
+        .SparseRepresentation(
+          queryOutput: EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5])
+        )
+      let fixture: [UInt8] = [
+        0, 0, 192, 63, 0, 0, 32, 64,
+        2, 0, 0, 0, 5, 0, 0, 0,
+        6, 0, 0, 0, 9
+      ]
+      expectNoDifference(vector.queryBinding, .blob(fixture))
+      var decoder = BlobQueryDecoder(bytes: fixture)
+      expectNoDifference(
+        try decoder.decode(EmbeddingVector<6>.SparseRepresentation.self),
+        vector.queryOutput
+      )
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 5, actual: 6)) {
+        _ = try EmbeddingVector<5>.SparseRepresentation(decoder: &decoder)
+      }
+    }
+  #endif
+
+  @Test
   func `Uses Little Endian IEEE Bytes And Precision Tags`() throws {
     // https://docs.turso.tech/features/ai-and-embeddings#types
-    // Wire format: https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // Wire format: https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
     let floats: [Float].VectorBytesRepresentation = [1, -2]
     let doubles: [Double].VectorBytesRepresentation = [1, -2]
     let halves: [Float16].VectorBytesRepresentation = [1, -2]
@@ -30,7 +122,7 @@ struct `Vector Representation tests` {
 
   @Test
   func `Preserves IEEE Bit Patterns Through Scalar Dispatch`() throws {
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
     // Signed zero, the least subnormal, infinity, and a signaling NaN retain their IEEE bits.
     let floatBits: [UInt32] = [0x8000_0000, 1, 0x7f80_0000, 0x7f80_0123]
     let doubleBits: [UInt64] = [
@@ -77,7 +169,7 @@ struct `Vector Representation tests` {
 
   @Test
   func `Accepts The Optional Turso Float32 Tag`() throws {
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
     var decoder = BlobQueryDecoder(bytes: [0, 0, 128, 63, 1])
     expectNoDifference(try decoder.decode([Float].VectorBytesRepresentation.self), [1])
   }
@@ -85,7 +177,7 @@ struct `Vector Representation tests` {
   @Test
   func `Truncates BFloat16 And Reconstructs Numeric Values`() throws {
     // https://docs.turso.tech/features/ai-and-embeddings#types
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorfloatb16.c
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorfloatb16.c
     let vector = [Float].BFloat16Representation(queryOutput: [Float(bitPattern: 0x3f80_ffff), -2])
     expectNoDifference(vector.queryBinding, .blob([128, 63, 0, 192, 6]))
     var decoder = BlobQueryDecoder(bytes: [128, 63, 0, 192, 6])
@@ -95,7 +187,7 @@ struct `Vector Representation tests` {
   @Test
   func `Quantizes Float8 With Scale Shift And Rounded Bytes`() throws {
     // https://docs.turso.tech/features/ai-and-embeddings#types
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vector.c
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vector.c
     // For [0, 127.5, 255], scale = 1 and shift = 0; libSQL rounds the midpoint to 128.
     let vector: [Float].Float8Representation = [0, 127.5, 255]
     let fixture: [UInt8] = [0, 128, 255, 0, 0, 0, 128, 63, 0, 0, 0, 0, 0, 1, 4]
@@ -114,7 +206,7 @@ struct `Vector Representation tests` {
     ]
   )
   func `Handles Float8 Alignment And Constant Vectors`(values: [Float], fixture: [UInt8]) throws {
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
     let vector = [Float].Float8Representation(queryOutput: values)
     expectNoDifference(vector.queryBinding, .blob(fixture))
     var decoder = BlobQueryDecoder(bytes: fixture)
@@ -132,7 +224,7 @@ struct `Vector Representation tests` {
     throws
   {
     // https://docs.turso.tech/features/ai-and-embeddings#types
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
     let values = Array(repeating: true, count: count)
     expectNoDifference(
       [Bool].TursoBytesRepresentation(queryOutput: values).queryBinding,
@@ -144,7 +236,7 @@ struct `Vector Representation tests` {
 
   @Test
   func `Uses Least Significant Bit First In Both Binary Layouts`() throws {
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vector.c
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vector.c
     // SQLiteVec raw binary layout: https://github.com/asg017/sqlite-vec/blob/v0.1.9/sqlite-vec.c
     let bits = [true, false, true, false, false, false, false, true]
     let packed = [Bool].PackedBitsRepresentation(queryOutput: bits)
@@ -157,7 +249,7 @@ struct `Vector Representation tests` {
 
   @Test
   func `Rejects Malformed Floating Point Blobs`() throws {
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
     #expect(throws: VectorDecodingError.self) {
       var decoder = BlobQueryDecoder(bytes: [0, 0])
       _ = try [Float].VectorBytesRepresentation(decoder: &decoder)
@@ -187,7 +279,7 @@ struct `Vector Representation tests` {
     [0, 0, 0, 0, 0, 0, 128, 127, 0, 0, 0, 0, 0, 0, 4]
   ])
   func `Rejects Malformed Float8 Metadata`(fixture: [UInt8]) {
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
     #expect(throws: VectorDecodingError.self) {
       var decoder = BlobQueryDecoder(bytes: fixture)
       _ = try [Float].Float8Representation(decoder: &decoder)
@@ -196,7 +288,7 @@ struct `Vector Representation tests` {
 
   @Test(arguments: [[UInt8](), [3], [0, 3], [0, 7, 3], [0, 24, 3], [0, 255, 3], [0, 16, 4]])
   func `Rejects Malformed Binary Metadata`(fixture: [UInt8]) {
-    // https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
+    // https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
     #expect(throws: VectorDecodingError.self) {
       var decoder = BlobQueryDecoder(bytes: fixture)
       _ = try [Bool].TursoBytesRepresentation(decoder: &decoder)

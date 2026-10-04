@@ -1,197 +1,202 @@
 # ``StructuredQueriesTursoVecCore``
 
-StructuredQueries helpers for [Turso/libSQL native vector search](https://docs.turso.tech/features/ai-and-embeddings)
-that are not tied to SQLiteData.
+StructuredQueries helpers for Turso Database and libSQL vector functions, independent of SQLiteData.
 
 ## Overview
 
-Use ``TursoVectorTable`` column helpers and the ``TursoVec`` namespace to build vector search
-queries. This target also exports `StructuredQueriesVectorCore`, including `EmbeddingVector`
-and `[Float].VectorBytesRepresentation`.
+Choose the namespace for the engine executing your queries:
 
-The helpers target the vector functions documented for Turso Cloud and libSQL. They generate
-SQL and bindings; execute the resulting statements with a compatible database driver. Native
-vector functions require a Turso/libSQL engine that supports them.
+- ``TursoVec`` follows the Rust-based [Turso Database vector API](https://docs.turso.tech/sql-reference/functions/vector).
+- ``LibSQLVec`` follows the [libSQL vector API](https://docs.turso.tech/features/ai-and-embeddings),
+  including Turso Cloud databases running libSQL.
 
-### Model a vector column
+These engines have overlapping functions and compatible layouts for their shared formats, but
+support different operations. Importing this target also exports `StructuredQueriesVectorCore`,
+including `EmbeddingVector` and the shared byte representations. Tables need only `@Table`;
+there is no additional Turso or libSQL table conformance.
 
-First, create a table in your migration:
+### Supported conversions
+
+Conversion results expose numeric or logical Swift values. Use the representation matching the
+column's encoding:
+
+| Conversion | Swift representation | Turso | libSQL |
+| --- | --- | --- | --- |
+| `vector32` / `vector` | `[Float].VectorBytesRepresentation` | Yes | Yes |
+| `vector64` | `[Double].VectorBytesRepresentation` | Yes | Yes |
+| `vector16` | `[Float16].VectorBytesRepresentation` | No | Yes |
+| `vectorb16` | `[Float].BFloat16Representation` | No | Yes |
+| `vector8` | `[Float].Float8Representation` | Yes | Yes |
+| `vector1bit` | `[Bool].TursoBytesRepresentation` | Yes | Yes |
+| `vector32Sparse` | `[Float].SparseRepresentation` | Yes | No |
+
+`vector32Sparse` emits SQL's `vector32_sparse` function. Float8 is unsigned-byte quantization
+with per-vector scale and shift metadata, rather than an IEEE float8 scalar or SQLiteVec int8.
+Binding requires finite values and a finite scale; decoding reconstructs stored values.
+Bfloat16 truncates each Float's low 16 bits. Both compressed formats are lossy.
+
+Shared float32 bytes agree with SQLiteVec on little-endian platforms. Shared float64, float8,
+and binary layouts follow libSQL's metadata conventions, also used by Turso. This does not make
+all inputs valid in both engines: Turso rejects float16 and bfloat16 blobs and empty float8 or
+binary vectors. The executing database checks input formats and value-dependent restrictions.
+
+### Turso exact search
+
+The [Turso example](https://docs.turso.tech/guides/vector-search) stores embeddings in a BLOB column:
 
 ```sql
-CREATE TABLE movies (
-  title TEXT,
-  year INT,
-  embedding F32_BLOB(4)
+CREATE TABLE documents (
+  id INTEGER PRIMARY KEY,
+  content TEXT,
+  embedding BLOB
 );
 ```
 
-Then model it in Swift using a shared float representation:
+Model the column with a shared representation:
 
 ```swift
 import StructuredQueriesSQLite
 import StructuredQueriesTursoVecCore
 
+@Table("documents")
+struct Document {
+  var id: Int
+  var content: String
+  @Column(as: [Float].VectorBytesRepresentation.self)
+  var embedding: [Float]
+}
+
+let embedding = TursoVec.vector32("[0.1, 0.3, 0.5, 0.7]")
+let insert = Document.insert { ($0.id, $0.content, $0.embedding) } values: {
+  (1, "Introduction to databases", embedding)
+}
+
+let queryVector: [Float].VectorBytesRepresentation = [0.2, 0.4, 0.6, 0.8]
+let query = Document
+  .order { TursoVec.distanceCosine($0.embedding, to: queryVector).asc() }
+  .limit(5)
+  .select { ($0.content, TursoVec.extract($0.embedding)) }
+```
+
+Both namespaces offer cosine and L2 distance. Turso also offers `distanceDot`, the negative dot
+product, and `distanceJaccard`, weighted Jaccard distance for numeric values and binary Jaccard
+for logical bits. Smaller distances indicate closer matches. Matching formats are enforced by
+Swift; the database checks equal dimensionality.
+
+JSON must be converted explicitly before a distance comparison:
+
+```swift
+let query = Document.select {
+  TursoVec.distanceCosine($0.embedding, to: TursoVec.vector32("[0.2, 0.4, 0.6, 0.8]"))
+}
+```
+
+Raw JSON defaults to float32 in distance functions. Explicit conversion avoids mismatches with
+float64, compressed, binary, or sparse operands. Use the appropriate namespace and conversion
+for the column's format.
+
+### Sparse and binary values
+
+The sparse representation keeps a dense Swift array while storing only nonzero components,
+their indices, and the original dimension count. Decoding fills omitted dimensions with zero;
+signed zero becomes positive zero. It validates the format tag, byte lengths, and sorted,
+unique, in-range indices.
+
+```swift
+@Table("sparse_documents")
+struct SparseDocument {
+  @Column(as: [Float].SparseRepresentation.self)
+  var embedding: [Float]
+}
+
+let query = SparseDocument.select {
+  TursoVec.distanceJaccard($0.embedding, to: TursoVec.vector32Sparse("[0, 1, 0, 2]"))
+}
+```
+
+Binary Swift values use `[Bool]` or `BinaryEmbeddingVector<N>`. True corresponds to a positive
+component (+1 when extracted); false corresponds to a nonpositive component (-1 when extracted).
+`.TursoBytesRepresentation` includes padding and dimension metadata, preserving partial bytes.
+SQLiteVec's `.PackedBitsRepresentation` omits metadata and requires dimensions divisible by eight.
+
+For binary vectors, `distanceCosine` calls `vector_distance_cos` but returns Hamming distance,
+the count of differing bits. Binary L2 is unavailable. Turso's binary dot distance interprets
+components as +1/-1, while Jaccard compares the sets of true bits.
+
+### Concatenate and slice
+
+Turso utilities can change the dimension count, so their default output uses an array representation:
+
+```swift
+let joined = TursoVec.concat(TursoVec.vector32("[1, 2]"), TursoVec.vector32("[3, 4]"))
+let sliced = TursoVec.slice(joined, from: 1, to: 3)
+```
+
+`concat` accepts exactly two matching dense float32 or float64 operands. `slice` accepts dense
+float32, float64, or sparse float32, with a zero-based inclusive start and exclusive end.
+Neither utility offers float8 or binary overloads.
+
+Direct sparse concatenation is deferred: the
+[inspected implementation](https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/concat.rs#L24)
+copies the second vector's indices without shifting them. Convert through dense float32 when needed:
+
+```swift
+let joined = TursoVec.vector32Sparse(
+  TursoVec.concat(TursoVec.vector32(leftSparse), TursoVec.vector32(rightSparse))
+)
+```
+
+This conversion uses dense intermediate storage.
+
+### Fixed-size results
+
+On Swift 6.2 and supported platforms, `EmbeddingVector<N>` remains directly query-bindable.
+Other precisions use `EmbeddingVector64<N>`, `EmbeddingVector16<N>`, and
+`BinaryEmbeddingVector<N>` with explicit nested representations. Float32 fixed-size vectors
+also provide `.BFloat16Representation`, `.Float8Representation`, and `.SparseRepresentation`.
+
+Choose the matching representation using `as:` for conversions, concat, or slice:
+
+```swift
+let converted = TursoVec.vector64(
+  "[1, 2, 3, 4]",
+  as: EmbeddingVector64<4>.VectorBytesRepresentation.self
+)
+let sliced = TursoVec.slice(
+  TursoVec.vector32("[1, 2, 3, 4]"),
+  from: 1,
+  to: 3,
+  as: EmbeddingVector<2>.self
+)
+```
+
+The decoder validates the blob's format and fixed dimension count. See
+`StructuredQueriesVectorCore` for availability and scalar equality semantics.
+
+### libSQL indexed search
+
+libSQL supports DiskANN indexes through `libsql_vector_idx` and `vector_top_k`. These helpers
+belong to ``LibSQLVec`` and follow the
+[libSQL index example](https://docs.turso.tech/features/ai-and-embeddings#index-usage):
+
+```sql
+CREATE TABLE movies (title TEXT, year INT, embedding F32_BLOB(4));
+```
+
+```swift
 @Table("movies")
-struct Movie: TursoVectorTable {
+struct Movie {
   var title: String
   var year: Int
   @Column(as: [Float].VectorBytesRepresentation.self)
   var embedding: [Float]
 }
-```
 
-On Swift 6.2 and supported platforms, you can use `EmbeddingVector<4>` directly for the
-`embedding` property.
-
-### Insert vectors
-
-Use ``TursoVec/vector32(_:)`` to convert a JSON array string to a float32 vector, as in the
-[Turso insertion example](https://docs.turso.tech/features/ai-and-embeddings#vectors-usage):
-
-```swift
-let embedding = TursoVec.vector32("[0.800, 0.579, 0.481, 0.229]")
-let query = Movie.insert {
-  ($0.title, $0.year, $0.embedding)
-} values: {
-  ("Napoleon", 2023, embedding)
-}
-```
-
-You can also bind `[Float].VectorBytesRepresentation` or `EmbeddingVector` directly to an
-`F32_BLOB` column. These shared representations store float32 bytes without format metadata.
-
-### Distance functions
-
-Use `distanceCosine(to:)` or `distanceL2(to:)` to compare a vector column with a bound vector
-or another expression:
-
-```swift
-let queryVector: [Float].VectorBytesRepresentation = [0.064, 0.777, 0.661, 0.687]
-let query = Movie
-  .order { $0.embedding.distanceCosine(to: queryVector).asc() }
-  .limit(5)
-  .select { ($0.title, $0.embedding.distanceCosine(to: queryVector)) }
-```
-
-These call `vector_distance_cos` and `vector_distance_l2`. Both vectors must have the same type
-and dimensionality. Smaller distances indicate more similar vectors; L2 distance is unsupported
-for 1-bit vectors.
-
-Use `TursoVec.distanceCosine(_:to:)` and `TursoVec.distanceL2(_:to:)` directly for tables
-without the ``TursoVectorTable`` conformance, or to compare converted expressions.
-
-### Extract and convert vectors
-
-Use `toJSON()` or ``TursoVec/extract(_:)`` to call `vector_extract`:
-
-```swift
-let query = Movie.select { ($0.title, $0.embedding.toJSON()) }
-```
-
-``TursoVec/vector(_:)`` is the float32 alias. Conversion results decode to numeric or logical
-values, using a representation that validates the format metadata:
-
-| Conversion | Swift values | Array representation | Fixed-size representation |
-| --- | --- | --- | --- |
-| `vector32` | `[Float]` | `[Float].VectorBytesRepresentation` | `EmbeddingVector<N>` |
-| `vector64` | `[Double]` | `[Double].VectorBytesRepresentation` | `EmbeddingVector64<N>.VectorBytesRepresentation` |
-| `vector16` | `[Float16]` | `[Float16].VectorBytesRepresentation` | `EmbeddingVector16<N>.VectorBytesRepresentation` |
-| `vectorb16` | `[Float]` | `[Float].BFloat16Representation` | `EmbeddingVector<N>.BFloat16Representation` |
-| `vector8` | `[Float]` | `[Float].Float8Representation` | `EmbeddingVector<N>.Float8Representation` |
-| `vector1bit` | `[Bool]` | `[Bool].TursoBytesRepresentation` | `BinaryEmbeddingVector<N>.TursoBytesRepresentation` |
-
-Declare a representation for each column so typed inserts, updates, and distances use its encoding:
-
-```swift
-@Table("compressed_movies")
-struct CompressedMovie: TursoVectorTable {
-  var title: String
-  @Column(as: [Float].Float8Representation.self)
-  var embedding: [Float]
-}
-
-let embedding: [Float].Float8Representation = [0.800, 0.579, 0.481, 0.229]
-let query = CompressedMovie.select {
-  ($0.embedding, $0.embedding.distanceCosine(to: embedding))
-}
-```
-
-This decodes the stored float8 values directly as floats. Binding quantizes the input values;
-reading reconstructs the stored values from their per-vector scale and shift. Float8 is Turso's
-quantization format, rather than an IEEE float8 scalar or SQLiteVec's int8 format. Its inputs must
-be finite and have a finite scale. Bfloat16 also uses `Float` values and truncates the low 16 bits
-when binding, matching libSQL. Both compressed representations are lossy.
-
-For fixed-size results, choose the matching representation with `as:`:
-
-```swift
-let query = CompressedMovie.select {
-  TursoVec.vector64($0.embedding, as: EmbeddingVector64<4>.VectorBytesRepresentation.self)
-}
-```
-
-The result is an `EmbeddingVector64<4>`. Decoding throws if the blob has the wrong encoding or
-number of dimensions. An incompatible `as:` representation or a typed distance between different
-encodings fails to compile. Dimensionality for distance queries is checked by the database.
-JSON distance operands also require database type and dimension checks.
-
-### Binary vectors
-
-`BinaryEmbeddingVector<N>` and `[Bool]` model logical bits. True corresponds to a positive
-component (+1 when extracted); false corresponds to a nonpositive component (-1 when extracted).
-Their `TursoBytesRepresentation`, defined in this target, includes the padding and metadata
-needed to preserve the exact number of dimensions:
-
-```swift
-@Table("binary_movies")
-struct BinaryMovie: TursoVectorTable {
-  @Column(as: BinaryEmbeddingVector<4>.TursoBytesRepresentation.self)
-  var embedding: BinaryEmbeddingVector<4>
-}
-
-let queryVector = BinaryEmbeddingVector<4>.TursoBytesRepresentation(
-  queryOutput: BinaryEmbeddingVector<4>([true, false, true, false])
-)
-let query = BinaryMovie.select { $0.embedding.distanceCosine(to: queryVector) }
-```
-
-Typed binary vectors do not offer L2 distance. SQLiteVec uses the shared `PackedBitsRepresentation`
-instead: it omits Turso's metadata and requires a dimension count divisible by eight. The two
-representations cannot be interchanged in a Turso query.
-
-### Create a vector index
-
-Use `TursoVec.index(_:settings:)` inside `CREATE INDEX` to generate the `libsql_vector_idx`
-marker from Turso's [index example](https://docs.turso.tech/features/ai-and-embeddings#vector-index):
-
-```swift
-let marker = TursoVec.index(Movie.columns.embedding)
-let query = #sql(
-  "CREATE INDEX movies_idx ON movies (\(marker))",
-  as: Void.self
-)
-```
-
-Specify index settings with `key=value` strings:
-
-```swift
-let marker = TursoVec.index(
-  Movie.columns.embedding,
-  settings: ["metric=l2", "compress_neighbors=float8"]
-)
-```
-
-The helper quotes the column name and escapes settings as SQL literals because index definitions
-cannot contain bound parameters. The marker is only valid inside a vector index definition.
-
-### Query the vector index
-
-Use ``TursoVec/topK(index:vector:k:)`` to call `vector_top_k` and filter by its returned IDs:
-
-```swift
-let neighbors = TursoVec.topK(
+let marker = LibSQLVec.index(Movie.columns.embedding)
+let createIndex = #sql("CREATE INDEX movies_idx ON movies (\(marker))", as: Void.self)
+let neighbors = LibSQLVec.topK(
   index: "movies_idx",
-  vector: TursoVec.vector32("[0.064, 0.777, 0.661, 0.687]"),
+  vector: LibSQLVec.vector32("[0.064, 0.777, 0.661, 0.687]"),
   k: 3
 )
 let query = Movie
@@ -199,42 +204,31 @@ let query = Movie
   .select { ($0.title, $0.year) }
 ```
 
-This corresponds to the [documented index query](https://docs.turso.tech/features/ai-and-embeddings#index-usage).
-The returned ``TursoVectorTopK`` also exposes its table-valued function for SQL joins:
+`index(_:settings:)` escapes settings as SQL literals, because DDL cannot contain bound
+parameters. For example, use `["metric=l2", "compress_neighbors=float8"]` for index settings.
+The column name is quoted, and the marker is valid only inside a vector index definition.
 
-```swift
-let query = #sql(
-  """
-  SELECT title, year
-  FROM \(neighbors.tableFragment)
-  JOIN movies ON movies.rowid = id
-  WHERE year >= 2020
-  """,
-  as: (String, Int).self
-)
-```
+``LibSQLVectorTopK`` selects the function's `id` output column and exposes `tableFragment`
+for SQL joins. This does not require an `id` column on the indexed table. Use
+`topK(index:vector:k:as:)` for a different primary key representation, such as `String.self`.
+Composite primary keys without a row ID are unsupported.
 
-The function exposes its results in an `id` column, containing row IDs or primary keys rather
-than distances. This column belongs to `vector_top_k`; the indexed table does not need a column
-named `id`. Use `topK(index:vector:k:as:)` for a different
-primary key representation, such as `String.self` for a table with a text primary key and no
-row ID. Composite primary keys without a row ID are unsupported.
+Search is approximate. The query vector must match the indexed column's type and dimensions.
+Filters apply after finding neighbors, so fewer than `k` rows may survive. An `IN` subquery
+does not preserve result order; add an explicit distance expression to `order` when needed.
 
-Index search is approximate, and the query vector must match the indexed column's format and
-dimensionality. Filters on the base table apply after selecting neighbors, so fewer than `k`
-rows may survive. An `IN` subquery does not preserve the index's ordering; add a distance
-expression to `order` when ordering matters.
+The Rust-based Turso engine does not expose these libSQL DiskANN helpers. Its experimental
+sparse index method uses different DDL and planner integration; no helper is provided for that
+experimental mechanism in this target.
 
 ### Prepare queries for a driver
 
-StructuredQueries keeps values separate from SQL:
-
 ```swift
 let prepared = query.query.prepare { "?\($0)" }
-// Pass prepared.sql and prepared.bindings to your database driver.
+// Pass prepared.sql and prepared.bindings to the compatible database driver.
 ```
 
 ## Testing
 
-The target's tests compare generated SQL and bindings with linked Turso documentation examples.
-They do not require a running Turso instance.
+Separate Turso and libSQL test suites compare generated SQL and bindings with linked documentation
+examples. Byte fixtures link to pinned engine source revisions. No running Turso instance is required.

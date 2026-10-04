@@ -2,8 +2,9 @@ import StructuredQueriesCore
 import StructuredQueriesVectorCore
 
 extension Array where Element == Float {
-  /// Turso bfloat16 storage, truncating Float values to the upper 16 bits when binding.
+  /// libSQL bfloat16 storage, truncating Float values to the upper 16 bits when binding.
   /// Decoding reconstructs the stored values; this representation is lossy.
+  /// The Rust-based Turso engine does not support bfloat16 blobs.
   public struct BFloat16Representation:
     Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
   {
@@ -96,8 +97,9 @@ extension Array.TursoBytesRepresentation: ExpressibleByArrayLiteral {
 #if swift(>=6.2)
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension FixedEmbeddingVector where Scalar == Float {
-    /// Turso bfloat16 storage, truncating Float values to the upper 16 bits when binding.
+    /// libSQL bfloat16 storage, truncating Float values to the upper 16 bits when binding.
     /// Decoding reconstructs the stored values; this representation is lossy.
+    /// The Rust-based Turso engine does not support bfloat16 blobs.
     public struct BFloat16Representation:
       Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
     {

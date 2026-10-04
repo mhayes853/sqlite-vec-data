@@ -1,9 +1,9 @@
 import StructuredQueriesVectorCore
 
-// Format definitions: https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vectorInt.h
-// Conversion rules: https://github.com/tursodatabase/libsql/blob/main/libsql-sqlite3/src/vector.c
+// Format definitions: https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
+// Conversion rules: https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vector.c
 
-/// Turso bfloat16 values, exposed as Float scalars.
+/// libSQL bfloat16 values, exposed as Float scalars.
 ///
 /// Binding truncates the low 16 bits of each Float's IEEE representation, matching libSQL.
 /// Decoding reconstructs the stored Float values, which may differ from the original values.

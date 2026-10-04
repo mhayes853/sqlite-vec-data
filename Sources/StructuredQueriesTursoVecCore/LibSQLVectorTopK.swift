@@ -1,15 +1,15 @@
 import StructuredQueriesCore
 
-/// A query for the primary keys returned by Turso's `vector_top_k` table-valued function.
+/// A query for the primary keys returned by libSQL's `vector_top_k` table-valued function.
 ///
-/// Use ``TursoVec/topK(index:vector:k:)`` to build a query. ``tableFragment`` exposes the
+/// Use ``LibSQLVec/topK(index:vector:k:)`` to build a query. ``tableFragment`` exposes the
 /// table-valued function for joins in SQL, and ``query`` selects its `id` column for structured
 /// `IN` subqueries. The function returns identifiers, rather than distances.
 ///
 /// The `id` column belongs to `vector_top_k`, not the indexed table. It contains the indexed
 /// row's row ID, or its primary key for a table without row IDs. The base table's primary key
 /// can have any name.
-public struct TursoVectorTopK<PrimaryKey: QueryRepresentable>:
+public struct LibSQLVectorTopK<PrimaryKey: QueryRepresentable>:
   Hashable, Sendable, PartialSelectStatement
 {
   public typealias QueryValue = PrimaryKey
@@ -35,13 +35,13 @@ public struct TursoVectorTopK<PrimaryKey: QueryRepresentable>:
   }
 }
 
-extension TursoVec {
+extension LibSQLVec {
   /// Searches a vector index for `k` approximate nearest neighbors with `vector_top_k`.
   ///
   /// ```swift
-  /// let neighbors = TursoVec.topK(
+  /// let neighbors = LibSQLVec.topK(
   ///   index: "movies_idx",
-  ///   vector: TursoVec.vector32("[0.064, 0.777, 0.661, 0.687]"),
+  ///   vector: LibSQLVec.vector32("[0.064, 0.777, 0.661, 0.687]"),
   ///   k: 3
   /// )
   /// let query = Movie
@@ -62,13 +62,13 @@ extension TursoVec {
     index: String,
     vector: some QueryExpression,
     k: some QueryExpression<Int>
-  ) -> TursoVectorTopK<Int> {
+  ) -> LibSQLVectorTopK<Int> {
     Self.topK(index: index, vector: vector, k: k, as: Int.self)
   }
 
   /// Searches a vector index whose base table uses the requested primary key representation.
   ///
-  /// This calls Turso's `vector_top_k` function. The index must belong to a table with a row ID
+  /// This calls libSQL's `vector_top_k` function. The index must belong to a table with a row ID
   /// or a single primary key; composite primary keys without a row ID are unsupported.
   ///
   /// - Parameters:
@@ -82,7 +82,7 @@ extension TursoVec {
     vector: some QueryExpression,
     k: some QueryExpression<Int>,
     as primaryKey: PrimaryKey.Type
-  ) -> TursoVectorTopK<PrimaryKey> {
-    TursoVectorTopK(tableFragment: "vector_top_k(\(bind: index), \(vector), \(k))")
+  ) -> LibSQLVectorTopK<PrimaryKey> {
+    LibSQLVectorTopK(tableFragment: "vector_top_k(\(bind: index), \(vector), \(k))")
   }
 }

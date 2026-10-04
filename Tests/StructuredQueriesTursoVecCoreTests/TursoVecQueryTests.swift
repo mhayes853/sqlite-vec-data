@@ -1,112 +1,51 @@
 import CustomDump
 import StructuredQueriesSQLite
-import StructuredQueriesSQLiteVecCore
 import StructuredQueriesTursoVecCore
 import Testing
 
 @Suite
 struct `TursoVec Query tests` {
   @Test
-  func `Inserts A Documented Float32 Vector`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#vectors-usage
-    // The Napoleon row in "Generate and insert embeddings".
-    let embedding = TursoVec.vector32("[0.800, 0.579, 0.481, 0.229]")
-    let query = Movie.insert {
-      ($0.title, $0.year, $0.embedding)
+  func `Inserts The Documented Float32 Embedding`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector32
+    let query = Document.insert {
+      ($0.id, $0.content, $0.embedding)
     } values: {
-      ("Napoleon", 2023, embedding)
+      (1, "Introduction to databases", TursoVec.vector32("[0.1, 0.3, 0.5, 0.7]"))
     }
     let prepared = query.query.prepare { "?\($0)" }
-
     expectNoDifference(
       prepared.sql,
       """
-      INSERT INTO "movies"
-      ("title", "year", "embedding")
+      INSERT INTO "documents"
+      ("id", "content", "embedding")
       VALUES
       (?1, ?2, vector32(?3))
       """
     )
     expectNoDifference(
       prepared.bindings,
-      [.text("Napoleon"), .int(2023), .text("[0.800, 0.579, 0.481, 0.229]")]
+      [.int(1), .text("Introduction to databases"), .text("[0.1, 0.3, 0.5, 0.7]")]
     )
   }
 
   @Test
-  func `Extracts Vectors And Orders By Cosine Distance`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#vectors-usage
-    // "Perform a vector similarity search", ordered by the distance expression rather than an alias.
-    let vector = TursoVec.vector32("[0.064, 0.777, 0.661, 0.687]")
-    let query =
-      Movie
-      .order { $0.embedding.distanceCosine(to: vector).asc() }
-      .select { ($0.title, $0.embedding.toJSON(), $0.embedding.distanceCosine(to: vector)) }
-    let prepared = query.query.prepare { "?\($0)" }
-
-    expectNoDifference(
-      prepared.sql,
-      """
-      SELECT "movies"."title", vector_extract("movies"."embedding"), vector_distance_cos("movies"."embedding", vector32(?1))
-      FROM "movies"
-      ORDER BY vector_distance_cos("movies"."embedding", vector32(?2)) ASC
-      """
-    )
-    expectNoDifference(
-      prepared.bindings,
-      [.text("[0.064, 0.777, 0.661, 0.687]"), .text("[0.064, 0.777, 0.661, 0.687]")]
-    )
-  }
-
-  @Test
-  func `Computes Documented Distances From JSON And Columns`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#functions
-    // https://docs.turso.tech/features/ai-and-embeddings#understanding-distance-results
-    let cosine = TursoVec.distanceCosine("[1000]", to: "[1000]")
-    let prepared = cosine.queryFragment.prepare { "?\($0)" }
-    expectNoDifference(prepared.sql, "vector_distance_cos(?1, ?2)")
-    expectNoDifference(prepared.bindings, [.text("[1000]"), .text("[1000]")])
-
-    let distance = Movie.select {
-      $0.embedding.distanceL2(to: TursoVec.vector32("[0.064, 0.777, 0.661, 0.687]"))
-    }
-    expectNoDifference(
-      distance.query.prepare { "?\($0)" }.sql,
-      """
-      SELECT vector_distance_l2("movies"."embedding", vector32(?1))
-      FROM "movies"
-      """
-    )
-
-    let columns = Movie.select { TursoVec.distanceL2($0.embedding, to: $0.embedding) }
-    expectNoDifference(
-      columns.query.prepare { "?\($0)" }.sql,
-      """
-      SELECT vector_distance_l2("movies"."embedding", "movies"."embedding")
-      FROM "movies"
-      """
-    )
-  }
-
-  @Test
-  func `Converts Each Documented Vector Format`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#functions
-    // Conversion variants from the functions table, using the insertion example's vector.
-    let json = "[0.800, 0.579, 0.481, 0.229]"
+  func `Creates Each Supported Turso Format`() {
+    // https://docs.turso.tech/guides/vector-search#vector-types
+    let json = "[0, 1, 0, 2]"
     let expressions = [
       TursoVec.vector(json).queryFragment,
       TursoVec.vector32(json).queryFragment,
       TursoVec.vector64(json).queryFragment,
-      TursoVec.vector16(json).queryFragment,
-      TursoVec.vectorb16(json).queryFragment,
       TursoVec.vector8(json).queryFragment,
-      TursoVec.vector1bit(json).queryFragment
+      TursoVec.vector1bit(json).queryFragment,
+      TursoVec.vector32Sparse(json).queryFragment
     ]
     expectNoDifference(
       expressions.map { $0.prepare { "?\($0)" }.sql },
       [
-        "vector(?1)", "vector32(?1)", "vector64(?1)", "vector16(?1)", "vectorb16(?1)",
-        "vector8(?1)", "vector1bit(?1)"
+        "vector(?1)", "vector32(?1)", "vector64(?1)", "vector8(?1)", "vector1bit(?1)",
+        "vector32_sparse(?1)"
       ]
     )
     expectNoDifference(
@@ -116,342 +55,187 @@ struct `TursoVec Query tests` {
   }
 
   @Test
-  func `Converts Compressed Vectors To Float32`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#functions
-    // Conversion functions accept both JSON strings and encoded blobs.
+  func `Computes The Documented Cosine And L2 Distances`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector-distance-cos
+    // https://docs.turso.tech/sql-reference/functions/vector#vector-distance-l2
+    let left = TursoVec.vector32("[1.0, 0.0, 0.0]")
+    let right = TursoVec.vector32("[0.0, 1.0, 0.0]")
+    let expressions = [
+      TursoVec.distanceCosine(left, to: right).queryFragment,
+      TursoVec.distanceL2(left, to: right).queryFragment
+    ]
+    expectNoDifference(
+      expressions.map { $0.prepare { "?\($0)" }.sql },
+      [
+        "vector_distance_cos(vector32(?1), vector32(?2))",
+        "vector_distance_l2(vector32(?1), vector32(?2))"
+      ]
+    )
+    expectNoDifference(
+      expressions.map { $0.prepare { "?\($0)" }.bindings },
+      Array(repeating: [QueryBinding.text("[1.0, 0.0, 0.0]"), .text("[0.0, 1.0, 0.0]")], count: 2)
+    )
+  }
+
+  @Test
+  func `Orders Documents By The Documented Dot Distance`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector-distance-dot
+    // Adapt the documented negative dot product example to a table query.
+    let vector = TursoVec.vector32("[4.0, 5.0, 6.0]")
+    let query =
+      Document
+      .order { TursoVec.distanceDot($0.embedding, to: vector).asc() }
+      .limit(10)
+      .select { ($0.content, TursoVec.distanceDot($0.embedding, to: vector)) }
+    let prepared = query.query.prepare { "?\($0)" }
+    expectNoDifference(
+      prepared.sql,
+      """
+      SELECT "documents"."content", vector_distance_dot("documents"."embedding", vector32(?1))
+      FROM "documents"
+      ORDER BY vector_distance_dot("documents"."embedding", vector32(?2)) ASC
+      LIMIT ?3
+      """
+    )
+    expectNoDifference(
+      prepared.bindings,
+      [.text("[4.0, 5.0, 6.0]"), .text("[4.0, 5.0, 6.0]"), .int(10)]
+    )
+  }
+
+  @Test
+  func `Compares Sparse Vectors With The Documented Jaccard Function`() {
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/docs/manual.md#vector-search
+    // The vector_distance_jaccard sparse-embedding example.
+    let query = Formats.select {
+      TursoVec.distanceJaccard($0.sparse, to: TursoVec.vector32Sparse("[0.0, 1.0, 0.0, 2.0]"))
+    }
+    let prepared = query.query.prepare { "?\($0)" }
+    expectNoDifference(
+      prepared.sql,
+      """
+      SELECT vector_distance_jaccard("formats"."sparse", vector32_sparse(?1))
+      FROM "formats"
+      """
+    )
+    expectNoDifference(prepared.bindings, [.text("[0.0, 1.0, 0.0, 2.0]")])
+  }
+
+  @Test
+  func `Compares Binary And Quantized Vectors Without JSON Overloads`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#distance-functions
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/distance_cos.rs#L40
+    let bits: [Bool].TursoBytesRepresentation = [true, false]
+    let quantized: [Float].Float8Representation = [1, 2]
+    let doubles: [Double].VectorBytesRepresentation = [1, 2]
+    let query = Formats.select {
+      (
+        TursoVec.distanceCosine($0.bits, to: bits),
+        TursoVec.distanceJaccard($0.bits, to: bits),
+        TursoVec.distanceDot($0.bits, to: bits),
+        TursoVec.distanceL2($0.quantized, to: quantized),
+        TursoVec.distanceCosine($0.doubles, to: TursoVec.vector64("[1,2]")),
+        TursoVec.distanceDot($0.doubles, to: doubles)
+      )
+    }
+    let prepared = query.query.prepare { "?\($0)" }
+    expectNoDifference(
+      prepared.sql,
+      """
+      SELECT vector_distance_cos("formats"."bits", ?1), vector_distance_jaccard("formats"."bits", ?2), vector_distance_dot("formats"."bits", ?3), vector_distance_l2("formats"."quantized", ?4), vector_distance_cos("formats"."doubles", vector64(?5)), vector_distance_dot("formats"."doubles", ?6)
+      FROM "formats"
+      """
+    )
+    expectNoDifference(
+      prepared.bindings,
+      [
+        bits.queryBinding, bits.queryBinding, bits.queryBinding, quantized.queryBinding,
+        .text("[1,2]"), doubles.queryBinding
+      ]
+    )
+  }
+
+  @Test
+  func `Extracts The Documented Concatenation`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector-concat
     let expression = TursoVec.extract(
-      TursoVec.vector32(TursoVec.vector8("[0.800, 0.579, 0.481, 0.229]"))
+      TursoVec.concat(TursoVec.vector32("[1.0, 2.0]"), TursoVec.vector32("[3.0, 4.0]"))
     )
     let prepared = expression.queryFragment.prepare { "?\($0)" }
-    expectNoDifference(prepared.sql, "vector_extract(vector32(vector8(?1)))")
-    expectNoDifference(prepared.bindings, [.text("[0.800, 0.579, 0.481, 0.229]")])
+    expectNoDifference(prepared.sql, "vector_extract(vector_concat(vector32(?1), vector32(?2)))")
+    expectNoDifference(prepared.bindings, [.text("[1.0, 2.0]"), .text("[3.0, 4.0]")])
   }
 
   @Test
-  func `Inserts Vectors Into Columns With Matching Format Representations`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#functions
-    // Apply the insertion example to columns using each documented non-float32 encoding.
-    let json = "[0.800, 0.579, 0.481, 0.229]"
-    let query = EncodedMovie.insert {
-      ($0.float64, $0.float16, $0.bfloat16, $0.float8, $0.bit)
-    } values: {
-      (
-        TursoVec.vector64(json), TursoVec.vector16(json), TursoVec.vectorb16(json),
-        TursoVec.vector8(json), TursoVec.vector1bit(json)
-      )
-    }
-    let prepared = query.query.prepare { "?\($0)" }
-    expectNoDifference(
-      prepared.sql,
-      """
-      INSERT INTO "encoded_movies"
-      ("float64", "float16", "bfloat16", "float8", "bit")
-      VALUES
-      (vector64(?1), vector16(?2), vectorb16(?3), vector8(?4), vector1bit(?5))
-      """
+  func `Extracts The Documented Slice`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector-slice
+    let expression = TursoVec.extract(
+      TursoVec.slice(TursoVec.vector32("[10.0, 20.0, 30.0, 40.0, 50.0]"), from: 1, to: 4)
     )
-    expectNoDifference(prepared.bindings, Array(repeating: QueryBinding.text(json), count: 5))
-  }
-
-  @Test
-  func `Compares Matching Encodings With Numeric Bindings`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#functions
-    // Apply the documented distance functions to the numeric precision representations.
-    let double: [Double].VectorBytesRepresentation = [1, 2]
-    let bfloat: [Float].BFloat16Representation = [1, 2]
-    let float8: [Float].Float8Representation = [1, 2]
-    let binary: [Bool].TursoBytesRepresentation = [true, false]
-    let query = EncodedMovie.select {
-      (
-        $0.float64.distanceL2(to: double), $0.bfloat16.distanceCosine(to: bfloat),
-        $0.float8.distanceL2(to: float8), $0.bit.distanceCosine(to: binary)
-      )
-    }
-    let prepared = query.query.prepare { "?\($0)" }
-    expectNoDifference(
-      prepared.sql,
-      """
-      SELECT vector_distance_l2("encoded_movies"."float64", ?1), vector_distance_cos("encoded_movies"."bfloat16", ?2), vector_distance_l2("encoded_movies"."float8", ?3), vector_distance_cos("encoded_movies"."bit", ?4)
-      FROM "encoded_movies"
-      """
-    )
+    let prepared = expression.queryFragment.prepare { "?\($0)" }
+    expectNoDifference(prepared.sql, "vector_extract(vector_slice(vector32(?1), ?2, ?3))")
     expectNoDifference(
       prepared.bindings,
-      [double.queryBinding, bfloat.queryBinding, float8.queryBinding, binary.queryBinding]
+      [.text("[10.0, 20.0, 30.0, 40.0, 50.0]"), .int(1), .int(4)]
     )
   }
 
   @Test
-  func `Uses Binary Column Helpers And A Turso Binary Index`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#functions
-    // https://docs.turso.tech/features/ai-and-embeddings#vector-index
-    let query = EncodedMovie.select {
-      ($0.bit.toJSON(), $0.bit.distanceCosine(to: "[1,-1,1,-1]"))
-    }
-    let prepared = query.query.prepare { "?\($0)" }
+  func `Preserves Double And Sparse Formats Through Utilities`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#utility-functions
+    // Supported formats: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/slice.rs
+    let double = TursoVec.slice(TursoVec.vector64("[1,2,3]"), from: 0, to: 2)
+    let sparse = TursoVec.slice(TursoVec.vector32Sparse("[0,1,2,0]"), from: 1, to: 3)
     expectNoDifference(
-      prepared.sql,
-      """
-      SELECT vector_extract("encoded_movies"."bit"), vector_distance_cos("encoded_movies"."bit", ?1)
-      FROM "encoded_movies"
-      """
-    )
-    expectNoDifference(prepared.bindings, [.text("[1,-1,1,-1]")])
-    let marker = TursoVec.index(EncodedMovie.columns.bit)
-    expectNoDifference(marker.queryFragment.prepare { "?\($0)" }.sql, "libsql_vector_idx(\"bit\")")
-    let vector: [Bool].TursoBytesRepresentation = [true, false, true, false]
-    expectNoDifference(
-      TursoVec.distanceCosine("[1,-1,1,-1]", to: vector).queryFragment.prepare { "?\($0)" }.sql,
-      "vector_distance_cos(?1, ?2)"
-    )
-  }
-
-  @Test
-  func `Creates A Documented Vector Index`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#vector-index
-    let expression = TursoVec.index(Movie.columns.embedding)
-    let query = #sql("CREATE INDEX movies_idx ON movies (\(expression))", as: Void.self)
-    let prepared = query.query.prepare { "?\($0)" }
-    expectNoDifference(
-      prepared.sql,
-      "CREATE INDEX movies_idx ON movies (libsql_vector_idx(\"embedding\"))"
-    )
-    expectNoDifference(prepared.bindings, [])
-  }
-
-  @Test
-  func `Creates A Documented Index With Settings`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#settings
-    let expression = TursoVec.index(
-      Movie.columns.embedding,
-      settings: ["metric=l2", "compress_neighbors=float8"]
-    )
-    let query = #sql("CREATE INDEX movies_idx ON movies (\(expression))", as: Void.self)
-    let prepared = query.query.prepare { "?\($0)" }
-    expectNoDifference(
-      prepared.sql,
-      "CREATE INDEX movies_idx ON movies (libsql_vector_idx(\"embedding\", 'metric=l2', 'compress_neighbors=float8'))"
-    )
-    expectNoDifference(prepared.bindings, [])
-  }
-
-  @Test
-  func `Escapes Index Settings As SQL Literals`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#settings
-    // Extend the documented variadic settings example with an adversarial string.
-    let expression = TursoVec.index(
-      Movie.columns.embedding,
-      settings: ["metric=l2'); DROP TABLE movies;--"]
+      double.queryFragment.prepare { "?\($0)" }.sql,
+      "vector_slice(vector64(?1), ?2, ?3)"
     )
     expectNoDifference(
-      expression.queryFragment.prepare { "?\($0)" }.sql,
-      "libsql_vector_idx(\"embedding\", 'metric=l2''); DROP TABLE movies;--')"
+      sparse.queryFragment.prepare { "?\($0)" }.sql,
+      "vector_slice(vector32_sparse(?1), ?2, ?3)"
     )
-  }
-
-  @Test
-  func `Joins The Documented Top K Table Function`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#index-usage
-    // "Query the indexed table".
-    let neighbors = TursoVec.topK(
-      index: "movies_idx",
-      vector: TursoVec.vector32("[0.064, 0.777, 0.661, 0.687]"),
-      k: 3
-    )
-    let query = #sql(
-      """
-      SELECT title, year
-      FROM \(neighbors.tableFragment)
-      JOIN movies ON movies.rowid = id
-      WHERE year >= 2020
-      """,
-      as: (String, Int).self
-    )
-    let prepared = query.query.prepare { "?\($0)" }
-    expectNoDifference(
-      prepared.sql,
-      """
-      SELECT title, year
-      FROM vector_top_k(?1, vector32(?2), ?3)
-      JOIN movies ON movies.rowid = id
-      WHERE year >= 2020
-      """
-    )
-    expectNoDifference(
-      prepared.bindings,
-      [.text("movies_idx"), .text("[0.064, 0.777, 0.661, 0.687]"), .int(3)]
-    )
-  }
-
-  @Test
-  func `Filters With A Structured Top K Subquery`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#index-usage
-    // Equivalent to the documented join, using an IN subquery to select the returned row IDs.
-    let neighbors = TursoVec.topK(
-      index: "movies_idx",
-      vector: TursoVec.vector32("[0.064, 0.777, 0.661, 0.687]"),
-      k: 3
-    )
-    let query =
-      Movie
-      .where { $0.rowid.in(neighbors) && $0.year.gte(2020) }
-      .select { ($0.title, $0.year) }
-    let prepared = query.query.prepare { "?\($0)" }
-    expectNoDifference(
-      prepared.sql,
-      """
-      SELECT "movies"."title", "movies"."year"
-      FROM "movies"
-      WHERE ((("movies"."rowid") IN ((SELECT "id" FROM vector_top_k(?1, vector32(?2), ?3)))) AND (("movies"."year") >= (?4)))
-      """
-    )
-    expectNoDifference(
-      prepared.bindings,
-      [.text("movies_idx"), .text("[0.064, 0.777, 0.661, 0.687]"), .int(3), .int(2020)]
-    )
-  }
-
-  @Test
-  func `Binds Top K Arguments And Supports Text Primary Keys`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#query
-    // The index can return a single primary key for WITHOUT ROWID tables. Its output is named
-    // "id" even though the indexed table uses "catalog_key".
-    let indexName = "movies_idx'); DROP TABLE movies;--"
-    let neighbors = TursoVec.topK(index: indexName, vector: "[1,2,3,4]", k: 3, as: String.self)
-    let query = TextMovie.where { $0.catalogKey.in(neighbors) }.select(\.catalogKey)
-    let prepared = query.query.prepare { "?\($0)" }
-    expectNoDifference(
-      prepared.sql,
-      """
-      SELECT "text_movies"."catalog_key"
-      FROM "text_movies"
-      WHERE (("text_movies"."catalog_key") IN ((SELECT "id" FROM vector_top_k(?1, ?2, ?3))))
-      """
-    )
-    expectNoDifference(prepared.bindings, [.text(indexName), .text("[1,2,3,4]"), .int(3)])
-  }
-
-  @Test
-  func `Shares Float Bytes With SQLiteVec Bindings`() {
-    // https://docs.turso.tech/features/ai-and-embeddings#types
-    // F32_BLOB stores four bytes per dimension with no format metadata.
-    let vector: [Float].VectorBytesRepresentation = [1, 2, 3, 4]
-    let turso = Movie.select { $0.embedding.distanceCosine(to: vector) }
-    let sqliteVec = SQLiteEmbedding.select { $0.embedding.distanceCosine(to: vector) }
-    let tursoPrepared = turso.query.prepare { "?\($0)" }
-    let sqlitePrepared = sqliteVec.query.prepare { "?\($0)" }
-    expectNoDifference(
-      tursoPrepared.sql,
-      """
-      SELECT vector_distance_cos("movies"."embedding", ?1)
-      FROM "movies"
-      """
-    )
-    expectNoDifference(
-      sqlitePrepared.sql,
-      """
-      SELECT vec_distance_cosine("sqlite_embeddings"."embedding", ?1)
-      FROM "sqlite_embeddings"
-      """
-    )
-    expectNoDifference(tursoPrepared.bindings, sqlitePrepared.bindings)
-    expectNoDifference(tursoPrepared.bindings, [vector.queryBinding])
   }
 
   #if swift(>=6.2)
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Inserts Each Precision Into Fixed Size Vector Columns`() {
-      // https://docs.turso.tech/features/ai-and-embeddings#functions
-      let json = "[0.800, 0.579, 0.481, 0.229]"
-      let query = FixedMovie.insert {
-        ($0.float32, $0.float64, $0.float16, $0.bfloat16, $0.float8, $0.bit)
-      } values: {
-        (
-          TursoVec.vector32(json, as: EmbeddingVector<4>.self),
-          TursoVec.vector64(json, as: EmbeddingVector64<4>.VectorBytesRepresentation.self),
-          TursoVec.vector16(json, as: EmbeddingVector16<4>.VectorBytesRepresentation.self),
-          TursoVec.vectorb16(json, as: EmbeddingVector<4>.BFloat16Representation.self),
-          TursoVec.vector8(json, as: EmbeddingVector<4>.Float8Representation.self),
-          TursoVec.vector1bit(json, as: BinaryEmbeddingVector<4>.TursoBytesRepresentation.self)
-        )
-      }
-      let prepared = query.query.prepare { "?\($0)" }
+    func `Requests Fixed Dimensions After Concatenation And Slicing`() {
+      // https://docs.turso.tech/sql-reference/functions/vector#utility-functions
+      let left = EmbeddingVector<2>([1, 2])
+      let right = EmbeddingVector<2>([3, 4])
+      let joined = TursoVec.concat(left, right, as: EmbeddingVector<4>.self)
+      let sliced = TursoVec.slice(joined, from: 1, to: 3, as: EmbeddingVector<2>.self)
+      let prepared = sliced.queryFragment.prepare { "?\($0)" }
+      expectNoDifference(prepared.sql, "vector_slice(vector_concat(?1, ?2), ?3, ?4)")
       expectNoDifference(
-        prepared.sql,
-        """
-        INSERT INTO "fixed_movies"
-        ("float32", "float64", "float16", "bfloat16", "float8", "bit")
-        VALUES
-        (vector32(?1), vector64(?2), vector16(?3), vectorb16(?4), vector8(?5), vector1bit(?6))
-        """
+        prepared.bindings,
+        [left.queryBinding, right.queryBinding, .int(1), .int(3)]
       )
-      expectNoDifference(prepared.bindings, Array(repeating: QueryBinding.text(json), count: 6))
-    }
-
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Uses Shared Fixed Size Vector Representations`() {
-      // https://docs.turso.tech/features/ai-and-embeddings#types
-      // F32_BLOB uses the shared little-endian float32 byte representation.
-      let vector = EmbeddingVector<4>([1, 2, 3, 4])
-      let inlineVector = [4 of Float].VectorBytesRepresentation(queryOutput: [1, 2, 3, 4])
-      let expression = TursoVec.vector32(vector, as: EmbeddingVector<4>.self)
-      let prepared = expression.queryFragment.prepare { "?\($0)" }
-      expectNoDifference(prepared.sql, "vector32(?1)")
-      expectNoDifference(prepared.bindings, [inlineVector.queryBinding])
+      let sparse = TursoVec.vector32Sparse(
+        "[0,1]",
+        as: EmbeddingVector<2>.SparseRepresentation.self
+      )
+      expectNoDifference(sparse.queryFragment.prepare { "?\($0)" }.sql, "vector32_sparse(?1)")
     }
   #endif
 }
 
-@Table("movies")
-private struct Movie: Hashable, Sendable, TursoVectorTable {
-  var title: String
-  var year: Int
+@Table("documents")
+private struct Document: Hashable, Sendable {
+  var id: Int
+  var content: String
   @Column(as: [Float].VectorBytesRepresentation.self)
   var embedding: [Float]
 }
 
-@Table("text_movies")
-private struct TextMovie: Hashable, Sendable {
-  @Column("catalog_key", primaryKey: true)
-  var catalogKey: String
-}
-
-@Table("encoded_movies")
-private struct EncodedMovie: Hashable, Sendable, TursoVectorTable {
+@Table("formats")
+private struct Formats: Hashable, Sendable {
   @Column(as: [Double].VectorBytesRepresentation.self)
-  var float64: [Double]
-  @Column(as: [Float16].VectorBytesRepresentation.self)
-  var float16: [Float16]
-  @Column(as: [Float].BFloat16Representation.self)
-  var bfloat16: [Float]
+  var doubles: [Double]
   @Column(as: [Float].Float8Representation.self)
-  var float8: [Float]
+  var quantized: [Float]
   @Column(as: [Bool].TursoBytesRepresentation.self)
-  var bit: [Bool]
+  var bits: [Bool]
+  @Column(as: [Float].SparseRepresentation.self)
+  var sparse: [Float]
 }
-
-@Table("sqlite_embeddings")
-private struct SQLiteEmbedding: Hashable, Sendable, Vec0 {
-  @Column(as: [Float].VectorBytesRepresentation.self)
-  var embedding: [Float]
-}
-
-#if swift(>=6.2)
-  @Table("fixed_movies")
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  private struct FixedMovie: Hashable, Sendable, TursoVectorTable {
-    var float32: EmbeddingVector<4>
-    @Column(as: EmbeddingVector64<4>.VectorBytesRepresentation.self)
-    var float64: EmbeddingVector64<4>
-    @Column(as: EmbeddingVector16<4>.VectorBytesRepresentation.self)
-    var float16: EmbeddingVector16<4>
-    @Column(as: EmbeddingVector<4>.BFloat16Representation.self)
-    var bfloat16: EmbeddingVector<4>
-    @Column(as: EmbeddingVector<4>.Float8Representation.self)
-    var float8: EmbeddingVector<4>
-    @Column(as: BinaryEmbeddingVector<4>.TursoBytesRepresentation.self)
-    var bit: BinaryEmbeddingVector<4>
-  }
-#endif
