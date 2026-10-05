@@ -7,7 +7,7 @@ extension Array where Element == Bool {
     Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
   {
     public typealias Scalar = Bool
-    public typealias Format = VectorFormat.TursoBits
+    public typealias Encoding = [Bool].TursoBytesRepresentation
     public typealias VectorBytesRepresentation = Self
     public var queryOutput: [Bool]
 
@@ -15,12 +15,10 @@ extension Array where Element == Bool {
       self.queryOutput = queryOutput
     }
 
-    public var queryBinding: QueryBinding {
-      .blob(encodeTursoBitsVector(self.queryOutput))
-    }
+    public var vectorBytes: [UInt8] { encodeTursoBitsVector(self.queryOutput) }
 
-    public init(decoder: inout some QueryDecoder) throws {
-      try self.init(queryOutput: decodeTursoBitsVector([UInt8](decoder: &decoder)))
+    public init(vectorBytes: [UInt8]) throws {
+      try self.init(queryOutput: decodeTursoBitsVector(vectorBytes))
     }
   }
 }
@@ -39,7 +37,7 @@ extension Array.TursoBytesRepresentation: ExpressibleByArrayLiteral {
       Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
     {
       public typealias Scalar = Bool
-      public typealias Format = VectorFormat.TursoBits
+      public typealias Encoding = [Bool].TursoBytesRepresentation
       public typealias VectorBytesRepresentation = Self
       public var queryOutput: FixedEmbeddingVector<count, Bool>
 
@@ -47,13 +45,13 @@ extension Array.TursoBytesRepresentation: ExpressibleByArrayLiteral {
         self.queryOutput = queryOutput
       }
 
-      public var queryBinding: QueryBinding {
-        [Bool].TursoBytesRepresentation(queryOutput: Array(self.queryOutput)).queryBinding
+      public var vectorBytes: [UInt8] {
+        [Bool].TursoBytesRepresentation(queryOutput: Array(self.queryOutput)).vectorBytes
       }
 
-      public init(decoder: inout some QueryDecoder) throws {
-        let elements = try [Bool].TursoBytesRepresentation(decoder: &decoder).queryOutput
-        try self.init(queryOutput: FixedEmbeddingVector<count, Bool>(vectorElements: elements))
+      public init(vectorBytes: [UInt8]) throws {
+        let elements = try [Bool].TursoBytesRepresentation(vectorBytes: vectorBytes).queryOutput
+        try self.init(queryOutput: FixedEmbeddingVector<count, Bool>(validating: elements))
       }
     }
   }

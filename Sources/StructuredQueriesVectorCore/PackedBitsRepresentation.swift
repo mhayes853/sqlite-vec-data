@@ -6,7 +6,7 @@ extension Array where Element == Bool {
     Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
   {
     public typealias Scalar = Bool
-    public typealias Format = VectorFormat.PackedBits
+    public typealias Encoding = [Bool].PackedBitsRepresentation
     public typealias VectorBytesRepresentation = Self
     public var queryOutput: [Bool]
 
@@ -14,12 +14,10 @@ extension Array where Element == Bool {
       self.queryOutput = queryOutput
     }
 
-    public var queryBinding: QueryBinding {
-      .blob(encodePackedBitsVector(self.queryOutput))
-    }
+    public var vectorBytes: [UInt8] { encodePackedBitsVector(self.queryOutput) }
 
-    public init(decoder: inout some QueryDecoder) throws {
-      try self.init(queryOutput: decodePackedBitsVector([UInt8](decoder: &decoder)))
+    public init(vectorBytes: [UInt8]) throws {
+      self.init(queryOutput: decodePackedBitsVector(vectorBytes))
     }
   }
 }
@@ -38,7 +36,7 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
     {
       public typealias Scalar = Bool
-      public typealias Format = VectorFormat.PackedBits
+      public typealias Encoding = [Bool].PackedBitsRepresentation
       public typealias VectorBytesRepresentation = Self
       public var queryOutput: FixedEmbeddingVector<count, Bool>
 
@@ -46,13 +44,13 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
         self.queryOutput = queryOutput
       }
 
-      public var queryBinding: QueryBinding {
-        [Bool].PackedBitsRepresentation(queryOutput: Array(self.queryOutput)).queryBinding
+      public var vectorBytes: [UInt8] {
+        [Bool].PackedBitsRepresentation(queryOutput: Array(self.queryOutput)).vectorBytes
       }
 
-      public init(decoder: inout some QueryDecoder) throws {
-        let elements = try [Bool].PackedBitsRepresentation(decoder: &decoder).queryOutput
-        try self.init(queryOutput: FixedEmbeddingVector<count, Bool>(vectorElements: elements))
+      public init(vectorBytes: [UInt8]) throws {
+        let elements = try [Bool].PackedBitsRepresentation(vectorBytes: vectorBytes).queryOutput
+        try self.init(queryOutput: FixedEmbeddingVector<count, Bool>(validating: elements))
       }
     }
   }

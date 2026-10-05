@@ -80,15 +80,56 @@ format and dimension metadata and supports partial-byte lengths. It also provide
 byte codes, scale, and shift. Sparse values retain their entries without expanding into dense
 arrays. These types are directly query-bindable and belong to `StructuredQueriesTursoVecCore`.
 
-### Format matching
+### Encoding matching
 
-The named representations are concrete wrappers that conform to ``VectorBytesRepresentable``.
-Its `Scalar` and `Format` associated types let query helpers compare byte layouts and distinguish
-floating-point operations from binary operations. ``VectorFormat`` provides type identities such
-as `Float32`, `Float8`, `PackedBits`, and `TursoBits`; serialization stays in internal helpers.
+``VectorBytesRepresentable`` identifies a vector's byte layout with its `Encoding` associated
+type. That identity is an existing canonical representation, independent of dimensions:
 
-``VectorScalar`` selects the default format for Float and Double. It and
-``VectorBytesRepresentable`` are the two vector abstraction protocols. The value and representation
-names above are the public entry points for modeling columns, binding values, and selecting
-fixed-size results. Engine-specific functions live in the `TursoVec` and `Vec`
-namespaces; tables need no additional Turso conformance.
+| Vector family | `Encoding` |
+| --- | --- |
+| Dense float32 | `[Float].VectorBytesRepresentation` |
+| Dense float64 | `[Double].VectorBytesRepresentation` |
+| SQLiteVec binary | `[Bool].PackedBitsRepresentation` |
+| Turso binary | `[Bool].TursoBytesRepresentation` |
+| Turso quantized8 | `Quantized8Vector` |
+| Turso sparse float32 | `SparseFloat32Vector` |
+
+For example, `EmbeddingVector<3>` and `[Float].VectorBytesRepresentation` share an encoding.
+`InlineQuantized8Vector<N>` uses `Quantized8Vector`, and `SizedSparseFloat32Vector<N>` uses
+`SparseFloat32Vector`. Those Turso types are defined in `StructuredQueriesTursoVecCore`.
+
+The separate `VectorBytesRepresentation` associated type identifies the wrapper for the particular
+value, including any fixed-dimension constraint. Generic query helpers compare `Encoding` types;
+there is no separate enum of format markers.
+
+### Serialize without a query decoder
+
+Vector values and representations expose `vectorBytes` and `init(vectorBytes:)`:
+
+```swift
+let values = [Float(1), 2, 3]
+let bytes = values.vectorBytes
+let restored = try [Float](vectorBytes: bytes)
+let representation = try [Float].VectorBytesRepresentation(vectorBytes: bytes)
+
+let fixed = try EmbeddingVector<3>(vectorBytes: bytes)
+let validated = try EmbeddingVector<3>(validating: values)
+```
+
+`init(vectorBytes:)` validates byte lengths, format metadata, and any fixed dimension count.
+`FixedEmbeddingVector.init(validating:)` also accepts scalar arrays, including logical binary
+values, and throws `VectorDecodingError.dimensionMismatch` when their count differs.
+Fixed-size APIs require the platform availability described above.
+
+For query-bindable vectors and representations, `queryBinding` wraps `vectorBytes` in a BLOB,
+and `init(decoder:)` passes the decoded BLOB to `init(vectorBytes:)`. Drivers and other consumers
+can use the same serialization directly.
+
+``VectorScalar`` requires `encodeVector(_:)` and `decodeVector(_:)`. Float and Double implement
+their default byte layouts directly, preserving IEEE bit patterns. Custom conformances supply
+these operations instead of relying on a runtime format switch. These methods serialize a whole
+vector; Double's encoding includes Turso's float64 type byte.
+
+``VectorScalar`` and ``VectorBytesRepresentable`` are the two vector abstraction protocols.
+Engine-specific SQL functions live in the `TursoVec` and `Vec` namespaces; tables need no
+additional Turso conformance.

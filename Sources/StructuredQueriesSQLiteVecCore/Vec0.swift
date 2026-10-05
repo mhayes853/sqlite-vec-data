@@ -360,7 +360,7 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   /// Returns logical bits using a matching packed-bit representation.
   public func bit<T: VectorBytesRepresentable & QueryBindable>(
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].PackedBitsRepresentation {
     Vec.bit(self, as: result)
   }
 
@@ -414,7 +414,7 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   /// Returns logical bits using a matching packed-bit representation.
   public func quantizeBinary<T: VectorBytesRepresentable & QueryBindable>(
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].PackedBitsRepresentation {
     Vec.quantizeBinary(self, as: result)
   }
 }

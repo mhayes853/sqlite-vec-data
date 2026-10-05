@@ -48,6 +48,23 @@ Shared float32 bytes agree with SQLiteVec on little-endian platforms. Float64, f
 and binary layouts include Turso's format metadata. The executing database checks input formats
 and value-dependent restrictions, including restrictions on empty float8 and binary blobs.
 
+### Vector bytes
+
+Encoded values expose their database bytes without requiring a query decoder:
+
+```swift
+let vector = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+let restored = try Quantized8Vector(vectorBytes: vector.vectorBytes)
+let sparse = try SparseFloat32Vector(dimensions: 6, indices: [2, 5], values: [1.5, 2.5])
+let restoredSparse = try SparseFloat32Vector(vectorBytes: sparse.vectorBytes)
+```
+
+The same API is available on shared dense vectors and all byte representations. Inline and sized
+variants validate the decoded dimensions. Query binding and query decoding delegate to this API.
+`Encoding` identifies the canonical representation: inline quantized vectors use `Quantized8Vector`,
+and sized sparse vectors use `SparseFloat32Vector`. This lets query helpers match byte layouts
+across fixed and variable dimension counts.
+
 ### Turso exact search
 
 The [Turso example](https://docs.turso.tech/guides/vector-search) stores embeddings in a BLOB column:

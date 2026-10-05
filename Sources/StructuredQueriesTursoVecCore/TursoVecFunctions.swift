@@ -18,7 +18,7 @@ public enum TursoVec {
   public static func vector32<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.Float32 {
+  ) -> some QueryExpression<T> where T.Encoding == [Float].VectorBytesRepresentation {
     SQLQueryExpression("vector32(\(expression))")
   }
 
@@ -34,7 +34,7 @@ public enum TursoVec {
   public static func vector64<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.Float64 {
+  ) -> some QueryExpression<T> where T.Encoding == [Double].VectorBytesRepresentation {
     SQLQueryExpression("vector64(\(expression))")
   }
 
@@ -50,7 +50,7 @@ public enum TursoVec {
   public static func vector8<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.Float8 {
+  ) -> some QueryExpression<T> where T.Encoding == Quantized8Vector {
     SQLQueryExpression("vector8(\(expression))")
   }
 
@@ -66,7 +66,7 @@ public enum TursoVec {
   public static func vector1bit<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.TursoBits {
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].TursoBytesRepresentation {
     SQLQueryExpression("vector1bit(\(expression))")
   }
 
@@ -82,7 +82,7 @@ public enum TursoVec {
   public static func vector32Sparse<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.SparseFloat32 {
+  ) -> some QueryExpression<T> where T.Encoding == SparseFloat32Vector {
     SQLQueryExpression("vector32_sparse(\(expression))")
   }
 
@@ -108,7 +108,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float32, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -120,7 +121,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float64, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -132,7 +134,7 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float8, L.Format == R.Format {
+  ) -> some QueryExpression<Double> where L.Encoding == Quantized8Vector, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -144,7 +146,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.TursoBits, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Bool].TursoBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -157,7 +160,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Format == VectorFormat.SparseFloat32, L.Format == R.Format {
+  where L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -169,7 +172,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float32, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -181,7 +185,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float64, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -193,7 +198,7 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float8, L.Format == R.Format {
+  ) -> some QueryExpression<Double> where L.Encoding == Quantized8Vector, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -206,7 +211,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Format == VectorFormat.SparseFloat32, L.Format == R.Format {
+  where L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -218,7 +223,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float32, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
   }
 
@@ -230,7 +236,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float64, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
   }
 
@@ -242,7 +249,7 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float8, L.Format == R.Format {
+  ) -> some QueryExpression<Double> where L.Encoding == Quantized8Vector, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
   }
 
@@ -254,7 +261,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.TursoBits, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Bool].TursoBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
   }
 
@@ -267,7 +275,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Format == VectorFormat.SparseFloat32, L.Format == R.Format {
+  where L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
   }
 
@@ -279,7 +287,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float32, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
   }
 
@@ -291,7 +300,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float64, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
   }
 
@@ -303,7 +313,7 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.Float8, L.Format == R.Format {
+  ) -> some QueryExpression<Double> where L.Encoding == Quantized8Vector, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
   }
 
@@ -315,7 +325,8 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Format == VectorFormat.TursoBits, L.Format == R.Format {
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Bool].TursoBytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
   }
 
@@ -328,7 +339,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Format == VectorFormat.SparseFloat32, L.Format == R.Format {
+  where L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
   }
 
@@ -341,7 +352,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     _ vector: some QueryExpression<R>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where L.Format == VectorFormat.Float32, L.Format == R.Format {
+  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
     Self.concat(expression, vector, as: [Float].VectorBytesRepresentation.self)
   }
 
@@ -356,7 +367,10 @@ public enum TursoVec {
     _ vector: some QueryExpression<R>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where L.Format == VectorFormat.Float32, L.Format == R.Format, T.Format == L.Format {
+  where
+    L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
+    T.Encoding == L.Encoding
+  {
     SQLQueryExpression("vector_concat(\(expression), \(vector))")
   }
 
@@ -369,7 +383,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     _ vector: some QueryExpression<R>
   ) -> some QueryExpression<[Double].VectorBytesRepresentation>
-  where L.Format == VectorFormat.Float64, L.Format == R.Format {
+  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
     Self.concat(expression, vector, as: [Double].VectorBytesRepresentation.self)
   }
 
@@ -384,7 +398,10 @@ public enum TursoVec {
     _ vector: some QueryExpression<R>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where L.Format == VectorFormat.Float64, L.Format == R.Format, T.Format == L.Format {
+  where
+    L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding,
+    T.Encoding == L.Encoding
+  {
     SQLQueryExpression("vector_concat(\(expression), \(vector))")
   }
 
@@ -395,7 +412,7 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where V.Format == VectorFormat.Float32 {
+  where V.Encoding == [Float].VectorBytesRepresentation {
     Self.slice(expression, from: start, to: end, as: [Float].VectorBytesRepresentation.self)
   }
 
@@ -409,7 +426,8 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>,
     as result: T.Type
-  ) -> some QueryExpression<T> where V.Format == VectorFormat.Float32, T.Format == V.Format {
+  ) -> some QueryExpression<T>
+  where V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == V.Encoding {
     SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 
@@ -420,7 +438,7 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
   ) -> some QueryExpression<[Double].VectorBytesRepresentation>
-  where V.Format == VectorFormat.Float64 {
+  where V.Encoding == [Double].VectorBytesRepresentation {
     Self.slice(expression, from: start, to: end, as: [Double].VectorBytesRepresentation.self)
   }
 
@@ -434,7 +452,8 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>,
     as result: T.Type
-  ) -> some QueryExpression<T> where V.Format == VectorFormat.Float64, T.Format == V.Format {
+  ) -> some QueryExpression<T>
+  where V.Encoding == [Double].VectorBytesRepresentation, T.Encoding == V.Encoding {
     SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 
@@ -445,7 +464,7 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
   ) -> some QueryExpression<SparseFloat32Vector>
-  where V.Format == VectorFormat.SparseFloat32 {
+  where V.Encoding == SparseFloat32Vector {
     Self.slice(expression, from: start, to: end, as: SparseFloat32Vector.self)
   }
 
@@ -459,7 +478,7 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>,
     as result: T.Type
-  ) -> some QueryExpression<T> where V.Format == VectorFormat.SparseFloat32, T.Format == V.Format {
+  ) -> some QueryExpression<T> where V.Encoding == SparseFloat32Vector, T.Encoding == V.Encoding {
     SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 }

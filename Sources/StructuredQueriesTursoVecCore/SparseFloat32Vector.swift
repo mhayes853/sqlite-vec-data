@@ -9,7 +9,7 @@ import StructuredQueriesVectorCore
 public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
   public typealias QueryOutput = Self
   public typealias Scalar = Float
-  public typealias Format = VectorFormat.SparseFloat32
+  public typealias Encoding = SparseFloat32Vector
   public typealias VectorBytesRepresentation = Self
 
   public let dimensions: Int
@@ -44,31 +44,28 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
   /// Allocates a dense array, filling omitted dimensions with positive zero.
   public func denseValues() -> [Float] {
     var values = Array(repeating: Float.zero, count: self.dimensions)
-    // swift-format-ignore: ReplaceForEachWithForLoop
-    zip(self.indices, self.values).forEach { values[Int($0)] = $1 }
+    for (index, value) in zip(self.indices, self.values) {
+      values[Int(index)] = value
+    }
     return values
   }
 
   // Layout: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs
   // Serialization: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
-  public var queryBinding: QueryBinding {
-    .blob(
-      encodeFloat32Vector(self.values) + self.indices.flatMap { littleEndianVectorBytes($0) }
-        + littleEndianVectorBytes(UInt32(self.dimensions)) + [9]
-    )
+  public var vectorBytes: [UInt8] {
+    Float.encodeVector(self.values) + self.indices.flatMap { sparseWordBytes($0) }
+      + sparseWordBytes(UInt32(self.dimensions)) + [9]
   }
 
-  public init(decoder: inout some QueryDecoder) throws {
-    let bytes = try [UInt8](decoder: &decoder)
+  public init(vectorBytes bytes: [UInt8]) throws {
     guard bytes.count >= 5, (bytes.count - 5).isMultiple(of: 8), bytes.last == 9 else {
       throw VectorDecodingError.invalidBytes
     }
     let entries = (bytes.count - 5) / 8
-    let words = try decodeVectorWords(
-      Array(bytes[(entries * 4)..<bytes.count - 1]),
-      as: UInt32.self
+    let words = try decodeSparseWords(
+      Array(bytes[(entries * 4)..<bytes.count - 1])
     )
-    let values = try decodeFloat32Vector(Array(bytes.prefix(entries * 4)))
+    let values = try Float.decodeVector(Array(bytes.prefix(entries * 4)))
     do {
       try self.init(
         dimensions: Int(words[entries]),
@@ -90,4 +87,16 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
     hasher.combine(self.indices)
     hasher.combine(self.values.map(\.bitPattern))
   }
+}
+
+private func sparseWordBytes(_ bits: UInt32) -> [UInt8] {
+  (0..<4).map { UInt8(truncatingIfNeeded: bits >> ($0 * 8)) }
+}
+
+private func decodeSparseWords(_ bytes: [UInt8]) throws -> [UInt32] {
+  guard bytes.count.isMultiple(of: 4) else { throw VectorDecodingError.invalidBytes }
+  return stride(from: 0, to: bytes.count, by: 4)
+    .map { offset in
+      (0..<4).reduce(UInt32.zero) { $0 | (UInt32(bytes[offset + $1]) << ($1 * 8)) }
+    }
 }

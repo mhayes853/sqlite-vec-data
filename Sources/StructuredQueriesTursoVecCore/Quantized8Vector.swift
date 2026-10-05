@@ -9,7 +9,7 @@ import StructuredQueriesVectorCore
 public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
   public typealias QueryOutput = Self
   public typealias Scalar = Float
-  public typealias Format = VectorFormat.Float8
+  public typealias Encoding = Quantized8Vector
   public typealias VectorBytesRepresentation = Self
 
   public let codes: [UInt8]
@@ -47,12 +47,8 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
     self.codes.map { Float($0) * self.scale + self.shift }
   }
 
-  public var queryBinding: QueryBinding {
-    .blob(encodeQuantized8Vector(codes: self.codes, scale: self.scale, shift: self.shift))
-  }
-
-  public init(decoder: inout some QueryDecoder) throws {
-    try self.init(bytes: [UInt8](decoder: &decoder))
+  public var vectorBytes: [UInt8] {
+    encodeQuantized8Vector(codes: self.codes, scale: self.scale, shift: self.shift)
   }
 
   public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -66,14 +62,14 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
     hasher.combine(self.shift.bitPattern)
   }
 
-  private init(bytes: [UInt8]) throws {
+  public init(vectorBytes bytes: [UInt8]) throws {
     guard bytes.count >= 11, bytes.count % 4 == 3, bytes.last == 4 else {
       throw VectorDecodingError.invalidBytes
     }
     let alignedCount = bytes.count - 11
     let padding = Int(bytes[bytes.count - 2])
     guard padding <= 3, padding <= alignedCount else { throw VectorDecodingError.invalidBytes }
-    let parameters = try decodeFloat32Vector(Array(bytes[alignedCount..<(alignedCount + 8)]))
+    let parameters = try Float.decodeVector(Array(bytes[alignedCount..<(alignedCount + 8)]))
     do {
       try self.init(
         codes: Array(bytes.prefix(alignedCount - padding)),
@@ -91,5 +87,5 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
 func encodeQuantized8Vector(codes: [UInt8], scale: Float, shift: Float) -> [UInt8] {
   let padding = (4 - codes.count % 4) % 4
   return codes + Array(repeating: 0, count: padding)
-    + encodeFloat32Vector([scale, shift]) + [0, UInt8(padding), 4]
+    + Float.encodeVector([scale, shift]) + [0, UInt8(padding), 4]
 }

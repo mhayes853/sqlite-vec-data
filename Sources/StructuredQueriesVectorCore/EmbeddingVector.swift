@@ -73,8 +73,9 @@ import StructuredQueriesCore
   extension FixedEmbeddingVector: Hashable {
     public func hash(into hasher: inout Hasher) {
       hasher.combine(Self.count)
-      // swift-format-ignore: ReplaceForEachWithForLoop
-      (0..<Self.count).forEach { hasher.combine(self.array[$0]) }
+      for element in self {
+        hasher.combine(element)
+      }
     }
   }
 
@@ -84,8 +85,9 @@ import StructuredQueriesCore
   extension FixedEmbeddingVector: Encodable {
     public func encode(to encoder: any Encoder) throws {
       var container = encoder.unkeyedContainer()
-      // swift-format-ignore: ReplaceForEachWithForLoop
-      try self.forEach { try container.encode($0) }
+      for element in self {
+        try container.encode(element)
+      }
     }
   }
 
@@ -186,16 +188,6 @@ import StructuredQueriesCore
   extension FixedEmbeddingVector: QueryBindable, QueryDecodable, QueryRepresentable,
     QueryExpression, _OptionalPromotable
   where Scalar == Float {
-    public var queryBinding: QueryBinding {
-      [count of Float].VectorBytesRepresentation(queryOutput: self.array).queryBinding
-    }
-
-    public init(decoder: inout some QueryDecoder) throws {
-      guard let bytes = try decoder.decode([count of Float].VectorBytesRepresentation.self) else {
-        throw QueryDecodingError.missingRequiredColumn
-      }
-      self.init(bytes)
-    }
   }
   // MARK: - Precision Aliases
 
@@ -213,7 +205,9 @@ import StructuredQueriesCore
 
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension FixedEmbeddingVector {
-    package init(vectorElements: [Scalar]) throws {
+    /// Creates a fixed-size vector from an array, validating its element count.
+    /// Throws `VectorDecodingError.dimensionMismatch` when the counts differ.
+    public init(validating vectorElements: [Scalar]) throws {
       guard vectorElements.count == Self.count else {
         throw VectorDecodingError.dimensionMismatch(
           expected: Self.count,
@@ -226,14 +220,20 @@ import StructuredQueriesCore
 
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension FixedEmbeddingVector: VectorBytesRepresentable where Scalar: VectorScalar {
-    public typealias Format = Scalar.Format
+    public typealias Encoding = [Scalar].VectorBytesRepresentation
+
+    public var vectorBytes: [UInt8] { Scalar.encodeVector(Array(self)) }
+
+    public init(vectorBytes: [UInt8]) throws {
+      try self.init(validating: Scalar.decodeVector(vectorBytes))
+    }
 
     /// The scalar's default blob representation with fixed-dimension validation.
     public struct VectorBytesRepresentation:
       Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
     {
       public typealias Scalar = Element
-      public typealias Format = Element.Format
+      public typealias Encoding = [Element].VectorBytesRepresentation
       public typealias VectorBytesRepresentation = Self
       public var queryOutput: FixedEmbeddingVector<count, Element>
 
@@ -241,13 +241,10 @@ import StructuredQueriesCore
         self.queryOutput = queryOutput
       }
 
-      public var queryBinding: QueryBinding {
-        [Element].VectorBytesRepresentation(queryOutput: Array(self.queryOutput)).queryBinding
-      }
+      public var vectorBytes: [UInt8] { self.queryOutput.vectorBytes }
 
-      public init(decoder: inout some QueryDecoder) throws {
-        let elements = try [Element].VectorBytesRepresentation(decoder: &decoder).queryOutput
-        try self.init(queryOutput: FixedEmbeddingVector<count, Element>(vectorElements: elements))
+      public init(vectorBytes: [UInt8]) throws {
+        try self.init(queryOutput: FixedEmbeddingVector<count, Element>(vectorBytes: vectorBytes))
       }
     }
   }

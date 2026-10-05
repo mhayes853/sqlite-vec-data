@@ -13,7 +13,7 @@ import StructuredQueriesVectorCore
   {
     public typealias QueryOutput = Self
     public typealias Scalar = Float
-    public typealias Format = VectorFormat.SparseFloat32
+    public typealias Encoding = SparseFloat32Vector
     public typealias VectorBytesRepresentation = Self
 
     private let vector: SparseFloat32Vector
@@ -33,15 +33,16 @@ import StructuredQueriesVectorCore
     /// Allocates an inline dense vector, filling omitted dimensions with positive zero.
     public func denseValues() -> EmbeddingVector<count> {
       var values = EmbeddingVector<count>(repeating: 0)
-      // swift-format-ignore: ReplaceForEachWithForLoop
-      zip(self.indices, self.values).forEach { values[Int($0)] = $1 }
+      for (index, value) in zip(self.indices, self.values) {
+        values[Int(index)] = value
+      }
       return values
     }
 
-    public var queryBinding: QueryBinding { self.vector.queryBinding }
+    public var vectorBytes: [UInt8] { self.vector.vectorBytes }
 
-    public init(decoder: inout some QueryDecoder) throws {
-      try self.init(SparseFloat32Vector(decoder: &decoder))
+    public init(vectorBytes: [UInt8]) throws {
+      try self.init(SparseFloat32Vector(vectorBytes: vectorBytes))
     }
 
     private init(_ vector: SparseFloat32Vector) throws {

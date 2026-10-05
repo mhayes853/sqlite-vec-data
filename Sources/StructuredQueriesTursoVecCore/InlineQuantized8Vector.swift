@@ -13,7 +13,7 @@ import StructuredQueriesVectorCore
   {
     public typealias QueryOutput = Self
     public typealias Scalar = Float
-    public typealias Format = VectorFormat.Float8
+    public typealias Encoding = Quantized8Vector
     public typealias VectorBytesRepresentation = Self
 
     public let codes: [count of UInt8]
@@ -36,18 +36,16 @@ import StructuredQueriesVectorCore
       EmbeddingVector<count> { Float(self.codes[$0]) * self.scale + self.shift }
     }
 
-    public var queryBinding: QueryBinding {
-      .blob(
-        encodeQuantized8Vector(
-          codes: (0..<Self.count).map { self.codes[$0] },
-          scale: self.scale,
-          shift: self.shift
-        )
+    public var vectorBytes: [UInt8] {
+      encodeQuantized8Vector(
+        codes: (0..<Self.count).map { self.codes[$0] },
+        scale: self.scale,
+        shift: self.shift
       )
     }
 
-    public init(decoder: inout some QueryDecoder) throws {
-      try self.init(Quantized8Vector(decoder: &decoder))
+    public init(vectorBytes: [UInt8]) throws {
+      try self.init(Quantized8Vector(vectorBytes: vectorBytes))
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -57,8 +55,9 @@ import StructuredQueriesVectorCore
 
     public func hash(into hasher: inout Hasher) {
       hasher.combine(Self.count)
-      // swift-format-ignore: ReplaceForEachWithForLoop
-      (0..<Self.count).forEach { hasher.combine(self.codes[$0]) }
+      for index in 0..<Self.count {
+        hasher.combine(self.codes[index])
+      }
       hasher.combine(self.scale.bitPattern)
       hasher.combine(self.shift.bitPattern)
     }

@@ -496,7 +496,7 @@ public enum Vec {
   public static func bit<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<some VectorBytesRepresentable>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].PackedBitsRepresentation {
     SQLQueryExpression("vec_bit(\(expression))")
   }
 
@@ -616,7 +616,7 @@ public enum Vec {
   public static func quantizeBinary<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<some VectorBytesRepresentable>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Format == VectorFormat.PackedBits {
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].PackedBitsRepresentation {
     SQLQueryExpression("vec_quantize_binary(\(expression))")
   }
 

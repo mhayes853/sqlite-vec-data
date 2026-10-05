@@ -320,6 +320,23 @@ Shared float32 bytes agree with SQLiteVec on little-endian platforms. SQLiteVec 
 use `.PackedBitsRepresentation` (dimensions divisible by eight), while Turso uses
 `.TursoBytesRepresentation` to preserve dimension metadata.
 
+Vectors and their representations expose `vectorBytes` and `init(vectorBytes:)` independently
+of query decoding. Fixed-size byte decoding validates dimensions; `EmbeddingVector<N>(validating:)`
+also constructs a fixed vector from a scalar array. For example:
+
+```swift
+let bytes = [Float(1), 2, 3].vectorBytes
+let restored = try EmbeddingVector<3>(vectorBytes: bytes)
+let validated = try EmbeddingVector<3>(validating: [1, 2, 3])
+let quantized = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+let decoded = try Quantized8Vector(vectorBytes: quantized.vectorBytes)
+```
+
+`VectorBytesRepresentable.Encoding` uses an existing canonical representation to identify the
+byte layout. Inline quantized vectors share `Quantized8Vector`'s encoding, and sized sparse vectors
+share `SparseFloat32Vector`'s encoding. `VectorScalar` supplies concrete encoding and decoding
+requirements implemented by Float and Double.
+
 Turso's experimental sparse indexing uses a separate mechanism and has no helper in this package.
 Exact search orders candidate rows by distance; use a `where` clause to reduce the candidate set
 when needed.
