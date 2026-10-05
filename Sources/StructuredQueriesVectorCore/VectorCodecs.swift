@@ -1,6 +1,6 @@
 /// Little-endian IEEE float32 values, without metadata.
 ///
-/// This is compatible with Turso `F32_BLOB` and with SQLiteVec on little-endian platforms.
+/// This is compatible with Turso BLOB columns and with SQLiteVec on little-endian platforms.
 package enum Float32VectorCodec {
   package static func encode(_ elements: [Float]) -> [UInt8] {
     elements.flatMap { littleEndianBytes($0.bitPattern) }
@@ -22,18 +22,6 @@ enum Float64VectorCodec {
   static func decode(_ bytes: [UInt8]) throws -> [Double] {
     guard bytes.last == 2 else { throw VectorDecodingError.invalidBytes }
     return try decodeWords(Array(bytes.dropLast()), as: UInt64.self).map { Double(bitPattern: $0) }
-  }
-}
-
-/// Little-endian IEEE float16 values followed by libSQL's float16 type byte.
-enum Float16VectorCodec {
-  static func encode(_ elements: [Float16]) -> [UInt8] {
-    elements.flatMap { littleEndianBytes($0.bitPattern) } + [5]
-  }
-
-  static func decode(_ bytes: [UInt8]) throws -> [Float16] {
-    guard bytes.last == 5 else { throw VectorDecodingError.invalidBytes }
-    return try decodeWords(Array(bytes.dropLast()), as: UInt16.self).map { Float16(bitPattern: $0) }
   }
 }
 
@@ -59,8 +47,6 @@ func encodeVector<Scalar: VectorScalar>(_ elements: [Scalar]) -> [UInt8] {
     Float32VectorCodec.encode(elements as? [Float] ?? elements.map { Float($0) })
   case is VectorFormat.Float64.Type:
     Float64VectorCodec.encode(elements as? [Double] ?? elements.map { Double($0) })
-  case is VectorFormat.Float16.Type:
-    Float16VectorCodec.encode(elements as? [Float16] ?? elements.map { Float16($0) })
   default:
     preconditionFailure("Unsupported default vector scalar format")
   }
@@ -73,8 +59,6 @@ func decodeVector<Scalar: VectorScalar>(_ bytes: [UInt8], as scalar: Scalar.Type
     try convertVectorScalars(Float32VectorCodec.decode(bytes), to: scalar)
   case is VectorFormat.Float64.Type:
     try convertVectorScalars(Float64VectorCodec.decode(bytes), to: scalar)
-  case is VectorFormat.Float16.Type:
-    try convertVectorScalars(Float16VectorCodec.decode(bytes), to: scalar)
   default:
     throw VectorDecodingError.invalidBytes
   }

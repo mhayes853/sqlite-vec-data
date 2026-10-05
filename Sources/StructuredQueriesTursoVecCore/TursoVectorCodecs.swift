@@ -1,28 +1,7 @@
 import StructuredQueriesVectorCore
 
-// Format definitions: https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vectorInt.h
-// Conversion rules: https://github.com/tursodatabase/libsql/blob/d6c75af6353bb1c34985399608e37cd272a35aa1/libsql-sqlite3/src/vector.c
-
-/// libSQL bfloat16 values, exposed as Float scalars.
-///
-/// Binding truncates the low 16 bits of each Float's IEEE representation, matching libSQL.
-/// Decoding reconstructs the stored Float values, which may differ from the original values.
-enum BFloat16VectorCodec {
-  static func encode(_ elements: [Float]) -> [UInt8] {
-    elements.flatMap { value in
-      let bits = value.bitPattern >> 16
-      return [UInt8(truncatingIfNeeded: bits), UInt8(truncatingIfNeeded: bits >> 8)]
-    } + [6]
-  }
-
-  static func decode(_ bytes: [UInt8]) throws -> [Float] {
-    guard bytes.last == 6, bytes.count % 2 == 1 else { throw VectorDecodingError.invalidBytes }
-    return stride(from: 0, to: bytes.count - 1, by: 2)
-      .map {
-        Float(bitPattern: (UInt32(bytes[$0]) | UInt32(bytes[$0 + 1]) << 8) << 16)
-      }
-  }
-}
+// Layout: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
+// Conversion: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/convert.rs
 
 /// Turso's quantized float8 values, exposed as reconstructed Float scalars.
 ///

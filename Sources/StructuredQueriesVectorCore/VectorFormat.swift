@@ -7,10 +7,6 @@ public enum VectorFormat {
   public enum Float32: Hashable, Sendable {}
   /// Little-endian float64 bytes with Turso's type metadata.
   public enum Float64: Hashable, Sendable {}
-  /// Little-endian IEEE half-precision bytes with libSQL's type metadata.
-  public enum Float16: Hashable, Sendable {}
-  /// Truncated bfloat16 bytes with libSQL's type metadata.
-  public enum BFloat16: Hashable, Sendable {}
   /// Turso's quantized unsigned-byte values with scale and shift metadata.
   public enum Float8: Hashable, Sendable {}
   /// Packed bits without metadata, suitable for SQLiteVec binary vectors.

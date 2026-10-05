@@ -1,5 +1,6 @@
 import CustomDump
 import StructuredQueriesSQLite
+import StructuredQueriesSQLiteVecCore
 import StructuredQueriesTursoVecCore
 import Testing
 
@@ -196,6 +197,33 @@ struct `TursoVec Query tests` {
     )
   }
 
+  @Test
+  func `Shares Float Bytes With SQLiteVec Bindings`() {
+    // https://docs.turso.tech/guides/vector-search#dense-vectors
+    // Turso float32 stores four bytes per dimension with no format metadata.
+    let vector: [Float].VectorBytesRepresentation = [1, 2, 3, 4]
+    let turso = Document.select { TursoVec.distanceCosine($0.embedding, to: vector) }
+    let sqliteVec = SQLiteEmbedding.select { $0.embedding.distanceCosine(to: vector) }
+    let tursoPrepared = turso.query.prepare { "?\($0)" }
+    let sqlitePrepared = sqliteVec.query.prepare { "?\($0)" }
+    expectNoDifference(
+      tursoPrepared.sql,
+      """
+      SELECT vector_distance_cos("documents"."embedding", ?1)
+      FROM "documents"
+      """
+    )
+    expectNoDifference(
+      sqlitePrepared.sql,
+      """
+      SELECT vec_distance_cosine("sqlite_embeddings"."embedding", ?1)
+      FROM "sqlite_embeddings"
+      """
+    )
+    expectNoDifference(tursoPrepared.bindings, sqlitePrepared.bindings)
+    expectNoDifference(tursoPrepared.bindings, [vector.queryBinding])
+  }
+
   #if swift(>=6.2)
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
@@ -238,4 +266,10 @@ private struct Formats: Hashable, Sendable {
   var bits: [Bool]
   @Column(as: [Float].SparseRepresentation.self)
   var sparse: [Float]
+}
+
+@Table("sqlite_embeddings")
+private struct SQLiteEmbedding: Hashable, Sendable, Vec0 {
+  @Column(as: [Float].VectorBytesRepresentation.self)
+  var embedding: [Float]
 }

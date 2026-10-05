@@ -5,7 +5,7 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
 
 SQLiteData interoperability with [sqlite-vec](https://github.com/asg017/sqlite-vec), and
-StructuredQueries helpers for [Turso/libSQL native vector search](https://docs.turso.tech/features/ai-and-embeddings).
+StructuredQueries helpers for [Turso Database native vector search](https://docs.turso.tech/guides/vector-search).
 
 ## Overview
 
@@ -236,7 +236,7 @@ let query = Embedding
   .select { ($0.id, $0.distance) }
 ```
 
-`EmbeddingVector64<N>`, `EmbeddingVector16<N>`, and `BinaryEmbeddingVector<N>` provide the same
+`EmbeddingVector64<N>` and `BinaryEmbeddingVector<N>` provide the same
 collection and Codable support for other scalars. Floating-point vectors use element-wise
 comparison: signed zeros compare equal and NaNs compare unequal. This replaces the original
 float32 memory comparison.
@@ -251,9 +251,8 @@ result representation, which could discard binary data during decoding.
 
 `StructuredQueriesSQLiteVecCore` is a standalone set of query helpers that model sqlite-vec features in StructuredQueries. Use this if you don't plan to use `SQLiteData` directly.
 
-`StructuredQueriesTursoVecCore` provides `TursoVec` for the Rust-based Turso engine and
-`LibSQLVec` for libSQL, including Turso Cloud databases running libSQL. The namespaces generate
-vector SQL and bindings for use with a compatible database driver.
+`StructuredQueriesTursoVecCore` provides `TursoVec` for Turso Database. It generates vector SQL
+and bindings for use with a compatible database driver.
 
 `StructuredQueriesVectorCore` contains reusable `EmbeddingVector`, `VectorBytesRepresentable`,
 numeric and binary vector types, and their byte representations. Both vector query targets export
@@ -261,7 +260,7 @@ it, so existing SQLiteVec imports continue to expose these types.
 
 `SQLiteVecDataTestSupport` provides Swift Testing helpers for downstream packages, including the `.sqliteVecAutoExtension` suite trait for Linux test setup.
 
-## Turso and libSQL Vector Queries
+## Turso Vector Queries
 
 Add `StructuredQueriesTursoVecCore` and import it alongside `StructuredQueriesSQLite`:
 
@@ -288,47 +287,37 @@ For Turso, create the table with a BLOB embedding column. Tables need no additio
 conformance. Convert JSON explicitly with `TursoVec.vector32`, `vector64`, `vector8`,
 `vector1bit`, or `vector32Sparse` before distance comparisons.
 
-| Swift representation | Turso engine | libSQL |
-| --- | --- | --- |
-| `[Float].VectorBytesRepresentation` | Yes | Yes |
-| `[Double].VectorBytesRepresentation` | Yes | Yes |
-| `[Float16].VectorBytesRepresentation` | No | Yes |
-| `[Float].BFloat16Representation` | No | Yes |
-| `[Float].Float8Representation` | Yes | Yes |
-| `[Bool].TursoBytesRepresentation` | Yes | Yes |
-| `[Float].SparseRepresentation` | Yes | No |
+| Conversion | Swift representation |
+| --- | --- |
+| `vector32` / `vector` | `[Float].VectorBytesRepresentation` |
+| `vector64` | `[Double].VectorBytesRepresentation` |
+| `vector8` | `[Float].Float8Representation` |
+| `vector1bit` | `[Bool].TursoBytesRepresentation` |
+| `vector32Sparse` | `[Float].SparseRepresentation` |
 
-Both namespaces offer cosine and L2 distances with matching formats. `TursoVec` also offers
-negative dot product and Jaccard distances, dense concatenation, and dense or sparse slicing.
-Binary cosine returns Hamming distance; binary L2 is unavailable. Sparse Swift values remain
-dense arrays while blobs store only nonzero entries. Float8 and bfloat16 storage is lossy.
+`TursoVec` offers cosine, L2, negative dot product, and Jaccard distances with matching formats,
+dense concatenation, and dense or sparse slicing. Binary cosine returns Hamming distance;
+binary L2 is unavailable. Float8 storage is lossy quantization with a shared scale and shift.
+
+Sparse blobs store only nonzero float32 values, their indices, and the original dimension count.
+This is useful for TF-IDF, bag-of-words, and other mostly zero feature vectors. The current Swift
+representation remains a dense array. Sparse storage alone does not create an index.
 
 Fixed-size representations are available on the corresponding `EmbeddingVector<N>`,
-`EmbeddingVector64<N>`, `EmbeddingVector16<N>`, and `BinaryEmbeddingVector<N>` types. Use
+`EmbeddingVector64<N>` and `BinaryEmbeddingVector<N>` types. Use
 `as:` on conversions, concat, or slice to select a matching fixed-size result.
 
 Shared float32 bytes agree with SQLiteVec on little-endian platforms. SQLiteVec binary columns
-use `.PackedBitsRepresentation` (dimensions divisible by eight), while Turso and libSQL use
+use `.PackedBitsRepresentation` (dimensions divisible by eight), while Turso uses
 `.TursoBytesRepresentation` to preserve dimension metadata.
 
-For libSQL DiskANN search, use `LibSQLVec.index` and `LibSQLVec.topK`:
+Turso's experimental sparse indexing uses a separate mechanism and has no helper in this package.
+Exact search orders candidate rows by distance; use a `where` clause to reduce the candidate set
+when needed.
 
-```swift
-let marker = LibSQLVec.index(Document.columns.embedding)
-let createIndex = #sql("CREATE INDEX documents_idx ON documents (\(marker))", as: Void.self)
-let neighbors = LibSQLVec.topK(index: "documents_idx", vector: queryVector, k: 3)
-let query = Document.where { $0.id.in(neighbors) }.select(\.content)
-```
-
-For indexed libSQL search, declare the embedding column as `F32_BLOB(4)`. The `id` selected by
-`LibSQLVectorTopK` belongs to the table-valued function; the indexed table's primary key can have
-any name. Indexed search is approximate, filters apply after selecting neighbors, and `IN`
-subqueries need explicit ordering when order matters. Turso's experimental sparse indexing uses
-a separate mechanism and has no helper in this package.
-
-See the [Turso vector reference](https://docs.turso.tech/sql-reference/functions/vector) and
-[libSQL vector guide](https://docs.turso.tech/features/ai-and-embeddings). SQL tests link to each
-engine's examples; byte fixtures link to pinned source revisions. They require no Turso instance.
+See the [Turso vector reference](https://docs.turso.tech/sql-reference/functions/vector).
+SQL tests link to documentation examples, and byte fixtures link to pinned Turso source revisions.
+They require no Turso instance.
 
 ## Package Traits
 

@@ -26,14 +26,13 @@ struct Document {
 let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
 ```
 
-`Float` uses raw, little-endian float32 bytes, compatible with Turso `F32_BLOB` columns and
+`Float` uses raw, little-endian float32 bytes, compatible with Turso BLOB columns and
 SQLiteVec float columns on little-endian platforms. SQLiteVec reads native float memory, so the
 formats are not interchangeable on big-endian systems.
 
-`[Double].VectorBytesRepresentation` and `[Float16].VectorBytesRepresentation` use tagged
-float64 and libSQL's float16 blob formats, including their type metadata. These formats are not supported
-by SQLiteVec float columns. Decoding validates byte lengths and format tags instead of silently
-discarding incomplete elements.
+`[Double].VectorBytesRepresentation` uses Turso's tagged float64 blob format. This format is not
+supported by SQLiteVec float columns. Decoding validates byte lengths and format tags instead of
+silently discarding incomplete elements.
 
 ### Fixed-size vectors
 
@@ -44,7 +43,6 @@ Prefer its aliases for the supported scalar types:
 | --- | --- | --- |
 | `EmbeddingVector<N>` | `Float` | Direct binding or `.VectorBytesRepresentation` |
 | `EmbeddingVector64<N>` | `Double` | `.VectorBytesRepresentation` |
-| `EmbeddingVector16<N>` | `Float16` | `.VectorBytesRepresentation` |
 | `BinaryEmbeddingVector<N>` | `Bool` | Explicit binary representation |
 
 Fixed-size types require Swift 6.2 or later and are available on iOS 26.0, macOS 26.0, tvOS 26.0,
@@ -77,20 +75,19 @@ because this format cannot preserve partial-byte lengths.
 
 The Turso target adds `.TursoBytesRepresentation` to both value types. It includes Turso's binary
 format and dimension metadata and supports partial-byte lengths. It also adds
-`.BFloat16Representation`, `.Float8Representation`, and `.SparseRepresentation` to float32 arrays
-and fixed-size vectors. Bfloat16 and float16 blobs require libSQL; sparse float32 blobs require
-the Rust-based Turso engine. The sparse representation exposes dense Swift values and stores
-only nonzero components in the database.
+`.Float8Representation` and `.SparseRepresentation` to float32 arrays and fixed-size vectors.
+These encodings are specific to Turso Database. The sparse representation exposes dense Swift
+values and stores only nonzero components in the database.
 
 ### Format matching
 
 The named representations are concrete wrappers that conform to ``VectorBytesRepresentable``.
 Its `Scalar` and `Format` associated types let query helpers compare byte layouts and distinguish
 floating-point operations from binary operations. ``VectorFormat`` provides type identities such
-as `Float32`, `BFloat16`, `PackedBits`, and `TursoBits`; serialization stays in internal helpers.
+as `Float32`, `Float8`, `PackedBits`, and `TursoBits`; serialization stays in internal helpers.
 
-``VectorScalar`` selects the default format for Float, Double, and Float16. It and
+``VectorScalar`` selects the default format for Float and Double. It and
 ``VectorBytesRepresentable`` are the two vector abstraction protocols. The value and representation
 names above are the public entry points for modeling columns, binding values, and selecting
-fixed-size results. Engine-specific functions live in the `TursoVec`, `LibSQLVec`, and `Vec`
-namespaces; tables need no additional Turso or libSQL conformance.
+fixed-size results. Engine-specific functions live in the `TursoVec` and `Vec`
+namespaces; tables need no additional Turso conformance.

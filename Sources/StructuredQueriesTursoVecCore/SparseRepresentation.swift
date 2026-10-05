@@ -5,7 +5,7 @@ extension Array where Element == Float {
   /// Turso's sparse float32 storage, exposed as a dense array of Float values in Swift.
   ///
   /// Binding stores only nonzero values and their indices. Decoding fills omitted dimensions with
-  /// zero. Signed zeros become positive zero. This format is unsupported by libSQL and SQLiteVec.
+  /// zero. Signed zeros become positive zero. This format is specific to Turso Database.
   public struct SparseRepresentation:
     Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
   {

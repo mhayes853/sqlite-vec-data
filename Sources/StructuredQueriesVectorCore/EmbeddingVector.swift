@@ -5,8 +5,8 @@ import StructuredQueriesCore
 
   /// A fixed-size vector of scalar values with collection, Hashable, and Codable support.
   ///
-  /// Prefer the precision aliases `EmbeddingVector`, `EmbeddingVector64`, `EmbeddingVector16`,
-  /// and `BinaryEmbeddingVector`. Floating-point equality compares elements using Swift's scalar
+  /// Prefer the precision aliases `EmbeddingVector`, `EmbeddingVector64`, and
+  /// `BinaryEmbeddingVector`. Floating-point equality compares elements using Swift's scalar
   /// equality: signed zeros are equal, and NaNs are unequal.
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public struct FixedEmbeddingVector<let count: Int, Scalar: Hashable & Codable & Sendable>:
@@ -131,7 +131,6 @@ import StructuredQueriesCore
         switch Scalar.self {
         case is Float.Type: "EmbeddingVector"
         case is Double.Type: "EmbeddingVector64"
-        case is Float16.Type: "EmbeddingVector16"
         case is Bool.Type: "BinaryEmbeddingVector"
         default: "FixedEmbeddingVector"
         }
@@ -207,10 +206,6 @@ import StructuredQueriesCore
   /// A fixed-size float64 embedding vector.
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public typealias EmbeddingVector64<let count: Int> = FixedEmbeddingVector<count, Double>
-
-  /// A fixed-size IEEE half-precision embedding vector.
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  public typealias EmbeddingVector16<let count: Int> = FixedEmbeddingVector<count, Float16>
 
   /// A fixed-size vector of logical bits, independent of its database encoding.
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
