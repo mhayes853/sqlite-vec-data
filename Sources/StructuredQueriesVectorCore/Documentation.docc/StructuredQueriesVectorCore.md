@@ -74,10 +74,11 @@ least significant bit of the first byte. Binding requires a dimension count divi
 because this format cannot preserve partial-byte lengths.
 
 The Turso target adds `.TursoBytesRepresentation` to both value types. It includes Turso's binary
-format and dimension metadata and supports partial-byte lengths. It also adds
-`.Float8Representation` and `.SparseRepresentation` to float32 arrays and fixed-size vectors.
-These encodings are specific to Turso Database. The sparse representation exposes dense Swift
-values and stores only nonzero components in the database.
+format and dimension metadata and supports partial-byte lengths. It also provides
+`Quantized8Vector`, `InlineQuantized8Vector<N>`, `SparseFloat32Vector`, and
+`SizedSparseFloat32Vector<N>` for Turso-specific encoded values. Quantized values retain unsigned
+byte codes, scale, and shift. Sparse values retain their entries without expanding into dense
+arrays. These types are directly query-bindable and belong to `StructuredQueriesTursoVecCore`.
 
 ### Format matching
 

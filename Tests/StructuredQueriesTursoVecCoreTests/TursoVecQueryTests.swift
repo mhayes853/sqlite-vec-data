@@ -123,11 +123,11 @@ struct `TursoVec Query tests` {
   }
 
   @Test
-  func `Compares Binary And Quantized Vectors Without JSON Overloads`() {
+  func `Compares Binary And Quantized Vectors Without JSON Overloads`() throws {
     // https://docs.turso.tech/sql-reference/functions/vector#distance-functions
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/distance_cos.rs#L40
     let bits: [Bool].TursoBytesRepresentation = [true, false]
-    let quantized: [Float].Float8Representation = [1, 2]
+    let quantized = try Quantized8Vector(quantizing: [1, 2])
     let doubles: [Double].VectorBytesRepresentation = [1, 2]
     let query = Formats.select {
       (
@@ -227,6 +227,35 @@ struct `TursoVec Query tests` {
   #if swift(>=6.2)
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Uses Encoded Vector Values Directly In Columns`() throws {
+      // https://docs.turso.tech/sql-reference/functions/vector#vector8
+      // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
+      let quantized = try InlineQuantized8Vector<4>(codes: [1, 2, 3, 4], scale: 0.5, shift: 1)
+      let sparse = try SizedSparseFloat32Vector<4>(indices: [1, 3], values: [2, 4])
+      let query = SizedFormats.select {
+        (
+          TursoVec.distanceCosine($0.quantized, to: quantized),
+          TursoVec.distanceL2($0.sparse, to: sparse),
+          TursoVec.vector8("[1,2,3,4]", as: InlineQuantized8Vector<4>.self),
+          TursoVec.slice($0.sparse, from: 1, to: 3, as: SizedSparseFloat32Vector<2>.self)
+        )
+      }
+      let prepared = query.query.prepare { "?\($0)" }
+      expectNoDifference(
+        prepared.sql,
+        """
+        SELECT vector_distance_cos("sized_formats"."quantized", ?1), vector_distance_l2("sized_formats"."sparse", ?2), vector8(?3), vector_slice("sized_formats"."sparse", ?4, ?5)
+        FROM "sized_formats"
+        """
+      )
+      expectNoDifference(
+        prepared.bindings,
+        [quantized.queryBinding, sparse.queryBinding, .text("[1,2,3,4]"), .int(1), .int(3)]
+      )
+    }
+
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Requests Fixed Dimensions After Concatenation And Slicing`() {
       // https://docs.turso.tech/sql-reference/functions/vector#utility-functions
       let left = EmbeddingVector<2>([1, 2])
@@ -241,12 +270,21 @@ struct `TursoVec Query tests` {
       )
       let sparse = TursoVec.vector32Sparse(
         "[0,1]",
-        as: EmbeddingVector<2>.SparseRepresentation.self
+        as: SizedSparseFloat32Vector<2>.self
       )
       expectNoDifference(sparse.queryFragment.prepare { "?\($0)" }.sql, "vector32_sparse(?1)")
     }
   #endif
 }
+
+#if swift(>=6.2)
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  @Table("sized_formats")
+  private struct SizedFormats: Hashable, Sendable {
+    var quantized: InlineQuantized8Vector<4>
+    var sparse: SizedSparseFloat32Vector<4>
+  }
+#endif
 
 @Table("documents")
 private struct Document: Hashable, Sendable {
@@ -260,12 +298,10 @@ private struct Document: Hashable, Sendable {
 private struct Formats: Hashable, Sendable {
   @Column(as: [Double].VectorBytesRepresentation.self)
   var doubles: [Double]
-  @Column(as: [Float].Float8Representation.self)
-  var quantized: [Float]
+  var quantized: Quantized8Vector
   @Column(as: [Bool].TursoBytesRepresentation.self)
   var bits: [Bool]
-  @Column(as: [Float].SparseRepresentation.self)
-  var sparse: [Float]
+  var sparse: SparseFloat32Vector
 }
 
 @Table("sqlite_embeddings")

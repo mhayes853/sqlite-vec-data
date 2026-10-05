@@ -7,11 +7,110 @@ import Testing
 @Suite
 struct `Vector Representation tests` {
   @Test
+  func `Retains Quantized Codes And Parameters When Rebinding`() throws {
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
+    // These parameters do not span codes 0...255: decoding must not requantize the values.
+    let fixture: [UInt8] = [10, 20, 0, 0, 0, 0, 0, 64, 0, 0, 128, 63, 0, 2, 4]
+    var decoder = BlobQueryDecoder(bytes: fixture)
+    let decoded = try decoder.decode(Quantized8Vector.self)
+    let vector = try #require(decoded)
+    expectNoDifference(vector.codes, [10, 20])
+    expectNoDifference(vector.scale, 2)
+    expectNoDifference(vector.shift, 1)
+    expectNoDifference(vector.decodedValues(), [21, 41])
+    expectNoDifference(vector.queryBinding, .blob(fixture))
+    expectNoDifference(vector, try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1))
+  }
+
+  @Test
+  func `Keeps Large Sparse Vectors Sparse During Decoding And Binding`() throws {
+    // https://docs.turso.tech/guides/vector-search#sparse-vectors
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
+    let fixture: [UInt8] = [
+      0, 0, 128, 63, 0, 0, 0, 64,
+      0, 0, 0, 0, 255, 201, 154, 59,
+      0, 202, 154, 59, 9
+    ]
+    var decoder = BlobQueryDecoder(bytes: fixture)
+    let decoded = try decoder.decode(SparseFloat32Vector.self)
+    let vector = try #require(decoded)
+    expectNoDifference(vector.dimensions, 1_000_000_000)
+    expectNoDifference(vector.indices, [0, 999_999_999])
+    expectNoDifference(vector.values, [1, 2])
+    expectNoDifference(vector.queryBinding, .blob(fixture))
+  }
+
+  @Test
+  func `Validates Quantization Before Binding`() throws {
+    #expect(throws: TursoVectorError.invalidQuantization) {
+      _ = try Quantized8Vector(quantizing: [1, .nan])
+    }
+    #expect(throws: TursoVectorError.invalidQuantization) {
+      _ = try Quantized8Vector(quantizing: [-.greatestFiniteMagnitude, .greatestFiniteMagnitude])
+    }
+    #expect(throws: TursoVectorError.invalidQuantization) {
+      _ = try Quantized8Vector(codes: [1], scale: -1, shift: 0)
+    }
+    #expect(throws: TursoVectorError.invalidQuantization) {
+      _ = try Quantized8Vector(codes: [0], scale: 1, shift: .infinity)
+    }
+    #expect(throws: TursoVectorError.invalidQuantization) {
+      _ = try Quantized8Vector(codes: [255], scale: .greatestFiniteMagnitude, shift: 0)
+    }
+    let constant = try Quantized8Vector(quantizing: [7, 7])
+    expectNoDifference(constant.codes, [0, 0])
+    expectNoDifference(constant.scale, 0)
+    expectNoDifference(constant.shift, 7)
+    expectNoDifference(constant.decodedValues(), [7, 7])
+  }
+
+  @Test(arguments: [
+    (-1, [UInt32](), [Float]()),
+    (Int(UInt32.max) + 1, [UInt32](), [Float]()),
+    (2, [0], [Float]()),
+    (2, [2], [Float(1)]),
+    (2, [0, 0], [Float(1), 2]),
+    (2, [1, 0], [Float(1), 2])
+  ])
+  func `Rejects Invalid Sparse Components`(dimensions: Int, indices: [UInt32], values: [Float]) {
+    #expect(throws: TursoVectorError.invalidSparseComponents) {
+      _ = try SparseFloat32Vector(dimensions: dimensions, indices: indices, values: values)
+    }
+  }
+
+  @Test
+  func `Compares Encoded Components By Bit Pattern`() throws {
+    let nan = Float(bitPattern: 0x7f80_0123)
+    let sparse = try SparseFloat32Vector(dimensions: 3, indices: [0, 2], values: [-0.0, nan])
+    let same = try SparseFloat32Vector(dimensions: 3, indices: [0, 2], values: [-0.0, nan])
+    let differentZero = try SparseFloat32Vector(dimensions: 3, indices: [0, 2], values: [0, nan])
+    expectNoDifference(sparse == same, true)
+    expectNoDifference(sparse.hashValue, same.hashValue)
+    expectNoDifference(sparse == differentZero, false)
+    var decoder = BlobQueryDecoder(bytes: [
+      0, 0, 0, 128, 35, 1, 128, 127,
+      0, 0, 0, 0, 2, 0, 0, 0,
+      3, 0, 0, 0, 9
+    ])
+    expectNoDifference(try decoder.decode(SparseFloat32Vector.self), sparse)
+    expectNoDifference(sparse.denseValues().map(\.bitPattern), [0x8000_0000, 0, 0x7f80_0123])
+    let quantized = try Quantized8Vector(codes: [1], scale: 0, shift: -0.0)
+    let sameQuantized = try Quantized8Vector(codes: [1], scale: 0, shift: -0.0)
+    expectNoDifference(quantized, sameQuantized)
+    expectNoDifference(quantized.hashValue, sameQuantized.hashValue)
+    expectNoDifference(quantized == (try Quantized8Vector(codes: [1], scale: 0, shift: 0)), false)
+    expectNoDifference(
+      quantized == (try Quantized8Vector(codes: [2], scale: 0, shift: -0.0)),
+      false
+    )
+  }
+
+  @Test
   func `Stores The Documented Sparse Values Indices And Dimensions`() throws {
     // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
     // Layout: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs#L315
     // Serialization: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs#L15
-    let vector: [Float].SparseRepresentation = [0, 0, 1.5, 0, 0, 2.5]
+    let vector = try SparseFloat32Vector(compressing: [0, 0, 1.5, 0, 0, 2.5])
     let fixture: [UInt8] = [
       0, 0, 192, 63, 0, 0, 32, 64,
       2, 0, 0, 0, 5, 0, 0, 0,
@@ -19,30 +118,30 @@ struct `Vector Representation tests` {
     ]
     expectNoDifference(vector.queryBinding, .blob(fixture))
     var decoder = BlobQueryDecoder(bytes: fixture)
-    expectNoDifference(try decoder.decode([Float].SparseRepresentation.self), vector.queryOutput)
+    expectNoDifference(try decoder.decode(SparseFloat32Vector.self), vector)
   }
 
   @Test
   func `Preserves Sparse Dimensions When Every Value Is Zero`() throws {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs#L15
-    let zero: [Float].SparseRepresentation = [0, -0.0, 0, 0]
+    let zero = try SparseFloat32Vector(compressing: [0, -0.0, 0, 0])
     expectNoDifference(zero.queryBinding, .blob([4, 0, 0, 0, 9]))
     var decoder = BlobQueryDecoder(bytes: [4, 0, 0, 0, 9])
     expectNoDifference(
-      try decoder.decode([Float].SparseRepresentation.self)?.map(\.bitPattern),
+      try decoder.decode(SparseFloat32Vector.self)?.denseValues().map(\.bitPattern),
       [UInt32](repeating: 0, count: 4)
     )
-    let empty = [Float].SparseRepresentation(queryOutput: [Float]())
+    let empty = try SparseFloat32Vector(compressing: [Float]())
     expectNoDifference(empty.queryBinding, .blob([0, 0, 0, 0, 9]))
     var emptyDecoder = BlobQueryDecoder(bytes: [0, 0, 0, 0, 9])
-    expectNoDifference(try emptyDecoder.decode([Float].SparseRepresentation.self), [Float]())
+    expectNoDifference(try emptyDecoder.decode(SparseFloat32Vector.self)?.denseValues(), [Float]())
   }
 
   @Test
   func `Preserves Nonzero Sparse IEEE Bit Patterns`() throws {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/convert.rs#L19
     let bits: [UInt32] = [0, 1, 0, 0x7f80_0123]
-    let vector = [Float].SparseRepresentation(queryOutput: bits.map { Float(bitPattern: $0) })
+    let vector = try SparseFloat32Vector(compressing: bits.map { Float(bitPattern: $0) })
     let fixture: [UInt8] = [
       1, 0, 0, 0, 35, 1, 128, 127,
       1, 0, 0, 0, 3, 0, 0, 0,
@@ -51,7 +150,7 @@ struct `Vector Representation tests` {
     expectNoDifference(vector.queryBinding, .blob(fixture))
     var decoder = BlobQueryDecoder(bytes: fixture)
     expectNoDifference(
-      try decoder.decode([Float].SparseRepresentation.self)?.map(\.bitPattern),
+      try decoder.decode(SparseFloat32Vector.self)?.denseValues().map(\.bitPattern),
       bits
     )
   }
@@ -68,7 +167,7 @@ struct `Vector Representation tests` {
     // Validate the sorted, unique, in-range indices required by sparse operations.
     var decoder = BlobQueryDecoder(bytes: fixture)
     #expect(throws: VectorDecodingError.invalidBytes) {
-      _ = try [Float].SparseRepresentation(decoder: &decoder)
+      _ = try SparseFloat32Vector(decoder: &decoder)
     }
   }
 
@@ -77,10 +176,9 @@ struct `Vector Representation tests` {
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Validates Fixed Sparse Dimensions`() throws {
       // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
-      let vector = EmbeddingVector<6>
-        .SparseRepresentation(
-          queryOutput: EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5])
-        )
+      let vector = try SizedSparseFloat32Vector<6>(
+        compressing: EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5])
+      )
       let fixture: [UInt8] = [
         0, 0, 192, 63, 0, 0, 32, 64,
         2, 0, 0, 0, 5, 0, 0, 0,
@@ -89,11 +187,11 @@ struct `Vector Representation tests` {
       expectNoDifference(vector.queryBinding, .blob(fixture))
       var decoder = BlobQueryDecoder(bytes: fixture)
       expectNoDifference(
-        try decoder.decode(EmbeddingVector<6>.SparseRepresentation.self),
-        vector.queryOutput
+        try decoder.decode(SizedSparseFloat32Vector<6>.self),
+        vector
       )
       #expect(throws: VectorDecodingError.dimensionMismatch(expected: 5, actual: 6)) {
-        _ = try EmbeddingVector<5>.SparseRepresentation(decoder: &decoder)
+        _ = try SizedSparseFloat32Vector<5>(decoder: &decoder)
       }
     }
   #endif
@@ -162,11 +260,11 @@ struct `Vector Representation tests` {
     // https://docs.turso.tech/guides/vector-search#vector-types
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/convert.rs
     // For [0, 127.5, 255], scale = 1 and shift = 0; Turso rounds the midpoint to 128.
-    let vector: [Float].Float8Representation = [0, 127.5, 255]
+    let vector = try Quantized8Vector(quantizing: [0, 127.5, 255])
     let fixture: [UInt8] = [0, 128, 255, 0, 0, 0, 128, 63, 0, 0, 0, 0, 0, 1, 4]
     expectNoDifference(vector.queryBinding, .blob(fixture))
     var decoder = BlobQueryDecoder(bytes: fixture)
-    expectNoDifference(try decoder.decode([Float].Float8Representation.self), [0, 128, 255])
+    expectNoDifference(try decoder.decode(Quantized8Vector.self)?.decodedValues(), [0, 128, 255])
   }
 
   @Test(
@@ -180,10 +278,10 @@ struct `Vector Representation tests` {
   )
   func `Handles Float8 Alignment And Constant Vectors`(values: [Float], fixture: [UInt8]) throws {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
-    let vector = [Float].Float8Representation(queryOutput: values)
+    let vector = try Quantized8Vector(quantizing: values)
     expectNoDifference(vector.queryBinding, .blob(fixture))
     var decoder = BlobQueryDecoder(bytes: fixture)
-    expectNoDifference(try decoder.decode([Float].Float8Representation.self), values)
+    expectNoDifference(try decoder.decode(Quantized8Vector.self)?.decodedValues(), values)
   }
 
   @Test(
@@ -247,7 +345,7 @@ struct `Vector Representation tests` {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
     #expect(throws: VectorDecodingError.self) {
       var decoder = BlobQueryDecoder(bytes: fixture)
-      _ = try [Float].Float8Representation(decoder: &decoder)
+      _ = try Quantized8Vector(decoder: &decoder)
     }
   }
 
@@ -264,12 +362,59 @@ struct `Vector Representation tests` {
   func `Preserves Null For Optional Vector Columns`() throws {
     var decoder = BlobQueryDecoder(bytes: nil)
     expectNoDifference(try decoder.decode([Double].VectorBytesRepresentation.self), nil)
+    expectNoDifference(try decoder.decode(Quantized8Vector.self), nil)
+    expectNoDifference(try decoder.decode(SparseFloat32Vector.self), nil)
     #expect(throws: QueryDecodingError.self) {
       _ = try [Double].VectorBytesRepresentation(decoder: &decoder)
     }
   }
 
   #if swift(>=6.2)
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Stores Quantized Codes Inline And Retains Their Parameters`() throws {
+      // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
+      let fixture: [UInt8] = [10, 20, 0, 0, 0, 0, 0, 64, 0, 0, 128, 63, 0, 2, 4]
+      var decoder = BlobQueryDecoder(bytes: fixture)
+      let decoded = try decoder.decode(InlineQuantized8Vector<2>.self)
+      let vector = try #require(decoded)
+      let codes: [2 of UInt8] = vector.codes
+      expectNoDifference([codes[0], codes[1]], [10, 20])
+      expectNoDifference(vector.dimensions, 2)
+      expectNoDifference(vector.decodedValues(), EmbeddingVector<2>([21, 41]))
+      expectNoDifference(vector.queryBinding, .blob(fixture))
+      let same = try InlineQuantized8Vector<2>(codes: [10, 20], scale: 2, shift: 1)
+      expectNoDifference(vector, same)
+      expectNoDifference(vector.hashValue, same.hashValue)
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
+        _ = try InlineQuantized8Vector<3>(decoder: &decoder)
+      }
+      #expect(throws: TursoVectorError.invalidQuantization) {
+        _ = try InlineQuantized8Vector<2>(codes: [10, 20], scale: -1, shift: 1)
+      }
+      let rounded = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0, 127.5, 255]))
+      expectNoDifference(rounded.decodedValues(), EmbeddingVector<3>([0, 128, 255]))
+    }
+
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Keeps Sized Sparse Entry Counts Variable`() throws {
+      // https://docs.turso.tech/guides/vector-search#sparse-vectors
+      let empty = try SizedSparseFloat32Vector<4>(indices: [], values: [])
+      let sparse = try SizedSparseFloat32Vector<4>(indices: [1, 3], values: [2, 4])
+      expectNoDifference(empty.dimensions, 4)
+      expectNoDifference(empty.indices, [UInt32]())
+      expectNoDifference(empty.denseValues(), EmbeddingVector<4>(repeating: 0))
+      expectNoDifference(sparse.denseValues(), EmbeddingVector<4>([0, 2, 0, 4]))
+      expectNoDifference(
+        sparse,
+        try SizedSparseFloat32Vector<4>(compressing: EmbeddingVector<4>([0, 2, 0, 4]))
+      )
+      #expect(throws: TursoVectorError.invalidSparseComponents) {
+        _ = try SizedSparseFloat32Vector<4>(indices: [4], values: [1])
+      }
+    }
+
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Uses Concrete Inline Representations For Supported Precisions`() throws {
@@ -344,7 +489,7 @@ struct `Vector Representation tests` {
         EmbeddingVector64<1>([1])
       )
       expectNoDifference(
-        try float8Decoder.decode(EmbeddingVector<1>.Float8Representation.self),
+        try float8Decoder.decode(InlineQuantized8Vector<1>.self)?.decodedValues(),
         EmbeddingVector<1>([1])
       )
       expectNoDifference(

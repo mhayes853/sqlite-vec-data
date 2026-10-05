@@ -41,8 +41,8 @@ public enum TursoVec {
   /// Converts JSON or a supported vector blob to a quantized float8 vector with `vector8`.
   public static func vector8(
     _ expression: some QueryExpression
-  ) -> some QueryExpression<[Float].Float8Representation> {
-    Self.vector8(expression, as: [Float].Float8Representation.self)
+  ) -> some QueryExpression<Quantized8Vector> {
+    Self.vector8(expression, as: Quantized8Vector.self)
   }
 
   /// Converts a vector with `vector8`, decoding into the requested matching representation.
@@ -73,8 +73,8 @@ public enum TursoVec {
   /// Converts JSON or a supported vector blob to a sparse float32 vector with `vector32_sparse`.
   public static func vector32Sparse(
     _ expression: some QueryExpression
-  ) -> some QueryExpression<[Float].SparseRepresentation> {
-    Self.vector32Sparse(expression, as: [Float].SparseRepresentation.self)
+  ) -> some QueryExpression<SparseFloat32Vector> {
+    Self.vector32Sparse(expression, as: SparseFloat32Vector.self)
   }
 
   /// Converts a vector with `vector32_sparse`, decoding into the requested matching representation.
@@ -389,7 +389,7 @@ public enum TursoVec {
   }
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
-  /// Returns an array representation so the output dimension count can change.
+  /// Returns a variable-size representation so the output dimension count can change.
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
     from start: some QueryExpression<Int>,
@@ -414,7 +414,7 @@ public enum TursoVec {
   }
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
-  /// Returns an array representation so the output dimension count can change.
+  /// Returns a variable-size representation so the output dimension count can change.
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
     from start: some QueryExpression<Int>,
@@ -439,14 +439,14 @@ public enum TursoVec {
   }
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
-  /// Returns an array representation so the output dimension count can change.
+  /// Returns a variable-size representation so the output dimension count can change.
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
-  ) -> some QueryExpression<[Float].SparseRepresentation>
+  ) -> some QueryExpression<SparseFloat32Vector>
   where V.Format == VectorFormat.SparseFloat32 {
-    Self.slice(expression, from: start, to: end, as: [Float].SparseRepresentation.self)
+    Self.slice(expression, from: start, to: end, as: SparseFloat32Vector.self)
   }
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.

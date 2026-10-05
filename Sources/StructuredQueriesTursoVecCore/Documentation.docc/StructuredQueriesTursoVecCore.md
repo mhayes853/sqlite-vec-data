@@ -11,21 +11,38 @@ conformance. Use these helpers with a Turso Database driver.
 
 ### Supported conversions
 
-Conversion results expose numeric or logical Swift values. Use the representation matching the
-column's encoding:
+Conversion results preserve their format. Dense and binary representations expose scalar arrays;
+quantized and sparse results expose encoded vector values. Match the column's encoding:
 
 | Conversion | Swift representation |
 | --- | --- |
 | `vector32` / `vector` | `[Float].VectorBytesRepresentation` |
 | `vector64` | `[Double].VectorBytesRepresentation` |
-| `vector8` | `[Float].Float8Representation` |
+| `vector8` | `Quantized8Vector` |
 | `vector1bit` | `[Bool].TursoBytesRepresentation` |
-| `vector32Sparse` | `[Float].SparseRepresentation` |
+| `vector32Sparse` | `SparseFloat32Vector` |
 
 `vector32Sparse` emits SQL's `vector32_sparse` function. Float8 is unsigned-byte quantization
 with per-vector scale and shift metadata, rather than an IEEE float8 scalar or SQLiteVec int8.
-Binding requires finite values and a finite scale; decoding reconstructs stored values.
-This quantized representation is lossy.
+`Quantized8Vector` stores unsigned `codes`, a nonnegative finite `scale`, and a finite `shift`.
+Each code reconstructs as `Float(code) * scale + shift`. Construction validates that reconstructed
+values are finite. `init(quantizing:)` applies Turso's min/max affine quantization once;
+`init(codes:scale:shift:)` accepts already quantized components. Binding and decoding preserve
+those components. Call `decodedValues()` explicitly to reconstruct dense floats.
+
+```swift
+let compressed = try Quantized8Vector(quantizing: [0, 127.5, 255])
+// codes: [0, 128, 255], scale: 1, shift: 0
+let values = compressed.decodedValues() // [0, 128, 255]
+
+@Table("compressed_documents")
+struct CompressedDocument {
+  var embedding: Quantized8Vector
+}
+```
+
+These are encoded values, so they are column types directly. They do not need an `@Column(as:)`
+strategy. Quantization is lossy, but reading and rebinding never requantizes values.
 
 Shared float32 bytes agree with SQLiteVec on little-endian platforms. Float64, float8,
 and binary layouts include Turso's format metadata. The executing database checks input formats
@@ -87,28 +104,32 @@ float64, compressed, binary, or sparse operands. Use the conversion matching the
 
 ### Sparse and binary values
 
-The sparse representation keeps a dense Swift array while storing only nonzero components,
-their indices, and the original dimension count. Decoding fills omitted dimensions with zero;
-signed zero becomes positive zero. It validates the format tag, byte lengths, and sorted,
-unique, in-range indices.
+`SparseFloat32Vector` stores `dimensions`, sorted unique `indices: [UInt32]`, and matching
+`values: [Float]`. Both Swift storage and the database blob remain sparse. Decoding validates
+the format tag, byte lengths, and indices without allocating a dense array.
+
+Use `init(compressing:)` to omit zeros from a dense array, or
+`init(dimensions:indices:values:)` to supply sparse components directly. The latter preserves
+explicit zeros and IEEE value bit patterns. `denseValues()` allocates a dense array and fills
+omitted positions with positive zero. Compression omits both positive and negative zeros.
 
 For example, `[0, 0, 1.5, 0, 0, 2.5]` stores values `[1.5, 2.5]`, indices `[2, 5]`, and a
 dimension count of `6`. Each stored entry uses four bytes for its value and four for its index,
 plus five bytes per vector for the dimension count and format tag. Sparse storage is useful for
 TF-IDF, bag-of-words, and other high-dimensional features with many exact zeros. It generally
 adds overhead for dense embeddings. See [Turso's sparse guide](https://docs.turso.tech/guides/vector-search#sparse-vectors).
-The current Swift representation remains dense, so it saves database storage rather than Swift
-array memory. Sparse encoding alone does not create an index.
+Sparse encoding alone does not create an index.
 
 ```swift
 @Table("sparse_documents")
 struct SparseDocument {
-  @Column(as: [Float].SparseRepresentation.self)
-  var embedding: [Float]
+  var embedding: SparseFloat32Vector
 }
 
+let embedding = try SparseFloat32Vector(dimensions: 6, indices: [2, 5], values: [1.5, 2.5])
+
 let query = SparseDocument.select {
-  TursoVec.distanceJaccard($0.embedding, to: TursoVec.vector32Sparse("[0, 1, 0, 2]"))
+  TursoVec.distanceJaccard($0.embedding, to: embedding)
 }
 ```
 
@@ -123,7 +144,7 @@ components as +1/-1, while Jaccard compares the sets of true bits.
 
 ### Concatenate and slice
 
-Turso utilities can change the dimension count, so their default output uses an array representation:
+Turso utilities can change the dimension count, so their default output has a variable dimension count:
 
 ```swift
 let joined = TursoVec.concat(TursoVec.vector32("[1, 2]"), TursoVec.vector32("[3, 4]"))
@@ -150,12 +171,32 @@ This conversion uses dense intermediate storage.
 
 On Swift 6.2 and supported platforms, `EmbeddingVector<N>` remains directly query-bindable.
 Other scalar types use `EmbeddingVector64<N>` and `BinaryEmbeddingVector<N>` with explicit
-nested representations. Float32 fixed-size vectors also provide `.Float8Representation` and
-`.SparseRepresentation`.
+nested representations.
+
+`InlineQuantized8Vector<N>` stores its `N` unsigned codes in an inline array, with scale and shift
+alongside them. `SizedSparseFloat32Vector<N>` fixes the logical dimension count while keeping its
+indices and values in arrays: the number of stored entries remains variable. Both types are directly
+query-bindable and validate decoded dimensions.
+
+```swift
+let quantized = try InlineQuantized8Vector<3>(
+  quantizing: EmbeddingVector<3>([0, 127.5, 255])
+)
+let supplied = try InlineQuantized8Vector<3>(codes: [0, 128, 255], scale: 1, shift: 0)
+let sparse = try SizedSparseFloat32Vector<6>(indices: [2, 5], values: [1.5, 2.5])
+let dense: EmbeddingVector<6> = sparse.denseValues()
+```
+
+These four encoded vector types belong to `StructuredQueriesTursoVecCore`. Dense embedding values
+and their byte strategies belong to `StructuredQueriesVectorCore`, shared with SQLiteVec. Encoded
+value equality and hashing compare stored component bit patterns, including scale/shift and sparse
+NaNs; dense embedding equality uses Swift scalar semantics. No raw-memory comparison is used.
 
 Choose the matching representation using `as:` for conversions, concat, or slice:
 
 ```swift
+let quantized = TursoVec.vector8("[1, 2, 3, 4]", as: InlineQuantized8Vector<4>.self)
+let sparse = TursoVec.vector32Sparse("[0, 1, 0, 2]", as: SizedSparseFloat32Vector<4>.self)
 let converted = TursoVec.vector64(
   "[1, 2, 3, 4]",
   as: EmbeddingVector64<4>.VectorBytesRepresentation.self

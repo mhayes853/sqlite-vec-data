@@ -291,17 +291,26 @@ conformance. Convert JSON explicitly with `TursoVec.vector32`, `vector64`, `vect
 | --- | --- |
 | `vector32` / `vector` | `[Float].VectorBytesRepresentation` |
 | `vector64` | `[Double].VectorBytesRepresentation` |
-| `vector8` | `[Float].Float8Representation` |
+| `vector8` | `Quantized8Vector` |
 | `vector1bit` | `[Bool].TursoBytesRepresentation` |
-| `vector32Sparse` | `[Float].SparseRepresentation` |
+| `vector32Sparse` | `SparseFloat32Vector` |
 
 `TursoVec` offers cosine, L2, negative dot product, and Jaccard distances with matching formats,
 dense concatenation, and dense or sparse slicing. Binary cosine returns Hamming distance;
-binary L2 is unavailable. Float8 storage is lossy quantization with a shared scale and shift.
+binary L2 is unavailable. `Quantized8Vector` retains unsigned byte codes, scale, and shift for
+Turso's affine 8-bit quantization, rather than IEEE FP8 or signed int8. Use
+`try Quantized8Vector(quantizing: values)` to quantize once, or `init(codes:scale:shift:)` for
+existing components. Reading and rebinding preserve them; `decodedValues()` reconstructs floats.
 
 Sparse blobs store only nonzero float32 values, their indices, and the original dimension count.
-This is useful for TF-IDF, bag-of-words, and other mostly zero feature vectors. The current Swift
-representation remains a dense array. Sparse storage alone does not create an index.
+This is useful for TF-IDF, bag-of-words, and other mostly zero feature vectors. The Swift value
+retains sparse indices and values. `denseValues()` explicitly expands them. Sparse storage alone
+does not create an index.
+
+On Swift 6.2, `InlineQuantized8Vector<N>` stores its codes inline, and
+`SizedSparseFloat32Vector<N>` fixes the logical dimensions while keeping a variable number of sparse
+entries. These four encoded types live in `StructuredQueriesTursoVecCore` and can be used as column
+types directly. Shared dense vectors and byte strategies remain in `StructuredQueriesVectorCore`.
 
 Fixed-size representations are available on the corresponding `EmbeddingVector<N>`,
 `EmbeddingVector64<N>` and `BinaryEmbeddingVector<N>` types. Use
