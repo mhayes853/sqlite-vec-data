@@ -37,7 +37,7 @@ silently discarding incomplete elements.
 ### Fixed-size vectors
 
 ``FixedEmbeddingVector`` is a Hashable and Codable fixed-length array alternative to `InlineArray`.
-Prefer its aliases for the supported scalar types:
+Its float32 and float64 aliases sit alongside a dedicated packed binary type:
 
 | Value type | Scalar | Default query representation |
 | --- | --- | --- |
@@ -68,13 +68,37 @@ All fixed-size representations validate the decoded dimension count.
 
 ### Binary representations
 
+``BinaryEmbeddingVector`` stores packed bytes while exposing mutable `Bool` collection elements.
+It uses `ceil(N / 8)` bytes rather than an inline array of booleans; 1,536 logical dimensions require
+192 bytes. `packedBytes` exposes the payload without database metadata. `init(packedBytes:)`
+validates the byte count and clears unused high bits, so equality, hashing, bit counts, and distances
+ignore padding. `init(validating:)` checks an ordinary boolean array's logical count.
+Codable still uses a boolean array. This concrete type replaces the former
+`FixedEmbeddingVector<N, Bool>` alias.
+
+```swift
+let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
+var binary = BinaryEmbeddingVector<8>(quantizing: dense)
+binary[2] = true
+let trueBits = binary.nonzeroBitCount
+let distance = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: false))
+```
+
+`init(quantizing:)` keeps the sign test `value > 0`, following
+[Turso's binary conversion](https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/convert.rs).
+Positive infinity becomes true; zeros, negatives, and NaNs become false. This loses magnitude
+information. `hammingDistance(to:)` returns an `Int` by counting set bits in the XOR of the packed
+payloads; its operand has the same compile-time dimensions.
+
 `[Bool].PackedBitsRepresentation` and `BinaryEmbeddingVector<N>.PackedBitsRepresentation` store
 bits without metadata, compatible with SQLiteVec binary vectors. The first element occupies the
 least significant bit of the first byte. Binding requires a dimension count divisible by eight,
 because this format cannot preserve partial-byte lengths.
 
 The Turso target adds `.TursoBytesRepresentation` to both value types. It includes Turso's binary
-format and dimension metadata and supports partial-byte lengths. It also provides
+format and dimension metadata and supports partial-byte lengths. Both fixed-size adapters bind
+and decode the packed payload directly, without an intermediate boolean array. The Turso target
+also provides
 `Quantized8Vector`, `InlineQuantized8Vector<N>`, `SparseFloat32Vector`, and
 `SizedSparseFloat32Vector<N>` for Turso-specific encoded values. Quantized values retain unsigned
 byte codes, scale, and shift. Sparse values retain their entries without expanding into dense
@@ -117,8 +141,8 @@ let validated = try EmbeddingVector<3>(validating: values)
 ```
 
 `init(vectorBytes:)` validates byte lengths, format metadata, and any fixed dimension count.
-`FixedEmbeddingVector.init(validating:)` also accepts scalar arrays, including logical binary
-values, and throws `VectorDecodingError.dimensionMismatch` when their count differs.
+`FixedEmbeddingVector.init(validating:)` and `BinaryEmbeddingVector.init(validating:)` accept
+scalar arrays and throw `VectorDecodingError.dimensionMismatch` when their count differs.
 Fixed-size APIs require the platform availability described above.
 
 For query-bindable vectors and representations, `queryBinding` wraps `vectorBytes` in a BLOB,

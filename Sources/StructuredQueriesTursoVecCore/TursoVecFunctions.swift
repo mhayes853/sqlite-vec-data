@@ -6,6 +6,20 @@ import StructuredQueriesCore
 /// Convert JSON explicitly before distance comparisons, using the same format on both sides.
 /// The database checks dimensions and value-dependent restrictions.
 public enum TursoVec {
+  /// Counts differing binary components with Turso's `vector_distance_cos` specialization.
+  /// The database returns an integer-valued REAL and requires equal dimensions.
+  /// See [Turso's limitations](https://docs.turso.tech/guides/vector-search#limitations).
+  public static func distanceHamming<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where L.Encoding == [Bool].TursoBytesRepresentation, R.Encoding == L.Encoding {
+    Self.distanceCosine(expression, to: vector)
+  }
+
   /// Converts JSON or a supported vector blob to a 32-bit floating-point vector with `vector32`.
   public static func vector32(
     _ expression: some QueryExpression

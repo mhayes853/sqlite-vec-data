@@ -227,6 +227,35 @@ struct `TursoVec Query tests` {
   #if swift(>=6.2)
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Binary Hamming Uses Documented Cosine SQL With Packed Bindings`() throws {
+      // https://docs.turso.tech/guides/vector-search#limitations
+      // Turso's vector_distance_cos returns Hamming distance for binary inputs.
+      let vector = try BinaryEmbeddingVector<9>(packedBytes: [133, 1])
+      let binding = BinaryEmbeddingVector<9>.TursoBytesRepresentation(queryOutput: vector)
+      let query = BinaryDocument.select {
+        TursoVec.distanceHamming($0.embedding, to: binding)
+      }
+      let prepared = query.query.prepare { "?\($0)" }
+      expectNoDifference(
+        prepared.sql,
+        """
+        SELECT vector_distance_cos("binary_documents"."embedding", ?1)
+        FROM "binary_documents"
+        """
+      )
+      expectNoDifference(prepared.bindings, [.blob([133, 1, 0, 23, 3])])
+      expectNoDifference(
+        TursoVec.distanceHamming(
+          TursoVec.vector1bit("[1,-1,1]"),
+          to: TursoVec.vector1bit("[1,1,-1]")
+        )
+        .queryFragment.prepare { "?\($0)" }.sql,
+        "vector_distance_cos(vector1bit(?1), vector1bit(?2))"
+      )
+    }
+
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Uses Encoded Vector Values Directly In Columns`() throws {
       // https://docs.turso.tech/sql-reference/functions/vector#vector8
       // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
@@ -278,6 +307,13 @@ struct `TursoVec Query tests` {
 }
 
 #if swift(>=6.2)
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  @Table("binary_documents")
+  private struct BinaryDocument: Hashable, Sendable {
+    @Column(as: BinaryEmbeddingVector<9>.TursoBytesRepresentation.self)
+    var embedding: BinaryEmbeddingVector<9>
+  }
+
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   @Table("sized_formats")
   private struct SizedFormats: Hashable, Sendable {

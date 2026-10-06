@@ -30,7 +30,7 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
 
 #if swift(>=6.2)
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension FixedEmbeddingVector where Scalar == Bool {
+  extension BinaryEmbeddingVector {
     /// Packed bits without metadata. Binding requires dimensions divisible by eight.
     public struct PackedBitsRepresentation:
       Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
@@ -38,19 +38,30 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       public typealias Scalar = Bool
       public typealias Encoding = [Bool].PackedBitsRepresentation
       public typealias VectorBytesRepresentation = Self
-      public var queryOutput: FixedEmbeddingVector<count, Bool>
+      public var queryOutput: BinaryEmbeddingVector<count>
 
-      public init(queryOutput: FixedEmbeddingVector<count, Bool>) {
+      public init(queryOutput: BinaryEmbeddingVector<count>) {
         self.queryOutput = queryOutput
       }
 
       public var vectorBytes: [UInt8] {
-        [Bool].PackedBitsRepresentation(queryOutput: Array(self.queryOutput)).vectorBytes
+        precondition(
+          BinaryEmbeddingVector<count>.count.isMultiple(of: 8),
+          "Packed bit vectors require a multiple of 8 dimensions"
+        )
+        return self.queryOutput.packedBytes
       }
 
       public init(vectorBytes: [UInt8]) throws {
-        let elements = try [Bool].PackedBitsRepresentation(vectorBytes: vectorBytes).queryOutput
-        try self.init(queryOutput: FixedEmbeddingVector<count, Bool>(validating: elements))
+        let (dimensions, overflow) = vectorBytes.count.multipliedReportingOverflow(by: 8)
+        guard !overflow else { throw VectorDecodingError.invalidBytes }
+        guard dimensions == BinaryEmbeddingVector<count>.count else {
+          throw VectorDecodingError.dimensionMismatch(
+            expected: BinaryEmbeddingVector<count>.count,
+            actual: dimensions
+          )
+        }
+        try self.init(queryOutput: BinaryEmbeddingVector<count>(packedBytes: vectorBytes))
       }
     }
   }

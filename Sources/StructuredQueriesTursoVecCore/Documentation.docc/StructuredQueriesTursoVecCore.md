@@ -156,8 +156,28 @@ component (+1 when extracted); false corresponds to a nonpositive component (-1 
 SQLiteVec's `.PackedBitsRepresentation` omits metadata and requires dimensions divisible by eight.
 
 For binary vectors, `distanceCosine` calls `vector_distance_cos` but returns Hamming distance,
-the count of differing bits. Binary L2 is unavailable. Turso's binary dot distance interprets
+the count of differing bits. `distanceHamming` provides a binary-only name for that same SQL
+function. It returns `Double` because Turso returns SQL REAL, even though the count is integral.
+Local `BinaryEmbeddingVector.hammingDistance(to:)` returns `Int`. Binary L2 is unavailable.
+Turso's binary dot distance interprets
 components as +1/-1, while Jaccard compares the sets of true bits.
+
+```swift
+@Table("binary_documents")
+struct BinaryDocument {
+  @Column(as: BinaryEmbeddingVector<9>.TursoBytesRepresentation.self)
+  var embedding: BinaryEmbeddingVector<9>
+}
+
+let binary = BinaryEmbeddingVector<9>(quantizing: EmbeddingVector<9>([1, -1, 1, -1, -1, -1, -1, 1, 1]))
+let binding = BinaryEmbeddingVector<9>.TursoBytesRepresentation(queryOutput: binary)
+let query = BinaryDocument.select { TursoVec.distanceHamming($0.embedding, to: binding) }
+```
+
+The shared binary value stores packed bytes, and its fixed-size database adapters bind and decode
+that payload directly. `packedBytes` has no database metadata. Turso's representation adds padding,
+the exact dimension count, and the format tag. See
+[Turso's binary distance limitations](https://docs.turso.tech/guides/vector-search#limitations).
 
 ### Concatenate and slice
 
@@ -202,6 +222,13 @@ let quantized = try InlineQuantized8Vector<3>(
 let supplied = try InlineQuantized8Vector<3>(codes: [0, 128, 255], scale: 1, shift: 0)
 let sparse = try SizedSparseFloat32Vector<6>(indices: [2, 5], values: [1.5, 2.5])
 let dense: EmbeddingVector<6> = sparse.denseValues()
+```
+
+The Turso target also adds throwing `EmbeddingVector<N>` conveniences that preserve dimensions:
+
+```swift
+let quantized = try EmbeddingVector<3>([0, 127.5, 255]).quantized8()
+let sparse = try EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5]).sparseFloat32()
 ```
 
 These four encoded vector types belong to `StructuredQueriesTursoVecCore`. Dense embedding values

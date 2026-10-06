@@ -236,10 +236,28 @@ let query = Embedding
   .select { ($0.id, $0.distance) }
 ```
 
-`EmbeddingVector64<N>` and `BinaryEmbeddingVector<N>` provide the same
-collection and Codable support for other scalars. Floating-point vectors use element-wise
+`EmbeddingVector64<N>` provides the same collection and Codable support for doubles.
+Floating-point vectors use element-wise
 comparison: signed zeros compare equal and NaNs compare unequal. This replaces the original
 float32 memory comparison.
+
+`BinaryEmbeddingVector<N>` is a concrete packed-bit collection with mutable `Bool` elements and
+boolean-array Codable support. It stores only `ceil(N / 8)` bytes: 1,536 dimensions need 192 bytes.
+`packedBytes` contains the raw payload, and `init(packedBytes:)` validates its length and clears
+unused high bits. Database metadata is added by the explicit byte representations.
+
+```swift
+let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
+var binary = BinaryEmbeddingVector<8>(quantizing: dense)
+binary[2] = true
+let differingBits = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: false))
+let trueBits = binary.nonzeroBitCount
+```
+
+Sign quantization keeps positive components and discards their magnitudes. Both query targets
+share this packed value. SQLiteVec's `.PackedBitsRepresentation` and Turso's
+`.TursoBytesRepresentation` bind and decode its packed payload directly. This replaces the earlier
+`FixedEmbeddingVector<N, Bool>` alias; access logical elements through the collection API.
 
 `Vec.bit` and `Vec.quantizeBinary` now return `[Bool].PackedBitsRepresentation` by default.
 Their `as:` overloads require a packed-bit representation. This corrects the previous float32
@@ -296,8 +314,10 @@ conformance. Convert JSON explicitly with `TursoVec.vector32`, `vector64`, `vect
 | `vector32Sparse` | `SparseFloat32Vector` |
 
 `TursoVec` offers cosine, L2, negative dot product, and Jaccard distances with matching formats,
-dense concatenation, and dense or sparse slicing. Binary cosine returns Hamming distance;
-binary L2 is unavailable. `Quantized8Vector` retains unsigned byte codes, scale, and shift for
+dense concatenation, and dense or sparse slicing. `TursoVec.distanceHamming` expresses binary
+Hamming distance using Turso's `vector_distance_cos` SQL function and returns `Double` (SQL REAL).
+Local `BinaryEmbeddingVector.hammingDistance(to:)` returns `Int`. Binary L2 is unavailable.
+`Quantized8Vector` retains unsigned byte codes, scale, and shift for
 Turso's affine 8-bit quantization, rather than IEEE FP8 or signed int8. Use
 `try Quantized8Vector(quantizing: values)` to quantize once, or `init(codes:scale:shift:)` for
 existing components. Reading and rebinding preserve them; `decodedValues()` reconstructs floats.
@@ -311,6 +331,14 @@ On Swift 6.2, `InlineQuantized8Vector<N>` stores its codes inline, and
 `SizedSparseFloat32Vector<N>` fixes the logical dimensions while keeping a variable number of sparse
 entries. These four encoded types live in `StructuredQueriesTursoVecCore` and can be used as column
 types directly. Shared dense vectors and byte strategies remain in `StructuredQueriesVectorCore`.
+
+`EmbeddingVector<N>.quantized8()` and `.sparseFloat32()` provide explicit, throwing conversions
+to these dimension-preserving types. These conveniences live in the Turso target:
+
+```swift
+let quantized = try EmbeddingVector<3>([0, 127.5, 255]).quantized8()
+let sparse = try EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5]).sparseFloat32()
+```
 
 Fixed-size representations are available on the corresponding `EmbeddingVector<N>`,
 `EmbeddingVector64<N>` and `BinaryEmbeddingVector<N>` types. Use
