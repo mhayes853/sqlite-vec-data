@@ -11,7 +11,8 @@
     public typealias Element = Bool
     public typealias Index = Int
 
-    private var storage: [UInt8]
+    @usableFromInline
+    internal var storage: [UInt8]
 
     /// Raw packed bits, without database format metadata.
     public var packedBytes: [UInt8] { self.storage }
@@ -42,6 +43,12 @@
       }
     }
 
+    /// Creates a vector from a first bit and a generator that receives each preceding bit.
+    ///
+    /// For example, `BinaryEmbeddingVector<4>(first: true) { !$0 }` creates alternating bits.
+    /// The generator runs `count - 1` times for a nonempty vector. For zero dimensions, this
+    /// creates an empty vector, ignores `first`, and never calls `next`, matching `InlineArray`.
+    /// Any error thrown by `next` is propagated immediately.
     public init<E: Error>(first: Bool, next: (Bool) throws(E) -> Bool) throws(E) {
       self.init(repeating: false)
       if Self.count > 0 {
@@ -75,9 +82,12 @@
       self.clearUnusedBits()
     }
 
-    /// Quantizes by testing each component against zero, following Turso's sign rule.
+    /// Applies zero-threshold binary quantization using `value > 0`, following Turso's sign rule.
+    ///
     /// Positive values, including positive infinity, become true. Zeros, negative values,
-    /// and NaNs become false. This discards all magnitude information.
+    /// and NaNs become false. This discards all magnitude information without normalizing or
+    /// centering the input. Retrieval quality depends on the embedding model.
+    /// See [binary embedding quantization](https://huggingface.co/blog/embedding-quantization#binary-quantization).
     public init(quantizing values: EmbeddingVector<count>) {
       self.init { values[$0] > 0 }
     }
@@ -102,6 +112,7 @@
     public func index(before index: Int) -> Int { index - 1 }
 
     /// Counts differing logical bits without unpacking either vector.
+    @inlinable
     public func hammingDistance(to other: Self) -> Int {
       zip(self.storage, other.storage).reduce(0) { $0 + ($1.0 ^ $1.1).nonzeroBitCount }
     }

@@ -9,6 +9,49 @@ import Testing
   struct `BinaryEmbeddingVector tests` {
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Generates Bits From Each Preceding Bit Including Empty And Singleton Vectors`() {
+      // https://github.com/swiftlang/swift/blob/swift-6.3-RELEASE/stdlib/public/core/InlineArray.swift#L309
+      var precedingBits = [Bool]()
+      let vector = BinaryEmbeddingVector<9>(first: true) {
+        precedingBits.append($0)
+        return !$0
+      }
+      expectNoDifference(precedingBits, [true, false, true, false, true, false, true, false])
+      expectNoDifference(vector.packedBytes, [85, 1])
+      expectNoDifference(Array(vector), [true, false, true, false, true, false, true, false, true])
+
+      var calls = 0
+      let empty = BinaryEmbeddingVector<0>(first: true) {
+        calls += 1
+        return !$0
+      }
+      let single = BinaryEmbeddingVector<1>(first: true) {
+        calls += 1
+        return !$0
+      }
+      expectNoDifference(empty.packedBytes, [])
+      expectNoDifference(single.packedBytes, [1])
+      expectNoDifference(calls, 0)
+    }
+
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Stops Generation Immediately When Next Throws`() {
+      var calls = 0
+      #expect(throws: GeneratorError.stopped) {
+        _ = try BinaryEmbeddingVector<9>(first: true) {
+          calls += 1
+          if calls == 3 {
+            throw GeneratorError.stopped
+          }
+          return !$0
+        }
+      }
+      expectNoDifference(calls, 3)
+    }
+
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Packs Bits Across Byte Boundaries`() throws {
       var vector = BinaryEmbeddingVector<17>(repeating: false)
       for index in [0, 7, 8, 16] {
@@ -167,6 +210,10 @@ import Testing
         [0, 0, 192, 63, 0, 0, 32, 64, 2, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 9]
       )
     }
+  }
+
+  private enum GeneratorError: Error, Hashable, Sendable {
+    case stopped
   }
 
 #endif

@@ -87,7 +87,16 @@ let distance = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: fa
 `init(quantizing:)` keeps the sign test `value > 0`, following
 [Turso's binary conversion](https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/convert.rs).
 Positive infinity becomes true; zeros, negatives, and NaNs become false. This loses magnitude
-information. `hammingDistance(to:)` returns an `Int` by counting set bits in the XOR of the packed
+information without normalizing or centering the input. Zero-threshold binary quantization is also
+used by [Sentence Transformers](https://huggingface.co/blog/embedding-quantization#binary-quantization);
+retrieval quality depends on the embedding model.
+
+`init(first:next:)` generates each bit from the preceding bit. For example,
+`BinaryEmbeddingVector<4>(first: true) { !$0 }` produces alternating bits. As with `InlineArray`,
+zero dimensions produce an empty vector without calling the generator; one dimension uses only
+the supplied first bit. Errors thrown by the generator propagate immediately.
+
+`hammingDistance(to:)` returns an `Int` by counting set bits in the XOR of the packed
 payloads; its operand has the same compile-time dimensions.
 
 `[Bool].PackedBitsRepresentation` and `BinaryEmbeddingVector<N>.PackedBitsRepresentation` store
