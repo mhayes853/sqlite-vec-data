@@ -73,8 +73,7 @@ It uses `ceil(N / 8)` bytes rather than an inline array of booleans; 1,536 logic
 192 bytes. `packedBytes` exposes the payload without database metadata. `init(packedBytes:)`
 validates the byte count and clears unused high bits, so equality, hashing, bit counts, and distances
 ignore padding. `init(validating:)` checks an ordinary boolean array's logical count.
-Codable still uses a boolean array. This concrete type replaces the former
-`FixedEmbeddingVector<N, Bool>` alias.
+Codable uses a boolean array.
 
 ```swift
 let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])

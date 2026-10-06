@@ -111,14 +111,16 @@ extension Vec {
   ///
   /// - Parameter expression: The vector expression to iterate over.
   /// - Returns: A select statement over the vector's indexed elements.
-  public static func each(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> SelectOf<VecEach> {
+  public static func each<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> SelectOf<VecEach> where V.Encoding == [Float].VectorBytesRepresentation {
     expression.vecEach()
   }
 }
 
-extension QueryExpression where QueryValue: VectorBytesRepresentable {
+extension QueryExpression
+where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Float].VectorBytesRepresentation
+{
   /// A select statement that iterates over the elements of this vector expression using SQLite
   /// Vec's `vec_each` virtual table.
   ///
@@ -137,24 +139,44 @@ extension QueryExpression where QueryValue: VectorBytesRepresentable {
   ///
   /// - Returns: A select statement over the vector's indexed elements.
   public func vecEach() -> SelectOf<VecEach> {
-    #if DEBUG
-      $isBuildingVecEachStatement.withValue(true) {
-        self.makeVecEachStatement()
-      }
-    #else
-      self.makeVecEachStatement()
-    #endif
+    vecEachStatement(vector: self.queryFragment)
   }
+}
 
-  private func makeVecEachStatement() -> SelectOf<VecEach> {
-    VecEach.where { _ in
-      SQLQueryExpression("\(VecEach.self).\(quote: "vector") = \(self)")
-    }
-    .asSelect()
+extension Vec {
+  /// Iterates over the logical bits of a packed-bit vector using `vec_each`.
+  /// Within each byte, SQLiteVec reports the most significant bit first.
+  public static func each<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> SelectOf<VecEach> where V.Encoding == [Bool].PackedBitsRepresentation {
+    expression.vecEach()
+  }
+}
+
+extension QueryExpression
+where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Bool].PackedBitsRepresentation {
+  /// Iterates over a packed-bit vector, applying SQLiteVec's binary subtype.
+  /// Within each byte, SQLiteVec's `vec_each` reports the most significant bit first.
+  public func vecEach() -> SelectOf<VecEach> {
+    vecEachStatement(vector: "vec_bit(\(self))")
   }
 }
 
 // MARK: - Helpers
+
+private func vecEachStatement(vector: QueryFragment) -> SelectOf<VecEach> {
+  func statement() -> SelectOf<VecEach> {
+    VecEach.where { _ in
+      SQLQueryExpression("\(VecEach.self).\(quote: "vector") = \(vector)")
+    }
+    .asSelect()
+  }
+  #if DEBUG
+    return $isBuildingVecEachStatement.withValue(true) { statement() }
+  #else
+    return statement()
+  #endif
+}
 
 #if DEBUG
   @TaskLocal private var isBuildingVecEachStatement = false

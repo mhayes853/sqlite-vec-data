@@ -256,12 +256,45 @@ let trueBits = binary.nonzeroBitCount
 
 Sign quantization keeps positive components and discards their magnitudes. Both query targets
 share this packed value. SQLiteVec's `.PackedBitsRepresentation` and Turso's
-`.TursoBytesRepresentation` bind and decode its packed payload directly. This replaces the earlier
-`FixedEmbeddingVector<N, Bool>` alias; access logical elements through the collection API.
+`.TursoBytesRepresentation` bind and decode its packed payload directly. Access logical elements
+through the collection API.
 
 `Vec.bit` and `Vec.quantizeBinary` now return `[Bool].PackedBitsRepresentation` by default.
 Their `as:` overloads require a packed-bit representation. This corrects the previous float32
 result representation, which could discard binary data during decoding.
+
+SQLiteVec helpers check vector encodings at compile time. Float32 vectors support L1, L2, cosine,
+arithmetic, and normalization; raw packed bits support Hamming. Both support inspection, slicing,
+iteration, and `MATCH`. Comparisons require matching encodings, and vector-result `as:` overloads
+require the operation's output encoding. Turso Float64, quantized, sparse, and binary formats cannot
+be passed to SQLiteVec helpers.
+
+```swift
+// CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
+@Table("BinaryEmbeddings")
+struct BinaryEmbedding: Vec0 {
+  @Column(as: [Bool].PackedBitsRepresentation.self)
+  var embedding: [Bool]
+  var label: String
+}
+
+let queryVector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+let insert = BinaryEmbedding.insert {
+  ($0.embedding, $0.label)
+} values: {
+  (Vec.bit(queryVector), "example")
+}
+let query = BinaryEmbedding
+  .where { $0.embedding.match(queryVector) }
+  .order { $0.distance }
+  .limit(5)
+  .select { ($0.label, $0.distance) }
+```
+
+Binary query helpers apply `vec_bit(...)` automatically. Binary inserts and updates need `Vec.bit`
+in their value expression to attach SQLiteVec's required subtype. Slice boundaries must be divisible
+by eight. `Vec.each` follows SQLiteVec's iteration order, most significant bit first within each byte;
+packed-vector collection indices and `Vec.toJSON` use least significant bit first.
 
 ## Targets
 

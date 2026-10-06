@@ -1382,31 +1382,6 @@ struct Vec0QueryTests {
     }
   #endif
 
-  @Test("Vec DistanceHamming Is Available For Queries")
-  func vecDistanceHammingQuery() async throws {
-    let queryVector: [Float].VectorBytesRepresentation = [0.3, 0.4, 0.5]
-    let query =
-      Embedding.select { embeddings in
-        Vec.distanceHamming(embeddings.embedding, to: queryVector)
-      }
-
-    assertQuery(query) { query in
-      try self.database.read { db in
-        try query.fetchAll(db)
-      }
-    } sql: {
-      #"""
-      SELECT vec_distance_hamming("Embeddings"."embedding", '���>���>\0\0\0?')
-      FROM "Embeddings"
-      """#
-    } results: {
-      """
-      SQLite error 1: Cannot calculate hamming distance between two float32 vectors. - while executing `SELECT vec_distance_hamming("Embeddings"."embedding", ?)
-      FROM "Embeddings"`
-      """
-    }
-  }
-
   @Test("Vec Length Can Be Selected")
   func vecLengthQuery() async throws {
     let query =
