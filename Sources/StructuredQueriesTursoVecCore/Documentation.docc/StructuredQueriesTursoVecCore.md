@@ -75,14 +75,14 @@ across fixed and variable dimension counts.
 
 ### Turso exact search
 
-Following [Turso's storage example](https://docs.turso.tech/guides/vector-search#storing-vectors),
+Following [Turso's schema example](https://turso.tech/blog/a-complete-guide-to-database-per-agent-architecture),
 execute this table-creation SQL through your Turso Database driver before using the model below:
 
 ```sql
 CREATE TABLE documents (
   id INTEGER PRIMARY KEY,
   content TEXT NOT NULL,
-  embedding BLOB NOT NULL
+  embedding F32_BLOB(4) NOT NULL
 );
 ```
 
@@ -91,7 +91,15 @@ generation; execute the creation SQL separately through your driver. A BLOB colu
 the vector formats listed above. Choose the encoding through a bound value or SQL conversion,
 and keep the format and dimensions consistent for distance comparisons.
 
-Model the column with a shared representation:
+`F32_BLOB(4)` describes the intended four-dimensional float32 format and has
+[BLOB affinity](https://github.com/tursodatabase/turso/blob/2487f62c372c99a21551a6450d4a10309c7dad2b/core/vdbe/affinity.rs#L186-L202);
+plain `BLOB` also works. The inspected Rust engine does not enforce the declared dimension count:
+an official [driver test](https://github.com/tursodatabase/turso-go/blob/ea06d135c592ae9a653ebf6ba5e069c8417c030c/turso_test.go#L354-L366)
+inserts five-dimensional vectors into `F32_BLOB(64)`.
+
+Model the column with `EmbeddingVector<4>` to express the dimensions in Swift and validate them
+on decoding. This example requires Swift 6.2 and the supported platforms described in
+`StructuredQueriesVectorCore`:
 
 ```swift
 import StructuredQueriesSQLite
@@ -101,21 +109,23 @@ import StructuredQueriesTursoVecCore
 struct Document {
   var id: Int
   var content: String
-  @Column(as: [Float].VectorBytesRepresentation.self)
-  var embedding: [Float]
+  var embedding: EmbeddingVector<4>
 }
 
-let embedding = TursoVec.vector32("[0.1, 0.3, 0.5, 0.7]")
+let embedding = TursoVec.vector32("[0.1, 0.3, 0.5, 0.7]", as: EmbeddingVector<4>.self)
 let insert = Document.insert { ($0.id, $0.content, $0.embedding) } values: {
   (1, "Introduction to databases", embedding)
 }
 
-let queryVector: [Float].VectorBytesRepresentation = [0.2, 0.4, 0.6, 0.8]
+let queryVector = EmbeddingVector<4>([0.2, 0.4, 0.6, 0.8])
 let query = Document
   .order { TursoVec.distanceCosine($0.embedding, to: queryVector).asc() }
   .limit(5)
   .select { ($0.content, TursoVec.extract($0.embedding)) }
 ```
+
+For variable-size float32 models, use `[Float]` with
+`@Column(as: [Float].VectorBytesRepresentation.self)` instead.
 
 ``TursoVec`` offers cosine and L2 distance, as well as `distanceDot`, the negative dot
 product, and `distanceJaccard`, weighted Jaccard distance for numeric values and binary Jaccard

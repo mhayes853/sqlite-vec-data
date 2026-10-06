@@ -281,19 +281,28 @@ it, so existing SQLiteVec imports continue to expose these types.
 ## Turso Vector Queries
 
 Create the table through your Turso Database driver before running the queries below. Following
-[Turso's storage example](https://docs.turso.tech/guides/vector-search#storing-vectors), embeddings
-use an ordinary BLOB column:
+[Turso's schema example](https://turso.tech/blog/a-complete-guide-to-database-per-agent-architecture),
+use `F32_BLOB(4)` to describe four-dimensional float32 embeddings:
 
 ```sql
 CREATE TABLE documents (
   id INTEGER PRIMARY KEY,
   content TEXT NOT NULL,
-  embedding BLOB NOT NULL
+  embedding F32_BLOB(4) NOT NULL
 );
 ```
 
 The `NOT NULL` columns match the nonoptional Swift properties below. `@Table` models the table
 for query generation; execute the creation SQL separately through your driver.
+
+`F32_BLOB(N)` has
+[BLOB affinity](https://github.com/tursodatabase/turso/blob/2487f62c372c99a21551a6450d4a10309c7dad2b/core/vdbe/affinity.rs#L186-L202),
+so plain `BLOB` also works. In the inspected Rust Turso engine,
+`N` records the intended dimensions but does not enforce them: an official
+[driver test](https://github.com/tursodatabase/turso-go/blob/ea06d135c592ae9a653ebf6ba5e069c8417c030c/turso_test.go#L354-L366)
+inserts a five-dimensional vector into `F32_BLOB(64)`. `EmbeddingVector<4>` expresses the count
+in Swift and validates it when decoding. This fixed-size example requires Swift 6.2 and the
+platforms listed under [EmbeddingVector](#embeddingvector).
 
 Add `StructuredQueriesTursoVecCore` and import it alongside `StructuredQueriesSQLite`:
 
@@ -305,20 +314,21 @@ import StructuredQueriesTursoVecCore
 struct Document {
   var id: Int
   var content: String
-  @Column(as: [Float].VectorBytesRepresentation.self)
-  var embedding: [Float]
+  var embedding: EmbeddingVector<4>
 }
 
-let queryVector: [Float].VectorBytesRepresentation = [0.2, 0.4, 0.6, 0.8]
+let queryVector = EmbeddingVector<4>([0.2, 0.4, 0.6, 0.8])
 let query = Document
   .order { TursoVec.distanceCosine($0.embedding, to: queryVector).asc() }
   .limit(5)
   .select { ($0.content, TursoVec.extract($0.embedding)) }
 ```
 
-The same BLOB column declaration supports dense, quantized, binary, and sparse vectors; choose
-the encoding with the bound value or SQL conversion. Keep the vector format and dimensions
-consistent for distance comparisons. Tables need no additional vector conformance.
+For variable-size float32 models, use `[Float]` with
+`@Column(as: [Float].VectorBytesRepresentation.self)`. A plain BLOB column supports dense,
+quantized, binary, and sparse vectors; choose the encoding with the bound value or SQL conversion.
+Keep the vector format and dimensions consistent for distance comparisons. Tables need no
+additional vector conformance.
 Convert JSON explicitly with `TursoVec.vector32`, `vector64`, `vector8`,
 `vector1bit`, or `vector32Sparse` before distance comparisons.
 
