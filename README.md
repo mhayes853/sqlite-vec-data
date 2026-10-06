@@ -280,6 +280,21 @@ it, so existing SQLiteVec imports continue to expose these types.
 
 ## Turso Vector Queries
 
+Create the table through your Turso Database driver before running the queries below. Following
+[Turso's storage example](https://docs.turso.tech/guides/vector-search#storing-vectors), embeddings
+use an ordinary BLOB column:
+
+```sql
+CREATE TABLE documents (
+  id INTEGER PRIMARY KEY,
+  content TEXT NOT NULL,
+  embedding BLOB NOT NULL
+);
+```
+
+The `NOT NULL` columns match the nonoptional Swift properties below. `@Table` models the table
+for query generation; execute the creation SQL separately through your driver.
+
 Add `StructuredQueriesTursoVecCore` and import it alongside `StructuredQueriesSQLite`:
 
 ```swift
@@ -301,8 +316,10 @@ let query = Document
   .select { ($0.content, TursoVec.extract($0.embedding)) }
 ```
 
-For Turso, create the table with a BLOB embedding column. Tables need no additional vector
-conformance. Convert JSON explicitly with `TursoVec.vector32`, `vector64`, `vector8`,
+The same BLOB column declaration supports dense, quantized, binary, and sparse vectors; choose
+the encoding with the bound value or SQL conversion. Keep the vector format and dimensions
+consistent for distance comparisons. Tables need no additional vector conformance.
+Convert JSON explicitly with `TursoVec.vector32`, `vector64`, `vector8`,
 `vector1bit`, or `vector32Sparse` before distance comparisons.
 
 | Conversion | Swift representation |

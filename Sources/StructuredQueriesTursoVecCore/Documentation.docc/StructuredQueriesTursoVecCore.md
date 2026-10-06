@@ -30,6 +30,14 @@ values are finite. `init(quantizing:)` applies Turso's min/max affine quantizati
 `init(codes:scale:shift:)` accepts already quantized components. Binding and decoding preserve
 those components. Call `decodedValues()` explicitly to reconstruct dense floats.
 
+Create the compressed model's table through your Turso Database driver:
+
+```sql
+CREATE TABLE compressed_documents (
+  embedding BLOB NOT NULL
+);
+```
+
 ```swift
 let compressed = try Quantized8Vector(quantizing: [0, 127.5, 255])
 // codes: [0, 128, 255], scale: 1, shift: 0
@@ -67,15 +75,21 @@ across fixed and variable dimension counts.
 
 ### Turso exact search
 
-The [Turso example](https://docs.turso.tech/guides/vector-search) stores embeddings in a BLOB column:
+Following [Turso's storage example](https://docs.turso.tech/guides/vector-search#storing-vectors),
+execute this table-creation SQL through your Turso Database driver before using the model below:
 
 ```sql
 CREATE TABLE documents (
   id INTEGER PRIMARY KEY,
-  content TEXT,
-  embedding BLOB
+  content TEXT NOT NULL,
+  embedding BLOB NOT NULL
 );
 ```
+
+The `NOT NULL` columns match the nonoptional Swift properties. `@Table` models a table for query
+generation; execute the creation SQL separately through your driver. A BLOB column supports all
+the vector formats listed above. Choose the encoding through a bound value or SQL conversion,
+and keep the format and dimensions consistent for distance comparisons.
 
 Model the column with a shared representation:
 
@@ -137,6 +151,14 @@ TF-IDF, bag-of-words, and other high-dimensional features with many exact zeros.
 adds overhead for dense embeddings. See [Turso's sparse guide](https://docs.turso.tech/guides/vector-search#sparse-vectors).
 Sparse encoding alone does not create an index.
 
+Create the sparse model's table with a BLOB column as well:
+
+```sql
+CREATE TABLE sparse_documents (
+  embedding BLOB NOT NULL
+);
+```
+
 ```swift
 @Table("sparse_documents")
 struct SparseDocument {
@@ -161,6 +183,14 @@ function. It returns `Double` because Turso returns SQL REAL, even though the co
 Local `BinaryEmbeddingVector.hammingDistance(to:)` returns `Int`. Binary L2 is unavailable.
 Turso's binary dot distance interprets
 components as +1/-1, while Jaccard compares the sets of true bits.
+
+Create the binary model's table before running its query:
+
+```sql
+CREATE TABLE binary_documents (
+  embedding BLOB NOT NULL
+);
+```
 
 ```swift
 @Table("binary_documents")
