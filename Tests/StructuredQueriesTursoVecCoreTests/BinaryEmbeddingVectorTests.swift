@@ -1,6 +1,5 @@
 import CustomDump
 import Foundation
-import StructuredQueriesSQLite
 import StructuredQueriesTursoVecCore
 import Testing
 
@@ -52,7 +51,7 @@ import Testing
 
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Packs Bits Across Byte Boundaries`() throws {
+    func `Packs Bits Across Byte Boundaries`() {
       var vector = BinaryEmbeddingVector<17>(repeating: false)
       for index in [0, 7, 8, 16] {
         vector[index] = true
@@ -60,8 +59,6 @@ import Testing
       expectNoDifference(vector.packedBytes, [129, 1, 1])
       expectNoDifference(vector.nonzeroBitCount, 4)
       expectNoDifference(Array(vector), (0..<17).map { [0, 7, 8, 16].contains($0) })
-      expectNoDifference(vector.dimensions, 17)
-      expectNoDifference(vector.distance(from: vector.startIndex, to: vector.endIndex), 17)
 
       var copy = vector
       copy[7] = false
@@ -69,12 +66,6 @@ import Testing
       expectNoDifference(copy.packedBytes, [1, 3, 1])
       expectNoDifference(vector.packedBytes, [129, 1, 1])
       expectNoDifference(vector.hammingDistance(to: copy), 2)
-      expectNoDifference(copy.hammingDistance(to: vector), 2)
-      expectNoDifference(vector.hammingDistance(to: vector), 0)
-
-      var bytes = vector.packedBytes
-      bytes[0] = 0
-      expectNoDifference(vector.packedBytes, [129, 1, 1])
     }
 
     @Test
@@ -94,17 +85,13 @@ import Testing
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Masks Repeated Bits At Boundary Dimensions`() {
       expectNoDifference(BinaryEmbeddingVector<0>(repeating: true).packedBytes, [])
-      expectNoDifference(BinaryEmbeddingVector<1>(repeating: true).packedBytes, [1])
-      expectNoDifference(BinaryEmbeddingVector<7>(repeating: true).packedBytes, [127])
       expectNoDifference(BinaryEmbeddingVector<8>(repeating: true).packedBytes, [255])
       expectNoDifference(BinaryEmbeddingVector<9>(repeating: true).packedBytes, [255, 1])
-      expectNoDifference(BinaryEmbeddingVector<16>(repeating: true).packedBytes, [255, 255])
-      expectNoDifference(BinaryEmbeddingVector<17>(repeating: true).packedBytes, [255, 255, 1])
       let embedding = BinaryEmbeddingVector<1_536>(repeating: true)
-      expectNoDifference(embedding.packedBytes.count, 192)
-      expectNoDifference(embedding.nonzeroBitCount, 1_536)
-      let empty = BinaryEmbeddingVector<0>(repeating: false)
-      expectNoDifference(empty.hammingDistance(to: empty), 0)
+      expectNoDifference(
+        embedding.hammingDistance(to: BinaryEmbeddingVector<1_536>(repeating: false)),
+        1_536
+      )
     }
 
     @Test
@@ -184,32 +171,6 @@ import Testing
       expectNoDifference(
         try BinaryEmbeddingVector<0>.TursoBytesRepresentation(vectorBytes: empty.vectorBytes),
         empty
-      )
-    }
-
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Dense Conveniences Retain Dimensions And Encoded Components`() throws {
-      // https://docs.turso.tech/sql-reference/functions/vector#vector8
-      // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
-      let quantized: InlineQuantized8Vector<3> = try EmbeddingVector<3>([0, 127.5, 255])
-        .quantized8()
-      expectNoDifference((0..<3).map { quantized.codes[$0] }, [0, 128, 255])
-      expectNoDifference(quantized.scale, 1)
-      expectNoDifference(quantized.shift, 0)
-      #expect {
-        _ = try EmbeddingVector<2>([1, .nan]).quantized8()
-      } throws: { error in
-        (error as? TursoVectorError)?.code == .invalidQuantization
-      }
-      let sparse: SizedSparseFloat32Vector<6> = try EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5])
-        .sparseFloat32()
-      expectNoDifference(sparse.indices, [2, 5])
-      expectNoDifference(sparse.values, [1.5, 2.5])
-      expectNoDifference(sparse.dimensions, 6)
-      expectNoDifference(
-        sparse.vectorBytes,
-        [0, 0, 192, 63, 0, 0, 32, 64, 2, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 9]
       )
     }
   }

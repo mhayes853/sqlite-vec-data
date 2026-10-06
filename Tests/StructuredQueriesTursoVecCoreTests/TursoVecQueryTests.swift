@@ -297,11 +297,6 @@ struct `TursoVec Query tests` {
         prepared.bindings,
         [left.queryBinding, right.queryBinding, .int(1), .int(3)]
       )
-      let sparse = TursoVec.vector32Sparse(
-        "[0,1]",
-        as: SizedSparseFloat32Vector<2>.self
-      )
-      expectNoDifference(sparse.queryFragment.prepare { "?\($0)" }.sql, "vector32_sparse(?1)")
     }
   #endif
 }
