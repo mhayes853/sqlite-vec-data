@@ -52,6 +52,27 @@ struct CompressedDocument {
 These are encoded values, so they are column types directly. They do not need an `@Column(as:)`
 strategy. Quantization is lossy, but reading and rebinding never requantizes values.
 
+Invalid constructor components throw ``TursoVectorError``. Handle its stable ``TursoVectorError/code``
+and use ``TursoVectorError/reason`` for diagnostics; reason text may change. Codes are extensible raw
+values, so include a default branch when switching:
+
+```swift
+do {
+  _ = try Quantized8Vector(quantizing: [1, .nan])
+} catch let error as TursoVectorError {
+  switch error.code {
+  case .invalidQuantization:
+    print("Invalid quantization: \(error.reason)")
+  case .invalidSparseComponents:
+    print("Invalid sparse components: \(error.reason)")
+  default:
+    print(error.reason)
+  }
+}
+```
+
+Malformed serialized bytes instead throw the shared `VectorDecodingError`.
+
 Shared float32 bytes agree with SQLiteVec on little-endian platforms. Float64, float8,
 and binary layouts include Turso's format metadata. The executing database checks input formats
 and value-dependent restrictions, including restrictions on empty float8 and binary blobs.

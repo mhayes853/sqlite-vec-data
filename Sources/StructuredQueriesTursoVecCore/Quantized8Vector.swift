@@ -20,10 +20,20 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
 
   /// Quantizes finite values using Turso's min/max scale, shift, and rounding rule.
   public init(quantizing values: [Float]) throws {
-    guard values.allSatisfy(\.isFinite) else { throw TursoVectorError.invalidQuantization }
+    guard values.allSatisfy(\.isFinite) else {
+      throw TursoVectorError(
+        code: .invalidQuantization,
+        reason: "Quantization input values must be finite."
+      )
+    }
     let shift = values.min() ?? 0
     let scale = ((values.max() ?? 0) - shift) / 255
-    guard scale.isFinite else { throw TursoVectorError.invalidQuantization }
+    guard scale.isFinite else {
+      throw TursoVectorError(
+        code: .invalidQuantization,
+        reason: "The input range must produce a finite quantization scale."
+      )
+    }
     let codes = values.map { value in
       scale == 0
         ? UInt8.zero
@@ -36,7 +46,13 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   public init(codes: [UInt8], scale: Float, shift: Float) throws {
     guard scale.isFinite, scale >= 0, shift.isFinite,
       codes.allSatisfy({ (Float($0) * scale + shift).isFinite })
-    else { throw TursoVectorError.invalidQuantization }
+    else {
+      throw TursoVectorError(
+        code: .invalidQuantization,
+        reason:
+          "Scale must be finite and nonnegative; shift and reconstructed values must be finite."
+      )
+    }
     self.codes = codes
     self.scale = scale
     self.shift = shift

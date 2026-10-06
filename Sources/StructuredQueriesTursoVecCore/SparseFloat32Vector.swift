@@ -19,7 +19,10 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
   /// Compresses a dense vector, omitting both positive and negative zeros.
   public init(compressing values: [Float]) throws {
     guard UInt32(exactly: values.count) != nil else {
-      throw TursoVectorError.invalidSparseComponents
+      throw TursoVectorError(
+        code: .invalidSparseComponents,
+        reason: "Sparse dimensions must fit in UInt32."
+      )
     }
     let entries = values.enumerated().filter { $0.element != 0 }
     try self.init(
@@ -35,7 +38,15 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
     guard let dimensions32 = UInt32(exactly: dimensions), indices.count == values.count,
       indices.allSatisfy({ $0 < dimensions32 }),
       zip(indices, indices.dropFirst()).allSatisfy({ $0 < $1 })
-    else { throw TursoVectorError.invalidSparseComponents }
+    else {
+      throw TursoVectorError(
+        code: .invalidSparseComponents,
+        reason: """
+          Sparse dimensions must fit in UInt32, indices and values must have matching lengths, \
+          and indices must be strictly increasing and less than the dimension count.
+          """
+      )
+    }
     self.dimensions = dimensions
     self.indices = indices
     self.values = values

@@ -42,20 +42,30 @@ struct `Vector Representation tests` {
 
   @Test
   func `Validates Quantization Before Binding`() throws {
-    #expect(throws: TursoVectorError.invalidQuantization) {
+    #expect {
       _ = try Quantized8Vector(quantizing: [1, .nan])
+    } throws: { error in
+      (error as? TursoVectorError)?.code == .invalidQuantization
     }
-    #expect(throws: TursoVectorError.invalidQuantization) {
+    #expect {
       _ = try Quantized8Vector(quantizing: [-.greatestFiniteMagnitude, .greatestFiniteMagnitude])
+    } throws: { error in
+      (error as? TursoVectorError)?.code == .invalidQuantization
     }
-    #expect(throws: TursoVectorError.invalidQuantization) {
+    #expect {
       _ = try Quantized8Vector(codes: [1], scale: -1, shift: 0)
+    } throws: { error in
+      (error as? TursoVectorError)?.code == .invalidQuantization
     }
-    #expect(throws: TursoVectorError.invalidQuantization) {
+    #expect {
       _ = try Quantized8Vector(codes: [0], scale: 1, shift: .infinity)
+    } throws: { error in
+      (error as? TursoVectorError)?.code == .invalidQuantization
     }
-    #expect(throws: TursoVectorError.invalidQuantization) {
+    #expect {
       _ = try Quantized8Vector(codes: [255], scale: .greatestFiniteMagnitude, shift: 0)
+    } throws: { error in
+      (error as? TursoVectorError)?.code == .invalidQuantization
     }
     let constant = try Quantized8Vector(quantizing: [7, 7])
     expectNoDifference(constant.codes, [0, 0])
@@ -73,8 +83,10 @@ struct `Vector Representation tests` {
     (2, [1, 0], [Float(1), 2])
   ])
   func `Rejects Invalid Sparse Components`(dimensions: Int, indices: [UInt32], values: [Float]) {
-    #expect(throws: TursoVectorError.invalidSparseComponents) {
+    #expect {
       _ = try SparseFloat32Vector(dimensions: dimensions, indices: indices, values: values)
+    } throws: { error in
+      (error as? TursoVectorError)?.code == .invalidSparseComponents
     }
   }
 
@@ -389,8 +401,10 @@ struct `Vector Representation tests` {
       #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
         _ = try InlineQuantized8Vector<3>(decoder: &decoder)
       }
-      #expect(throws: TursoVectorError.invalidQuantization) {
+      #expect {
         _ = try InlineQuantized8Vector<2>(codes: [10, 20], scale: -1, shift: 1)
+      } throws: { error in
+        (error as? TursoVectorError)?.code == .invalidQuantization
       }
       let rounded = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0, 127.5, 255]))
       expectNoDifference(rounded.decodedValues(), EmbeddingVector<3>([0, 128, 255]))
@@ -410,8 +424,10 @@ struct `Vector Representation tests` {
         sparse,
         try SizedSparseFloat32Vector<4>(compressing: EmbeddingVector<4>([0, 2, 0, 4]))
       )
-      #expect(throws: TursoVectorError.invalidSparseComponents) {
+      #expect {
         _ = try SizedSparseFloat32Vector<4>(indices: [4], values: [1])
+      } throws: { error in
+        (error as? TursoVectorError)?.code == .invalidSparseComponents
       }
     }
 

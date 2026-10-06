@@ -197,8 +197,10 @@ import Testing
       expectNoDifference((0..<3).map { quantized.codes[$0] }, [0, 128, 255])
       expectNoDifference(quantized.scale, 1)
       expectNoDifference(quantized.shift, 0)
-      #expect(throws: TursoVectorError.invalidQuantization) {
+      #expect {
         _ = try EmbeddingVector<2>([1, .nan]).quantized8()
+      } throws: { error in
+        (error as? TursoVectorError)?.code == .invalidQuantization
       }
       let sparse: SizedSparseFloat32Vector<6> = try EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5])
         .sparseFloat32()
