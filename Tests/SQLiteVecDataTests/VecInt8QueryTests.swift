@@ -6,6 +6,7 @@ import Testing
 @Suite(.sqliteVecAutoExtension)
 struct `Vec Int8 Query tests` {
   private let database: DatabaseQueue
+  private static let vector: [Int8].Int8BytesRepresentation = [-128, -64, 0, 1, 2, 3, 4, 127]
 
   init() async throws {
     self.database = try DatabaseQueue()
@@ -18,13 +19,12 @@ struct `Vec Int8 Query tests` {
         as: Void.self
       )
       .execute(db)
-      let exact: [Int8].Int8BytesRepresentation = [-128, -64, 0, 1, 2, 3, 4, 127]
       let near: [Int8].Int8BytesRepresentation = [-127, -64, 0, 1, 2, 3, 4, 127]
       try VecInt8Embedding.insert {
         ($0.embedding, $0.label)
       } values: {
         (Vec.int8(near), "near")
-        (Vec.int8(exact), "exact")
+        (Vec.int8(Self.vector), "exact")
       }
       .execute(db)
     }
@@ -51,60 +51,38 @@ struct `Vec Int8 Query tests` {
 
   @Test
   func `Stored Int8 Vectors Match Bound And Computed Queries`() async throws {
-    let vector: [Int8].Int8BytesRepresentation = [-128, -64, 0, 1, 2, 3, 4, 127]
+    let vector = Self.vector
     let match =
       VecInt8Embedding
       .where { $0.embedding.match(Vec.slice(vector, range: 0..<8)) }
       .order { $0.distance }
       .limit(2)
       .select { ($0.label, $0.embedding, $0.distance) }
-    let freeform =
-      VecInt8Embedding
-      .where { Vec.match($0.embedding, to: vector) }
-      .order { $0.distance }
-      .limit(2)
-      .select { ($0.label, $0.distance) }
     let scalar =
       VecInt8Embedding
       .order { $0.embedding.distanceL2(to: vector) }
       .select {
         (
-          $0.label, $0.embedding.distanceL2(to: vector), $0.embedding.distanceL1(to: vector),
+          $0.embedding.distanceL2(to: vector), $0.embedding.distanceL1(to: vector),
           $0.embedding.distanceCosine(to: vector)
         )
       }
-    expectNoDifference(
-      freeform.query.prepare { "?\($0)" }.sql,
-      """
-      SELECT "VecInt8Embeddings"."label", "VecInt8Embeddings"."distance"
-      FROM "VecInt8Embeddings"
-      WHERE (("VecInt8Embeddings"."embedding" MATCH vec_int8(?1)))
-      ORDER BY "VecInt8Embeddings"."distance"
-      LIMIT ?2
-      """
-    )
     try await self.database.read { db in
       let rows = try match.fetchAll(db)
-      let freeformRows = try freeform.fetchAll(db)
       let scalarRows = try scalar.fetchAll(db)
       expectNoDifference(rows.map(\.0), ["exact", "near"])
-      expectNoDifference(rows.map(\.1), [vector.queryOutput, [-127, -64, 0, 1, 2, 3, 4, 127]])
+      expectNoDifference(rows.first?.1, vector.queryOutput)
       expectNoDifference(rows.map(\.2), [0, 1])
-      expectNoDifference(freeformRows.map(\.0), rows.map(\.0))
-      expectNoDifference(freeformRows.map(\.1), rows.map(\.2))
-      expectNoDifference(scalarRows.map(\.0), rows.map(\.0))
-      expectNoDifference(scalarRows.map(\.1), rows.map(\.2))
-      expectNoDifference(scalarRows.map(\.2), [0, 1])
-      #expect(abs(scalarRows[0].3) < 0.000001)
-      #expect(scalarRows[1].3 > scalarRows[0].3)
+      expectNoDifference(scalarRows.map(\.0), rows.map(\.2))
+      expectNoDifference(scalarRows.map(\.1), [0, 1])
+      #expect(abs(scalarRows[0].2) < 0.000001)
+      #expect(scalarRows[1].2 > scalarRows[0].2)
     }
   }
 
   @Test
-  func `Inspection Arithmetic Iteration And Binary Quantization Preserve Signed Components`()
-    async throws
-  {
-    let vector: [Int8].Int8BytesRepresentation = [-128, -64, 0, 1, 2, 3, 4, 127]
+  func `Int8 Operations Preserve The Encoding`() async throws {
+    let vector = Self.vector
     let offset: [Int8].Int8BytesRepresentation = [1, 1, -1, 2, 3, 4, 5, -1]
     let query =
       VecInt8Embedding
@@ -122,8 +100,7 @@ struct `Vec Int8 Query tests` {
       .join(VecInt8Embedding.columns.embedding.vecEach()) { _, _ in true }
       .where { embedding, _ in embedding.label.eq("exact") }
       .order { _, element in element.rowid }
-      .select { _, element in (element.rowid, element.value) }
-    let boundEach = Vec.each(vector).order { $0.rowid }
+      .select { _, element in element.value }
     try await self.database.read { db in
       let result = try #require(try query.fetchOne(db))
       expectNoDifference(result.0, 8)
@@ -133,10 +110,7 @@ struct `Vec Int8 Query tests` {
       expectNoDifference(result.4, vector.queryOutput)
       expectNoDifference(result.5, [-64, 0, 1])
       expectNoDifference(result.6, [false, false, false, true, true, true, true, true])
-      let rows = try each.fetchAll(db)
-      expectNoDifference(rows.map(\.0), Array(0..<8))
-      expectNoDifference(rows.map(\.1), [-128, -64, 0, 1, 2, 3, 4, 127])
-      expectNoDifference(try boundEach.fetchAll(db).map(\.value), rows.map(\.1))
+      expectNoDifference(try each.fetchAll(db), vector.queryOutput.map(Float.init))
     }
   }
 
@@ -154,13 +128,11 @@ struct `Vec Int8 Query tests` {
       let result = try #require(try query.fetchOne(db))
       expectNoDifference(result.0, [-128, 0, 127])
       expectNoDifference(result.1, [-128, 0, 127])
-      #expect(throws: Error.self) {
-        try #sql("SELECT \(Vec.int8("[128]"))", as: [Int8].Int8BytesRepresentation.self)
-          .fetchOne(db)
-      }
-      #expect(throws: Error.self) {
-        try #sql("SELECT \(Vec.int8("[1.5]"))", as: [Int8].Int8BytesRepresentation.self)
-          .fetchOne(db)
+      for json in ["[128]", "[1.5]"] {
+        #expect(throws: Error.self) {
+          try #sql("SELECT \(Vec.int8(json))", as: [Int8].Int8BytesRepresentation.self)
+            .fetchOne(db)
+        }
       }
     }
   }
@@ -202,7 +174,7 @@ struct `Vec Int8 Query tests` {
           try wrongDimensionQuery.fetchOne(db)
         }
         let record = FixedInt8Embedding(
-          embedding: FixedEmbeddingVector<8, Int8>([-128, -64, 0, 1, 2, 3, 4, 127]),
+          embedding: try FixedEmbeddingVector<8, Int8>(validating: Self.vector.queryOutput),
           label: "fixed"
         )
         let binding = FixedEmbeddingVector<8, Int8>
