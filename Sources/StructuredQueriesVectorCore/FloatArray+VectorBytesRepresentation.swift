@@ -8,7 +8,7 @@ extension Array where Element: VectorScalar {
   /// Float uses raw float32 bytes, shared with SQLiteVec on little-endian platforms.
   /// Double uses Turso's tagged float64 format.
   public struct VectorBytesRepresentation:
-    Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
+    Hashable, Sendable, QueryBindable, VectorBytesRepresentable
   {
     public typealias Scalar = Element
     public typealias Encoding = [Element].VectorBytesRepresentation
@@ -40,7 +40,7 @@ extension Array.VectorBytesRepresentation: ExpressibleByArrayLiteral {
   extension InlineArray where Element: VectorScalar {
     /// The scalar's default blob representation with fixed-dimension validation.
     public struct VectorBytesRepresentation:
-      Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
+      Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Element
       public typealias Encoding = [Element].VectorBytesRepresentation

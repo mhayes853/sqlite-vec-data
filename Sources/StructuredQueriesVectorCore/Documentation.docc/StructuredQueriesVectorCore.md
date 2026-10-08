@@ -157,10 +157,15 @@ For query-bindable vectors and representations, `queryBinding` wraps `vectorByte
 and `init(decoder:)` passes the decoded BLOB to `init(vectorBytes:)`. Drivers and other consumers
 can use the same serialization directly.
 
-``VectorScalar`` requires `encodeVector(_:)` and `decodeVector(_:)`. Float and Double implement
-their default byte layouts directly, preserving IEEE bit patterns. Custom conformances supply
-these operations instead of relying on a runtime format switch. These methods serialize a whole
-vector; Double's encoding includes Turso's float64 type byte.
+``VectorScalar`` exposes an unsigned integer `BitPattern`, a `bitPattern` property, and
+`init(bitPattern:)`. Its default `encodeVector(_:)` and `decodeVector(_:)` implementations serialize
+those bits in little-endian order, preserving signed zeros and NaN payloads. Other floating-point
+scalar types can reuse these defaults when adopting the protocol.
+
+Float accepts an optional float32 type byte when decoding. Double adds and validates Turso's
+float64 type byte. Custom conformances can override the codec methods for other framing, and
+must provide the bit-pattern requirements. The package supplies Float and Double conformances;
+reusing the codec for another precision does not add that format to either database's SQL helpers.
 
 ``VectorScalar`` and ``VectorBytesRepresentable`` are the two vector abstraction protocols.
 Engine-specific SQL functions live in the `TursoVec` and `Vec` namespaces; tables need no

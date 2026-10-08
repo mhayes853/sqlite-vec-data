@@ -25,6 +25,22 @@ let query = Embedding
   .select { ($0.label, $0.distance) }
 ```
 
+`match` accepts bound vectors and computed query expressions with the same encoding. Use the
+column convenience or the `Vec.match` form:
+
+```swift
+let query = Embedding
+  .where { $0.embedding.match(Vec.normalize(queryVector)) }
+  .limit(5)
+
+let freeformQuery = Embedding
+  .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+  .limit(5)
+```
+
+The left operand of `Vec.match` must refer to a vec0 vector column. SQLiteVec checks this requirement
+and the KNN query's limit or `k` constraint at execution.
+
 ### Distance functions
 
 ```swift

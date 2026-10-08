@@ -291,6 +291,9 @@ let query = BinaryEmbedding
   .select { ($0.label, $0.distance) }
 ```
 
+The column `match` helper also accepts computed vector expressions. Use
+`Vec.match(column, to: expression)` for the freeform version; both enforce matching encodings.
+
 Binary query helpers apply `vec_bit(...)` automatically. Binary inserts and updates need `Vec.bit`
 in their value expression to attach SQLiteVec's required subtype. Slice boundaries must be divisible
 by eight. `Vec.each` follows SQLiteVec's iteration order, most significant bit first within each byte;
@@ -422,8 +425,9 @@ let decoded = try Quantized8Vector(vectorBytes: quantized.vectorBytes)
 
 `VectorBytesRepresentable.Encoding` uses an existing canonical representation to identify the
 byte layout. Inline quantized vectors share `Quantized8Vector`'s encoding, and sized sparse vectors
-share `SparseFloat32Vector`'s encoding. `VectorScalar` supplies concrete encoding and decoding
-requirements implemented by Float and Double.
+share `SparseFloat32Vector`'s encoding. `VectorScalar` supplies generic little-endian codecs through
+an unsigned `BitPattern`, `bitPattern`, and `init(bitPattern:)`. Float and Double use these codecs
+with their format framing; other floating-point conformances can reuse or override them.
 
 Turso's experimental sparse indexing uses a separate mechanism and has no helper in this package.
 Exact search orders candidate rows by distance; use a `where` clause to reduce the candidate set

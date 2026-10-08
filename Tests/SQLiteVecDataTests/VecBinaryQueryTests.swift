@@ -35,10 +35,27 @@ struct `Vec Binary Query tests` {
     let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x05, 0x01])
     let match =
       VecBinaryEmbedding
-      .where { $0.embedding.match(vector) }
+      .where { $0.embedding.match(Vec.slice(vector, range: 0..<16)) }
       .order { $0.distance }
       .limit(2)
       .select { ($0.label, $0.distance) }
+    let freeformMatch =
+      VecBinaryEmbedding
+      .where { Vec.match($0.embedding, to: vector) }
+      .order { $0.distance }
+      .limit(2)
+      .select { ($0.label, $0.distance) }
+    let preparedMatch = match.query.prepare { "?\($0)" }
+    expectNoDifference(
+      preparedMatch.sql,
+      """
+      SELECT "VecBinaryEmbeddings"."label", "VecBinaryEmbeddings"."distance"
+      FROM "VecBinaryEmbeddings"
+      WHERE (("VecBinaryEmbeddings"."embedding" MATCH vec_bit(vec_slice(vec_bit(?1), 0, 16))))
+      ORDER BY "VecBinaryEmbeddings"."distance"
+      LIMIT ?2
+      """
+    )
     let scalar =
       VecBinaryEmbedding
       .order { $0.embedding.distanceHamming(to: vector) }
@@ -54,9 +71,12 @@ struct `Vec Binary Query tests` {
     )
     try await self.database.read { db in
       let matchRows = try match.fetchAll(db)
+      let freeformRows = try freeformMatch.fetchAll(db)
       let scalarRows = try scalar.fetchAll(db)
       expectNoDifference(matchRows.map(\.0), ["exact", "near"])
       expectNoDifference(matchRows.map(\.1), [0, 3])
+      expectNoDifference(freeformRows.map(\.0), matchRows.map(\.0))
+      expectNoDifference(freeformRows.map(\.1), matchRows.map(\.1))
       expectNoDifference(scalarRows.map(\.0), matchRows.map(\.0))
       expectNoDifference(scalarRows.map(\.1), matchRows.map(\.1))
     }

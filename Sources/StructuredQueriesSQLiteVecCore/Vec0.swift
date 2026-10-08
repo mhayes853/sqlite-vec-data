@@ -68,7 +68,7 @@ extension TableColumnExpression
 where
   Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Float].VectorBytesRepresentation
 {
-  /// Matches a query vector against a vec0 column.
+  /// Matches a bound or computed query vector against a vec0 column.
   ///
   /// ```swift
   /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
@@ -77,16 +77,12 @@ where
   ///   .select { $0.label }
   /// ```
   ///
-  /// - Parameter vector: The query vector to match.
+  /// - Parameter vector: The bound or computed query vector to match.
   /// - Returns: A boolean query expression for filtering.
-  public func match<V: VectorBytesRepresentable & QueryBindable>(
-    _ vector: V
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
   ) -> some QueryExpression<Bool> where V.Encoding == Value.Encoding {
-    SQLQueryExpression(
-      """
-      (\(Root.self).\(quote: name) MATCH \(vector))
-      """
-    )
+    Vec.match(self, to: vector)
   }
 }
 
@@ -411,15 +407,11 @@ where
 extension TableColumnExpression
 where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Bool].PackedBitsRepresentation
 {
-  /// Matches a packed-bit query against this vec0 binary column.
-  public func match<V: VectorBytesRepresentable & QueryBindable>(
-    _ vector: V
+  /// Matches a bound or computed packed-bit query against this vec0 binary column.
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
   ) -> some QueryExpression<Bool> where V.Encoding == Value.Encoding {
-    SQLQueryExpression(
-      """
-      (\(Root.self).\(quote: name) MATCH vec_bit(\(bind: vector)))
-      """
-    )
+    Vec.match(self, to: vector)
   }
 
   /// Returns the Hamming distance to a packed-bit query.

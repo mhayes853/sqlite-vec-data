@@ -6,6 +6,36 @@ import StructuredQueriesCore
 /// quantized, sparse, and metadata-bearing binary encodings are not supported. Packed-bit scalar
 /// operations apply `vec_bit` so SQLiteVec interprets bound blobs as binary vectors.
 public enum Vec {
+  /// Matches a query vector expression against a vec0 float32 column.
+  ///
+  /// The left expression must refer to a vec0 vector column. SQLiteVec enforces the KNN query's
+  /// limit or `k` constraint. The query vector can be a bound value or a computed expression.
+  ///
+  /// ```swift
+  /// let query = Embedding
+  ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+  ///   .limit(5)
+  /// ```
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
+    SQLQueryExpression("(\(expression) MATCH \(vector))")
+  }
+
+  /// Matches a query vector expression against a vec0 packed-bit column.
+  ///
+  /// The left expression must refer to a vec0 binary column. The query vector can be a bound
+  /// value or a computed expression, and `vec_bit` attaches SQLiteVec's required subtype.
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding {
+    SQLQueryExpression("(\(expression) MATCH vec_bit(\(vector)))")
+  }
+
   /// Returns the L2 distance between a vector expression and a query vector.
   /// This calls sqlite-vec's `vec_distance_l2` function.
   ///

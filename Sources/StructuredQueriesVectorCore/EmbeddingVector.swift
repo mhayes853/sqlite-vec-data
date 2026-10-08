@@ -225,7 +225,7 @@ import StructuredQueriesCore
 
     /// The scalar's default blob representation with fixed-dimension validation.
     public struct VectorBytesRepresentation:
-      Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
+      Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Element
       public typealias Encoding = [Element].VectorBytesRepresentation

@@ -45,7 +45,7 @@ struct Vec0QueryTests {
     let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
     let query =
       Embedding
-      .where { $0.embedding.match(queryVector) }
+      .where { $0.embedding.match(Vec.f32(queryVector)) }
       .order(by: { $0.distance })
       .limit(10)
 
@@ -57,7 +57,7 @@ struct Vec0QueryTests {
       """
       SELECT "Embeddings"."embedding", "Embeddings"."label"
       FROM "Embeddings"
-      WHERE (("Embeddings"."embedding" MATCH '���=��L>���>'))
+      WHERE (("Embeddings"."embedding" MATCH vec_f32('���=��L>���>')))
       ORDER BY "Embeddings"."distance"
       LIMIT 10
       """
@@ -163,7 +163,7 @@ struct Vec0QueryTests {
     let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
     let query =
       Embedding
-      .where { $0.embedding.match(queryVector) }
+      .where { Vec.match($0.embedding, to: queryVector) }
       .where { $0.k.eq(25) }
       .order(by: { $0.distance })
 

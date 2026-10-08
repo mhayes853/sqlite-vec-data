@@ -3,7 +3,7 @@ import StructuredQueriesCore
 extension Array where Element == Bool {
   /// Packed bits without metadata. Binding requires dimensions divisible by eight.
   public struct PackedBitsRepresentation:
-    Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
+    Hashable, Sendable, QueryBindable, VectorBytesRepresentable
   {
     public typealias Scalar = Bool
     public typealias Encoding = [Bool].PackedBitsRepresentation
@@ -33,7 +33,7 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
   extension BinaryEmbeddingVector {
     /// Packed bits without metadata. Binding requires dimensions divisible by eight.
     public struct PackedBitsRepresentation:
-      Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
+      Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Bool
       public typealias Encoding = [Bool].PackedBitsRepresentation

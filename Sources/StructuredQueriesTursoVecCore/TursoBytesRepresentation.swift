@@ -4,7 +4,7 @@ import StructuredQueriesVectorCore
 extension Array where Element == Bool {
   /// Turso binary storage, preserving exact dimensions through format metadata.
   public struct TursoBytesRepresentation:
-    Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
+    Hashable, Sendable, QueryBindable, VectorBytesRepresentable
   {
     public typealias Scalar = Bool
     public typealias Encoding = [Bool].TursoBytesRepresentation
@@ -34,7 +34,7 @@ extension Array.TursoBytesRepresentation: ExpressibleByArrayLiteral {
   extension BinaryEmbeddingVector {
     /// Turso binary storage, preserving exact dimensions through format metadata.
     public struct TursoBytesRepresentation:
-      Hashable, Sendable, QueryBindable, QueryRepresentable, VectorBytesRepresentable
+      Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Bool
       public typealias Encoding = [Bool].TursoBytesRepresentation

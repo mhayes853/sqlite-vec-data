@@ -9,7 +9,7 @@ public protocol VectorBytesRepresentable {
   /// `[Float].VectorBytesRepresentation`.
   associatedtype Encoding: QueryBindable
   /// The query representation for this value, preserving any fixed-dimension constraint.
-  associatedtype VectorBytesRepresentation: QueryBindable & QueryRepresentable
+  associatedtype VectorBytesRepresentation: QueryBindable
 
   /// The serialized vector, including any metadata required by its encoding.
   var vectorBytes: [UInt8] { get }
