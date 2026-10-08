@@ -1,6 +1,7 @@
 /// A floating-point scalar with a default vector byte layout.
 ///
-/// Float uses raw little-endian float32 bytes. Double uses Turso's tagged float64 bytes.
+/// Float16 uses raw little-endian binary16 bytes. Float uses raw little-endian float32 bytes.
+/// Double uses Turso's tagged float64 bytes. Float16 serialization does not imply database support.
 /// Default codecs serialize integer bit patterns in little-endian order. Conforming scalar types
 /// can override the codecs to validate or add format metadata.
 public protocol VectorScalar: BinaryFloatingPoint, Codable, Sendable {
@@ -29,6 +30,8 @@ extension VectorScalar {
     try decodeVectorPayload(bytes, as: Self.self)
   }
 }
+
+extension Float16: VectorScalar {}
 
 extension Float: VectorScalar {
   public static func decodeVector(_ bytes: [UInt8]) throws -> [Self] {

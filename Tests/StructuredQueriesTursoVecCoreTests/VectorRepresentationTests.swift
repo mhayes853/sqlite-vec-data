@@ -185,12 +185,16 @@ struct `Vector Representation tests` {
   func `Preserves IEEE Bit Patterns Through Scalar Dispatch`() throws {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
     // Signed zero, the least subnormal, infinity, and a signaling NaN retain their IEEE bits.
-    // A test-only Float16 conformance exercises the generic, untagged codec without adding a
-    // database format. Signed zero, subnormal, infinity, and signaling NaN survive unchanged.
+    // Float16 uses the generic, untagged codec. This is a serialization format rather than a
+    // supported database vector type. Signed zero, subnormal, infinity, and NaN bits survive.
     let halfBits: [UInt16] = [0x8000, 1, 0x7c00, 0x7c01]
     let halfBytes: [UInt8] = [0, 128, 1, 0, 0, 124, 1, 124]
-    expectNoDifference(Float16.encodeVector(halfBits.map { Float16(bitPattern: $0) }), halfBytes)
-    expectNoDifference(try Float16.decodeVector(halfBytes).map(\.bitPattern), halfBits)
+    expectNoDifference(
+      [Float16].VectorBytesRepresentation(queryOutput: halfBits.map { Float16(bitPattern: $0) })
+        .queryBinding,
+      .blob(halfBytes)
+    )
+    expectNoDifference(try [Float16](vectorBytes: halfBytes).map(\.bitPattern), halfBits)
     #expect(throws: VectorDecodingError.invalidBytes) {
       try Float16.decodeVector([0])
     }
@@ -448,6 +452,3 @@ private struct BlobQueryDecoder: Hashable, Sendable, QueryDecoder {
 
   private struct UnexpectedColumnType: Error {}
 }
-
-// Only the test target adopts Float16; the database targets still support their explicit formats.
-extension Float16: VectorScalar {}

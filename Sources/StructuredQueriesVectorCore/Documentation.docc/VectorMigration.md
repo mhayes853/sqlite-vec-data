@@ -131,8 +131,8 @@ Float32 `Encoding` promises Float32-compatible bytes; it does not convert anothe
 
 Custom `VectorScalar` conformers additionally supply an unsigned fixed-width integer `BitPattern`,
 `bitPattern`, and `init(bitPattern:)`. The default codec preserves those bits in little-endian order.
-Keep or override `encodeVector(_:)` and `decodeVector(_:)` if your format needs framing. Float and
-Double already conform. Adding a scalar conformance does not make a new precision supported by
+Keep or override `encodeVector(_:)` and `decodeVector(_:)` if your format needs framing. Float16, Float, and
+Double already conform. Float16 uses raw binary16 serialization and is not a database vector format. Adding a scalar conformance does not make a new precision supported by
 SQLiteVec or Turso's query helpers.
 
 ### Carry encoding constraints in generic SQL helpers

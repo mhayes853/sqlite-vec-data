@@ -470,8 +470,12 @@ let decoded = try Quantized8Vector(vectorBytes: quantized.vectorBytes)
 `VectorBytesRepresentable.Encoding` uses an existing canonical representation to identify the
 byte layout. Inline quantized vectors share `Quantized8Vector`'s encoding, and sized sparse vectors
 share `SparseFloat32Vector`'s encoding. `VectorScalar` supplies generic little-endian codecs through
-an unsigned `BitPattern`, `bitPattern`, and `init(bitPattern:)`. Float and Double use these codecs
-with their format framing; other floating-point conformances can reuse or override them.
+an unsigned `BitPattern`, `bitPattern`, and `init(bitPattern:)`. Float16 uses raw binary16 bytes;
+Float and Double use their format framing. Float16 arrays and fixed vectors can use the generic
+representations for serialization, but SQLiteVec and Turso do not support this vector format.
+Float32 and Float64 aliases are already covered. Float80 lacks the standard-library Codable and
+complete integer bit-pattern APIs required for conformance. Other floating-point conformances can
+reuse or override the codecs.
 
 Turso's experimental sparse indexing uses a separate mechanism and has no helper in this package.
 Exact search orders candidate rows by distance; use a `where` clause to reduce the candidate set

@@ -32,6 +32,11 @@ let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
 SQLiteVec float columns on little-endian platforms. SQLiteVec reads native float memory, so the
 formats are not interchangeable on big-endian systems.
 
+`[Float16].VectorBytesRepresentation` uses raw little-endian IEEE binary16 bytes, two bytes per
+component without a format tag. Arrays, inline arrays, and `FixedEmbeddingVector<N, Float16>` can
+reuse the generic representation and dimension validation. This serialization format is not a
+supported SQLiteVec or Turso vector format; use a supported precision for database vector queries.
+
 `[Double].VectorBytesRepresentation` uses Turso's tagged float64 blob format. This format is not
 supported by SQLiteVec float columns. Decoding validates byte lengths and format tags instead of
 silently discarding incomplete elements.
@@ -121,6 +126,7 @@ type. That identity is an existing canonical representation, independent of dime
 
 | Vector family | `Encoding` |
 | --- | --- |
+| Dense float16 (serialization only) | `[Float16].VectorBytesRepresentation` |
 | Dense float32 | `[Float].VectorBytesRepresentation` |
 | Dense float64 | `[Double].VectorBytesRepresentation` |
 | SQLiteVec signed Int8 | `[Int8].Int8BytesRepresentation` (SQLiteVec target) |
@@ -167,8 +173,11 @@ scalar types can reuse these defaults when adopting the protocol.
 
 Float accepts an optional float32 type byte when decoding. Double adds and validates Turso's
 float64 type byte. Custom conformances can override the codec methods for other framing, and
-must provide the bit-pattern requirements. The package supplies Float and Double conformances;
-reusing the codec for another precision does not add that format to either database's SQL helpers.
+must provide the bit-pattern requirements. The package supplies Float16, Float, and Double
+conformances. `Float32` and `Float64` are aliases of Float and Double, so they inherit those
+conformances. Float80 has no standard-library Codable
+conformance or complete integer `bitPattern` API and is not adopted here. Reusing a codec for another
+precision does not add that format to either database's SQL helpers.
 
 ``VectorScalar`` and ``VectorBytesRepresentable`` are the two vector abstraction protocols.
 Engine-specific SQL functions live in the `TursoVec` and `Vec` namespaces; tables need no
