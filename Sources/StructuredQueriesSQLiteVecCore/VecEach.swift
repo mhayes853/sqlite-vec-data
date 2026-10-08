@@ -162,6 +162,23 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Bool].Packed
   }
 }
 
+extension Vec {
+  /// Iterates over signed Int8 components using SQLiteVec's `vec_each`.
+  public static func each<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> SelectOf<VecEach> where V.Encoding == [Int8].Int8BytesRepresentation {
+    expression.vecEach()
+  }
+}
+
+extension QueryExpression
+where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Int8].Int8BytesRepresentation {
+  /// Iterates over signed Int8 components, applying SQLiteVec's required subtype.
+  public func vecEach() -> SelectOf<VecEach> {
+    vecEachStatement(vector: "vec_int8(\(self))")
+  }
+}
+
 // MARK: - Helpers
 
 private func vecEachStatement(vector: QueryFragment) -> SelectOf<VecEach> {

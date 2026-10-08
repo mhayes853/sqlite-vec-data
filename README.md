@@ -219,6 +219,50 @@ struct MyDatabaseTests {
 }
 ```
 
+## Migrating existing vector APIs
+
+This release changes existing SQLiteVec APIs as well as adding Turso support. See the
+[vector API migration guide](Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md)
+for updated custom conformances, Float32 extensions and representations, binary results, signed
+Int8 quantization, equality, and stricter decoding. Valid existing Float32 blobs remain compatible
+on supported little-endian platforms.
+
+## SQLiteVec Int8 vectors
+
+Use a signed-byte strategy from `StructuredQueriesSQLiteVecCore` for SQLiteVec's Int8 format:
+
+```swift
+@Table("Int8Embeddings")
+struct Int8Embedding: Vec0 {
+  @Column(as: [Int8].Int8BytesRepresentation.self)
+  var embedding: [Int8]
+  var label: String
+}
+
+// Run this SQL in your database migration:
+// CREATE VIRTUAL TABLE Int8Embeddings USING vec0(embedding int8[3], label text);
+let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
+let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
+  (Vec.int8(codes), "example")
+}
+let neighbors = Int8Embedding
+  .where { $0.embedding.match(codes) }
+  .order { $0.distance }
+  .limit(5)
+```
+
+`Vec.int8` tags signed bytes or parses integer JSON; it does not convert Float32 components.
+Use `Vec.quantizeInt8(floatExpression)` or a Float32 column's `.quantizeInt8()` to produce signed
+codes with `vec_quantize_int8(vector, 'unit')`. SQLiteVec maps the [-1, 1] range to signed Int8,
+clamps out-of-range values, and does not normalize the input. The previous `scale:` argument is
+removed because SQLiteVec accepts only `'unit'`.
+
+Int8 supports L1, L2, cosine distance, addition, subtraction, inspection, slicing, iteration, binary
+quantization, and vec0 matches. These helpers apply the Int8 subtype automatically; inserts use
+`Vec.int8(binding)` or a quantization expression. Fixed values can use
+`FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation`. Int8 strategies carry no scale or shift
+metadata and differ from Turso's `Quantized8Vector`.
+
 ## EmbeddingVector
 
 `EmbeddingVector` is a Hashable and Codable fixed-length array alternative to `InlineArray`. It is available on iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, and visionOS 26.0, and it can be stored in vec0 tables or used directly as a query binding.

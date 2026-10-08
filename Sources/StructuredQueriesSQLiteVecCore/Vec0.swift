@@ -347,37 +347,18 @@ where
     Vec.bit(self, as: result)
   }
 
-  /// Converts the vector stored in this column to an int8 representation.
-  /// This calls sqlite-vec's `vec_int8` function.
+  /// Quantizes Float32 components in [-1, 1] to signed Int8 codes.
   ///
-  /// ```swift
-  /// let query = Embedding.select {
-  ///   $0.embedding.int8()
-  /// }
-  /// ```
-  ///
-  /// - Returns: A query expression for the int8 vector.
-  public func int8() -> some QueryExpression<Value> {
-    Vec.int8(self, as: Value.self)
+  /// SQLiteVec clamps out-of-range components; it does not normalize the input.
+  public func quantizeInt8() -> some QueryExpression<[Int8].Int8BytesRepresentation> {
+    Vec.quantizeInt8(self)
   }
 
-  /// Quantizes the vector stored in this column to int8.
-  /// This calls sqlite-vec's `vec_quantize_int8` function.
-  ///
-  /// ```swift
-  /// let query = Embedding.select {
-  ///   $0.embedding.quantizeInt8(scale: 1.0)
-  /// }
-  /// ```
-  ///
-  /// - Parameter scale: The scale value passed to sqlite-vec.
-  /// - Returns: A query expression for the quantized vector.
-  public func quantizeInt8(scale: Double) -> some QueryExpression<Value> {
-    Vec.quantizeInt8(
-      self,
-      scale: scale,
-      as: Value.self
-    )
+  /// Quantizes to a signed Int8 representation with optional fixed-dimension validation.
+  public func quantizeInt8<T: VectorBytesRepresentable & QueryBindable>(
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Encoding == [Int8].Int8BytesRepresentation {
+    Vec.quantizeInt8(self, as: result)
   }
 
   /// Quantizes the vector stored in this column to a binary representation.

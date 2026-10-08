@@ -4,7 +4,7 @@ StructuredQueries helpers for [sqlite-vec](https://github.com/asg017/sqlite-vec)
 
 ## Overview
 
-Use ``Vec0`` tables, `TableColumnExpression` helpers like `match(_:)` and ``StructuredQueriesCore/TableColumnExpression/distanceCosine(to:)``, and the ``Vec`` namespace to build vector search queries without writing SQL strings directly.
+Use ``Vec0`` tables, `TableColumnExpression` helpers like `match(_:)` and `distanceCosine(to:)`, and the ``Vec`` namespace to build vector search queries without writing SQL strings directly.
 
 ### Match queries
 
@@ -123,15 +123,65 @@ SQLiteVec helpers constrain the vector's `Encoding` associated type. Float32 arr
 and `EmbeddingVector<N>` share `[Float].VectorBytesRepresentation` and can be used together.
 Float64, Turso quantized and sparse vectors, and Turso binary framing are rejected at compile time.
 
-L1, L2, cosine, addition, subtraction, and normalization accept Float32. Hamming accepts raw packed
-bits. Inspection, slicing, iteration, and `MATCH` support either encoding; comparisons require both
+L1, L2, cosine, addition, and subtraction accept Float32 or signed Int8. Normalization requires
+Float32. Hamming accepts raw packed bits. Inspection, slicing, iteration, and `MATCH` support all
+three encodings; comparisons require both
 operands to use the same encoding. The `as:` overloads for Float32 operations and packed-bit
 operations require a result with the operation's output encoding. Fixed result types additionally
 validate dimensions while decoding. Generic client helpers must carry the applicable `Encoding`
 constraint.
 
-These checks do not add a signed Int8 representation. Turso's quantized UInt8 format is different
-from SQLiteVec's signed Int8 vectors.
+## Signed Int8 vectors
+
+`[Int8].Int8BytesRepresentation` stores one signed byte per component without metadata. It lives in
+this target, alongside `FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation` for fixed dimensions.
+Turso's affine UInt8 `Quantized8Vector` has a different layout and is rejected by these helpers.
+
+```swift
+@Table("Int8Embeddings")
+struct Int8Embedding: Vec0 {
+  @Column(as: [Int8].Int8BytesRepresentation.self)
+  var embedding: [Int8]
+  var label: String
+}
+
+// CREATE VIRTUAL TABLE Int8Embeddings USING vec0(embedding int8[3], label text);
+let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
+let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
+  (Vec.int8(codes), "example")
+}
+let query = Int8Embedding
+  .where { $0.embedding.match(codes) }
+  .order { $0.distance }
+  .limit(5)
+```
+
+`Vec.int8` marks signed-byte expressions with SQLiteVec's Int8 subtype or parses integer JSON:
+`Vec.int8("[-128, 0, 127]")`. It does not numerically convert Float32 bytes. Insert with
+`Vec.int8(binding)` or a quantization expression; scalar helpers, iteration, and `MATCH` apply the
+subtype automatically because it does not survive storage or binding.
+
+```swift
+let floats: [Float].VectorBytesRepresentation = [-1, 0, 0.5, 2]
+let codes = Vec.quantizeInt8(floats)
+let fixedCodes = Vec.quantizeInt8(
+  floats,
+  as: FixedEmbeddingVector<4, Int8>.Int8BytesRepresentation.self
+)
+```
+
+`quantizeInt8()` emits `vec_quantize_int8(vector, 'unit')`, replacing the unsupported numeric
+`scale:` argument. It maps [-1, 1] to signed Int8 codes, clamps out-of-range values, and truncates
+toward zero using SQLiteVec's Float32 rounding. It does not normalize the input. Results contain
+signed codes, without per-vector scale or shift metadata or implicit dequantization.
+
+L1, L2, cosine, addition, subtraction, inspection, slicing, iteration, and `MATCH` accept signed Int8.
+`quantizeBinary` also accepts Int8 and produces packed bits for dimensions divisible by eight.
+Normalization requires Float32. Arithmetic follows the bundled SQLiteVec implementation; keep
+Int8 sums and differences in range when you need results without overflow.
+
+See the [vector API migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md)
+for all source and behavior changes.
 
 ## Binary vectors
 

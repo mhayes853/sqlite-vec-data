@@ -8,6 +8,8 @@ Both `StructuredQueriesSQLiteVecCore` and `StructuredQueriesTursoVecCore` export
 so existing SQLiteVec imports continue to expose `EmbeddingVector`, `VectorBytesRepresentable`,
 and float32 vector byte representations.
 
+See <doc:VectorMigration> for the source and behavior changes to existing SQLiteVec clients.
+
 ### Array representations
 
 Use `@Column(as:)` to store scalar values in a blob column:
@@ -121,6 +123,7 @@ type. That identity is an existing canonical representation, independent of dime
 | --- | --- |
 | Dense float32 | `[Float].VectorBytesRepresentation` |
 | Dense float64 | `[Double].VectorBytesRepresentation` |
+| SQLiteVec signed Int8 | `[Int8].Int8BytesRepresentation` (SQLiteVec target) |
 | SQLiteVec binary | `[Bool].PackedBitsRepresentation` |
 | Turso binary | `[Bool].TursoBytesRepresentation` |
 | Turso quantized8 | `Quantized8Vector` |
