@@ -12,27 +12,11 @@ extension Database {
   /// opened after registration.
   ///
   /// ```swift
-  /// extension DependencyValues {
-  ///   mutating func bootstrapDatabase() throws {
-  ///     var configuration = Configuration()
-  ///     configuration.prepareDatabase = { db in
-  ///       try db.loadSQLiteVecExtension()
-  ///     }
-  ///     let database = try SQLiteData.defaultDatabase(configuration: configuration)
-  ///     var migrator = DatabaseMigrator()
-  ///     try migrator.migrate(database)
-  ///     defaultDatabase = database
-  ///   }
+  /// var configuration = Configuration()
+  /// configuration.prepareDatabase { db in
+  ///   try db.loadSQLiteVecExtension()
   /// }
-  ///
-  /// @main
-  /// struct MyApp: App {
-  ///   init() {
-  ///     prepareDependencies {
-  ///       try! $0.bootstrapDatabase()
-  ///     }
-  ///   }
-  /// }
+  /// let database = try SQLiteData.defaultDatabase(configuration: configuration)
   /// ```
   public func loadSQLiteVecExtension() throws {
     let code = sqlite3_vec_init(self.sqliteConnection, nil, nil)

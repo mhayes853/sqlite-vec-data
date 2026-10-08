@@ -1,73 +1,98 @@
 # ``StructuredQueriesSQLiteVecCore``
 
-StructuredQueries helpers for [sqlite-vec](https://github.com/asg017/sqlite-vec) that are not tied to SQLiteData.
+StructuredQueries helpers for [sqlite-vec](https://github.com/asg017/sqlite-vec).
 
 ## Overview
 
-Use ``Vec0`` tables, `TableColumnExpression` helpers like `match(_:)` and `distanceCosine(to:)`, and the ``Vec`` namespace to build vector search queries without writing SQL strings directly.
+Model virtual tables with ``Vec0`` and use column helpers or the ``Vec`` namespace for vector
+queries. This module exports `StructuredQueriesVectorCore`; load the sqlite-vec extension through
+`SQLiteVecData` or your SQLite driver.
 
-### Match queries
+### Create a table and search
+
+Execute the schema before querying:
 
 ```swift
+import StructuredQueriesSQLite
+import StructuredQueriesSQLiteVecCore
+
+// CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
 @Table("Embeddings")
 struct Embedding: Vec0 {
   @Column(as: [Float].VectorBytesRepresentation.self)
   var embedding: [Float]
-
   var label: String
 }
 
-let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+let vector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
 let query = Embedding
-  .where { $0.embedding.match(queryVector) }
-  .order { $0.distance.asc() }
+  .where { $0.embedding.match(vector) }
+  .order { $0.distance }
   .limit(5)
   .select { ($0.label, $0.distance) }
+// SELECT label, distance FROM Embeddings
+// WHERE embedding MATCH ? ORDER BY distance LIMIT ?;
 ```
 
-`match` accepts bound vectors and computed query expressions with the same encoding. Use the
-column convenience or the `Vec.match` form:
+`match` accepts bound values and computed expressions with matching encodings:
 
 ```swift
 let query = Embedding
-  .where { $0.embedding.match(Vec.normalize(queryVector)) }
+  .where { $0.embedding.match(Vec.normalize(vector)) }
   .limit(5)
+// WHERE embedding MATCH vec_normalize(?)
 
-let freeformQuery = Embedding
-  .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+let freeform = Embedding
+  .where { Vec.match($0.embedding, to: Vec.normalize(vector)) }
   .limit(5)
 ```
 
-The left operand of `Vec.match` must refer to a vec0 vector column. SQLiteVec checks this requirement
-and the KNN query's limit or `k` constraint at execution.
+The left operand must be a vec0 vector column. A nearest-neighbor query requires `LIMIT` or a
+constraint on vec0's `k` column.
 
-### Distance functions
+### Distances and vector operations
 
 ```swift
-let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-let query = Embedding.select {
-  ($0.label, $0.embedding.distanceCosine(to: queryVector))
+let distances = Embedding.select {
+  ($0.label, $0.embedding.distanceCosine(to: vector))
 }
+// SELECT label, vec_distance_cosine(embedding, ?) FROM Embeddings;
+
+let normalized = Vec.normalize(vector) // vec_normalize(?)
+let sliced = Vec.slice(vector, start: 0, end: 2) // vec_slice(?, 0, 2)
 ```
 
-### Iterate over vector elements
+Column and namespace helpers support these encodings:
 
-Use `vecEach()` to iterate over a vector's indexed
-elements with SQLite Vec's `vec_each` virtual table.
+| Operation | Float32 | Signed Int8 | Packed bits |
+| --- | --- | --- | --- |
+| `MATCH`, length, type, JSON, slice, iteration | Yes | Yes | Yes |
+| L1, L2, cosine, addition, subtraction | Yes | Yes | — |
+| Normalization | Yes | — | — |
+| Hamming distance | — | — | Yes |
+| Binary sign quantization | Yes | Yes | — |
+
+Comparisons require matching encodings. An `as:` result must match the operation's output encoding;
+fixed-size results also validate decoded dimensions. Float64 and Turso-specific formats cannot be
+used with sqlite-vec helpers.
+
+### Iterate over elements
+
+``VecEach`` statements expose `rowid` and `value` and support joins, filters, and aggregates:
 
 ```swift
-let query = Embedding
+let elements = Vec.each(vector)
+  .order { $0.rowid }
+  .select { ($0.rowid, $0.value) }
+// SELECT rowid, value FROM vec_each WHERE vector = ? ORDER BY rowid;
+
+let joined = Embedding
   .join(Embedding.columns.embedding.vecEach()) { _, _ in true }
   .select { embedding, element in
     (embedding.label, element.rowid, element.value)
   }
-```
 
-The returned ``VecEach`` statement can be filtered, ordered, aggregated, and used in correlated
-subqueries. For example, filter to rows containing a negative element:
-
-```swift
-let query = Embedding
+let withNegativeElements = Embedding
   .where {
     $0.embedding.vecEach()
       .where { $0.value.lt(Float(0)) }
@@ -76,68 +101,14 @@ let query = Embedding
   .select(\.label)
 ```
 
-Or aggregate a vector's elements:
+Both helpers supply `vec_each`'s hidden vector constraint, including in correlated subqueries.
+
+### Signed Int8 vectors
+
+Use `[Int8].Int8BytesRepresentation` for one signed byte per component:
 
 ```swift
-let query = Embedding.select {
-  (
-    $0.label,
-    $0.embedding.vecEach().count(),
-    $0.embedding.vecEach().select { $0.value.max() }
-  )
-}
-```
-
-Use `Vec.each(_:)` to iterate over a bound vector without a table:
-
-```swift
-let vector: [Float].VectorBytesRepresentation = [1, -2, 3]
-let query = Vec.each(vector)
-  .order { $0.rowid }
-  .select { ($0.rowid, $0.value) }
-```
-
-## EmbeddingVector
-
-`EmbeddingVector` is a Hashable and Codable fixed-length array alternative to `InlineArray`.
-It is provided by the re-exported `StructuredQueriesVectorCore` module, alongside the float
-vector byte representations. It is available on iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0,
-and visionOS 26.0, and it can be stored in vec0 tables or used directly as a query binding.
-
-```swift
-@Table("Embeddings")
-struct Embedding: Vec0 {
-  var id: UUID
-  var embedding: EmbeddingVector<1536>
-}
-
-let queryVector = EmbeddingVector<1536>([...])
-let query = Embedding
-  .where { $0.embedding.match(queryVector) }
-  .select { ($0.id, $0.distance) }
-```
-
-## Supported vector encodings
-
-SQLiteVec helpers constrain the vector's `Encoding` associated type. Float32 arrays, inline arrays,
-and `EmbeddingVector<N>` share `[Float].VectorBytesRepresentation` and can be used together.
-Float64, Turso quantized and sparse vectors, and Turso binary framing are rejected at compile time.
-
-L1, L2, cosine, addition, and subtraction accept Float32 or signed Int8. Normalization requires
-Float32. Hamming accepts raw packed bits. Inspection, slicing, iteration, and `MATCH` support all
-three encodings; comparisons require both
-operands to use the same encoding. The `as:` overloads for Float32 operations and packed-bit
-operations require a result with the operation's output encoding. Fixed result types additionally
-validate dimensions while decoding. Generic client helpers must carry the applicable `Encoding`
-constraint.
-
-## Signed Int8 vectors
-
-`[Int8].Int8BytesRepresentation` stores one signed byte per component without metadata. It lives in
-this target, alongside `FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation` for fixed dimensions.
-Turso's affine UInt8 `Quantized8Vector` has a different layout and is rejected by these helpers.
-
-```swift
+// CREATE VIRTUAL TABLE Int8Embeddings USING vec0(embedding int8[3], label text);
 @Table("Int8Embeddings")
 struct Int8Embedding: Vec0 {
   @Column(as: [Int8].Int8BytesRepresentation.self)
@@ -145,49 +116,38 @@ struct Int8Embedding: Vec0 {
   var label: String
 }
 
-// CREATE VIRTUAL TABLE Int8Embeddings USING vec0(embedding int8[3], label text);
 let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
 let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
   (Vec.int8(codes), "example")
 }
+// INSERT INTO Int8Embeddings (embedding, label) VALUES (vec_int8(?), ?);
+
 let query = Int8Embedding
   .where { $0.embedding.match(codes) }
   .order { $0.distance }
   .limit(5)
 ```
 
-`Vec.int8` marks signed-byte expressions with SQLiteVec's Int8 subtype or parses integer JSON:
-`Vec.int8("[-128, 0, 127]")`. It does not numerically convert Float32 bytes. Insert with
-`Vec.int8(binding)` or a quantization expression; scalar helpers, iteration, and `MATCH` apply the
-subtype automatically because it does not survive storage or binding.
+`Vec.int8` tags signed bytes or parses integer JSON, such as `Vec.int8("[-128, 0, 127]")`.
+Insert and update expressions need that subtype; query helpers attach it automatically.
 
 ```swift
 let floats: [Float].VectorBytesRepresentation = [-1, 0, 0.5, 2]
-let codes = Vec.quantizeInt8(floats)
+let codes = Vec.quantizeInt8(floats) // vec_quantize_int8(?, 'unit')
 let fixedCodes = Vec.quantizeInt8(
   floats,
   as: FixedEmbeddingVector<4, Int8>.Int8BytesRepresentation.self
 )
 ```
 
-`quantizeInt8()` emits `vec_quantize_int8(vector, 'unit')`, replacing the unsupported numeric
-`scale:` argument. It maps [-1, 1] to signed Int8 codes, clamps out-of-range values, and truncates
-toward zero using SQLiteVec's Float32 rounding. It does not normalize the input. Results contain
-signed codes, without per-vector scale or shift metadata or implicit dequantization.
+Quantization maps [-1, 1] to signed codes, clamps out-of-range values, and truncates toward zero
+using sqlite-vec's Float32 rounding. It does not normalize. These bytes have no scale or shift
+metadata. Keep Int8 arithmetic results in range to avoid overflow.
 
-L1, L2, cosine, addition, subtraction, inspection, slicing, iteration, and `MATCH` accept signed Int8.
-`quantizeBinary` also accepts Int8 and produces packed bits for dimensions divisible by eight.
-Normalization requires Float32. Arithmetic follows the bundled SQLiteVec implementation; keep
-Int8 sums and differences in range when you need results without overflow.
+### Binary vectors
 
-See the [vector API migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md)
-for all source and behavior changes.
-
-## Binary vectors
-
-Use `[Bool].PackedBitsRepresentation` or `BinaryEmbeddingVector<N>.PackedBitsRepresentation`
-for SQLiteVec binary blobs. They store logical bits without format metadata; binding requires
-a dimension count divisible by eight.
+`[Bool].PackedBitsRepresentation` stores bits without metadata. Dimensions and slice boundaries
+must be divisible by eight:
 
 ```swift
 // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
@@ -198,29 +158,32 @@ struct BinaryEmbedding: Vec0 {
   var label: String
 }
 
-let queryVector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
-let insert = BinaryEmbedding.insert {
-  ($0.embedding, $0.label)
-} values: {
-  (Vec.bit(queryVector), "example")
+let bits: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+let insert = BinaryEmbedding.insert { ($0.embedding, $0.label) } values: {
+  (Vec.bit(bits), "example")
 }
+// INSERT INTO BinaryEmbeddings (embedding, label) VALUES (vec_bit(?), ?);
+
 let query = BinaryEmbedding
-  .where { $0.embedding.match(queryVector) }
+  .where { $0.embedding.match(bits) }
   .order { $0.distance }
   .limit(5)
-  .select { ($0.label, $0.distance) }
 ```
 
-`Vec.bit` and `Vec.quantizeBinary` return this representation by default. Their `as:` overloads
-accept matching packed-bit representations, including fixed-size vectors. This replaces the
-previous float32 result representation, which could discard short binary blobs while decoding.
-Turso's binary representation includes different metadata and cannot be used in its place.
+Use `Vec.bit` for binary insert and update expressions; query helpers apply it automatically.
+`Vec.quantizeBinary` converts positive Float32 or Int8 components to true bits and returns a
+packed-bit representation. `Vec.bit` tags or reinterprets bytes without numerical quantization.
 
-Binary scalar operations and `MATCH` apply `vec_bit(...)` automatically, so bound blobs have the
-subtype SQLiteVec requires. When inserting or updating a vec0 binary column, use `Vec.bit` in the
-value expression, as in the insert above; binding a table value alone cannot attach a SQLite subtype.
-Binary slice boundaries must be divisible by eight.
+`Vec.each` iterates bits most significant first within each byte. Swift collection indices and
+`Vec.toJSON` use least significant first.
 
-`Vec.each` and `.vecEach()` follow SQLiteVec's bit iteration order: most significant bit first within
-each byte. The packed representations index their logical bits least significant bit first, which
-also matches SQLiteVec's `vec_to_json` order.
+### Fixed-size values
+
+`EmbeddingVector<N>` binds Float32 directly. Signed Int8 and binary columns use
+`FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation` and
+`BinaryEmbeddingVector<N>.PackedBitsRepresentation`. These types require Swift 6.2 and iOS 26,
+macOS 26, tvOS 26, watchOS 26, or visionOS 26.
+
+See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/),
+[sqlite-vec API reference](https://alexgarcia.xyz/sqlite-vec/api-reference.html), and
+[migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md).

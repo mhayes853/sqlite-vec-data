@@ -4,234 +4,108 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
 
-SQLiteData interoperability with [sqlite-vec](https://github.com/asg017/sqlite-vec), and
-StructuredQueries helpers for [Turso Database native vector search](https://docs.turso.tech/guides/vector-search).
+Vector search in Swift: [SQLiteData](https://github.com/pointfreeco/sqlite-data) integration for
+[sqlite-vec](https://github.com/asg017/sqlite-vec), and StructuredQueries helpers for
+[Turso Database](https://docs.turso.tech/sql-reference/functions/vector).
 
-## Overview
+## Installation
 
-SQLiteVecData bridges SQLiteData and sqlite-vec so you can create vec0 tables and run vector queries in pure Swift.
+Add the package to your Xcode project or `Package.swift`:
 
-## Quick Start
+```swift
+dependencies: [
+  .package(url: "https://github.com/mhayes853/sqlite-vec-data", from: "1.0.0")
+]
+```
 
-Choose a setup strategy based on the platform where your app runs.
+Choose the product for your database:
 
-### Apple platforms
+```swift
+// sqlite-vec with SQLiteData:
+.product(name: "SQLiteVecData", package: "sqlite-vec-data")
 
-Call `loadSQLiteVecExtension` in your database preparation so every connection can use vec0 tables and vector functions.
+// Turso Database query helpers:
+.product(name: "StructuredQueriesTursoVecCore", package: "sqlite-vec-data")
+```
+
+For standalone query helpers, also add `StructuredQueriesSQLite` from
+[swift-structured-queries](https://github.com/pointfreeco/swift-structured-queries) to use
+`@Table`, `@Column`, and `#sql`.
+
+## sqlite-vec
+
+### Set up the database
+
+On Apple platforms, load the extension in the connection preparation callback:
 
 ```swift
 import SQLiteVecData
 
-extension DependencyValues {
-  mutating func bootstrapDatabase() throws {
-    var configuration = Configuration()
-    configuration.prepareDatabase = { db in
-      try db.loadSQLiteVecExtension()
-    }
-    let database = try SQLiteData.defaultDatabase(configuration: configuration)
-    var migrator = DatabaseMigrator()
-    try migrator.migrate(database)
-    defaultDatabase = database
-  }
+var configuration = Configuration()
+configuration.prepareDatabase { db in
+  try db.loadSQLiteVecExtension()
 }
-
-@main
-struct MyApp: App {
-  init() {
-    prepareDependencies {
-      try! $0.bootstrapDatabase()
-    }
-  }
-}
+let database = try SQLiteData.defaultDatabase(configuration: configuration)
 ```
 
-### Non-Apple platforms
-
-Call `registerSQLiteVecAutoExtension()` once during process startup before opening any SQLite
-connections. This registers sqlite-vec as a process-global SQLite auto extension, so only
-connections opened after registration can use vec0 tables and vector functions.
+On other platforms, register the extension once before opening any SQLite connections:
 
 ```swift
 import SQLiteVecData
 
-@main
-enum MyApp {
-  static func main() throws {
-    try registerSQLiteVecAutoExtension()
-
-    let database = try SQLiteData.defaultDatabase()
-    var migrator = DatabaseMigrator()
-    try migrator.migrate(database)
-
-    // Start the rest of your application after the database is ready.
-  }
-}
+try registerSQLiteVecAutoExtension()
+let database = try SQLiteData.defaultDatabase()
 ```
 
-### Create a vec0 table
+### Create a table and search
 
-First, create the vec0 virtual table in your migration.
-
-```sql
-CREATE VIRTUAL TABLE "Embeddings" USING vec0(
-  embedding FLOAT[1536],
-  label TEXT
-);
-```
-
-Then model the table in Swift by conforming to `Vec0` and using a vector bytes representation.
+Execute the schema in a database migration, then model it with `Vec0`:
 
 ```swift
+// CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
 @Table("Embeddings")
 struct Embedding: Vec0 {
   @Column(as: [Float].VectorBytesRepresentation.self)
   var embedding: [Float]
-
   var label: String
 }
-```
 
-### Match queries
-
-Use `match` to filter rows by vector similarity, and order by the vec0 `distance` column for nearest neighbors.
-
-```swift
-let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+let vector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
 let query = Embedding
-  .where { $0.embedding.match(queryVector) }
-  .order { $0.distance.asc() }
+  .where { $0.embedding.match(vector) }
+  .order { $0.distance }
   .limit(5)
   .select { ($0.label, $0.distance) }
+// SELECT label, distance FROM Embeddings
+// WHERE embedding MATCH ? ORDER BY distance LIMIT ?;
 ```
 
-### Distance functions
+`match` accepts a bound vector or a computed expression with the same encoding.
+`Vec.match(column, to: expression)` provides the namespace form.
 
-You can also compute distances directly in select clauses.
+### Vector functions
 
 ```swift
-let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-let query = Embedding.select {
-  ($0.label, $0.embedding.distanceCosine(to: queryVector))
+let distances = Embedding.select {
+  ($0.label, $0.embedding.distanceCosine(to: vector))
 }
-```
+// SELECT label, vec_distance_cosine(embedding, ?) FROM Embeddings;
 
-### Iterate over vector elements
-
-Use `vecEach()` to iterate over a vector's indexed elements with SQLite Vec's `vec_each`
-virtual table.
-
-```swift
-let query = Embedding
-  .join(Embedding.columns.embedding.vecEach()) { _, _ in true }
-  .select { embedding, element in
-    (embedding.label, element.rowid, element.value)
-  }
-```
-
-`vecEach()` constrains SQLite Vec's hidden `vector` column, so it can also be used in correlated
-subqueries. For example, filter to rows containing a negative element:
-
-```swift
-let query = Embedding
-  .where {
-    $0.embedding.vecEach()
-      .where { $0.value.lt(Float(0)) }
-      .exists()
-  }
-  .select(\.label)
-```
-
-Or aggregate a vector's elements:
-
-```swift
-let query = Embedding.select {
-  (
-    $0.label,
-    $0.embedding.vecEach().count(),
-    $0.embedding.vecEach().select { $0.value.max() }
-  )
-}
-```
-
-Use `Vec.each(_:)` to iterate over a bound vector without a table:
-
-```swift
-let vector: [Float].VectorBytesRepresentation = [1, -2, 3]
-let query = Vec.each(vector)
+let normalized = Vec.normalize(vector) // vec_normalize(?)
+let elements = Vec.each(vector)
   .order { $0.rowid }
   .select { ($0.rowid, $0.value) }
+// SELECT rowid, value FROM vec_each WHERE vector = ? ORDER BY rowid;
 ```
 
-## Testing
+Column helpers also support arithmetic, slicing, inspection, and `.vecEach()` for joins or
+correlated subqueries. Float32 and signed Int8 support L1, L2, and cosine distances;
+normalization requires Float32. Binary vectors support Hamming distance.
 
-### Apple platforms
-
-You will need to invoke `Database.loadSQLiteVecExtension()` inside the database preparation configuration block for each new database connection.
-
-```swift
-import SQLiteVecData
-import SQLiteVecDataTestSupport
-import Testing
-
-struct MyDatabaseTests {
-  private let database: any DatabaseWriter
-
-  init() throws {
-    var configuration = Configuration()
-    configuration.prepareDatabase = { db in
-      try db.loadSQLiteVecExtension()
-    }
-    self.database = try SQLiteData.defaultDatabase(configuration: configuration)
-  }
-
-  @Test
-  func myTest() throws {
-    try self.database.write { db in
-      // Run vec0 queries here.
-    }
-  }
-}
-```
-
-### Non-Apple platforms
-
-Apply the `.sqliteVecAutoExtension` Swift Testing trait to the suite to make sure the database connection is opened with SQLite Vec enabled.
+### Signed Int8 vectors
 
 ```swift
-import SQLiteVecData
-import SQLiteVecDataTestSupport
-import Testing
-
-@Suite(.sqliteVecAutoExtension)
-struct MyDatabaseTests {
-  private let database: any DatabaseWriter
-
-  init() throws {
-    self.database = try SQLiteData.defaultDatabase()
-  }
-
-  @Test
-  func myTest() throws {
-    try self.database.write { db in
-      // Run vec0 queries here.
-    }
-  }
-}
-```
-
-## Migrating existing vector APIs
-
-This release changes existing SQLiteVec APIs as well as adding Turso support. See the
-[vector API migration guide](Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md)
-for updated custom conformances, Float32 extensions and representations, binary results, signed
-Int8 quantization, equality, and stricter decoding. Valid existing Float32 blobs remain compatible
-on supported little-endian platforms.
-
-## SQLiteVec Int8 vectors
-
-Use a signed-byte strategy from `StructuredQueriesSQLiteVecCore` for SQLiteVec's Int8 format:
-
-```swift
+// CREATE VIRTUAL TABLE Int8Embeddings USING vec0(embedding int8[3], label text);
 @Table("Int8Embeddings")
 struct Int8Embedding: Vec0 {
   @Column(as: [Int8].Int8BytesRepresentation.self)
@@ -239,79 +113,20 @@ struct Int8Embedding: Vec0 {
   var label: String
 }
 
-// Run this SQL in your database migration:
-// CREATE VIRTUAL TABLE Int8Embeddings USING vec0(embedding int8[3], label text);
 let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
 let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
   (Vec.int8(codes), "example")
 }
-let neighbors = Int8Embedding
-  .where { $0.embedding.match(codes) }
-  .order { $0.distance }
-  .limit(5)
+// INSERT INTO Int8Embeddings (embedding, label) VALUES (vec_int8(?), ?);
+
+let quantized = Vec.quantizeInt8(vector) // vec_quantize_int8(?, 'unit')
 ```
 
-`Vec.int8` tags signed bytes or parses integer JSON; it does not convert Float32 components.
-Use `Vec.quantizeInt8(floatExpression)` or a Float32 column's `.quantizeInt8()` to produce signed
-codes with `vec_quantize_int8(vector, 'unit')`. SQLiteVec maps the [-1, 1] range to signed Int8,
-clamps out-of-range values, and does not normalize the input. The previous `scale:` argument is
-removed because SQLiteVec accepts only `'unit'`.
+`Vec.int8` tags signed bytes or parses integer JSON. `quantizeInt8` maps [-1, 1] to signed
+codes and clamps values outside that range, without normalizing. Use `Vec.int8` or a
+quantization expression when inserting; query helpers attach the required subtype automatically.
 
-Int8 supports L1, L2, cosine distance, addition, subtraction, inspection, slicing, iteration, binary
-quantization, and vec0 matches. These helpers apply the Int8 subtype automatically; inserts use
-`Vec.int8(binding)` or a quantization expression. Fixed values can use
-`FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation`. Int8 strategies carry no scale or shift
-metadata and differ from Turso's `Quantized8Vector`.
-
-## EmbeddingVector
-
-`EmbeddingVector` is a Hashable and Codable fixed-length array alternative to `InlineArray`. It is available on iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, and visionOS 26.0, and it can be stored in vec0 tables or used directly as a query binding.
-
-```swift
-@Table("Embeddings")
-struct Embedding: Vec0 {
-  var id: UUID
-  var embedding: EmbeddingVector<1536>
-}
-
-let queryVector = EmbeddingVector<1536>([...])
-let query = Embedding
-  .where { $0.embedding.match(queryVector) }
-  .select { ($0.id, $0.distance) }
-```
-
-`EmbeddingVector64<N>` provides the same collection and Codable support for doubles.
-Floating-point vectors use element-wise
-comparison: signed zeros compare equal and NaNs compare unequal. This replaces the original
-float32 memory comparison.
-
-`BinaryEmbeddingVector<N>` is a concrete packed-bit collection with mutable `Bool` elements and
-boolean-array Codable support. It stores only `ceil(N / 8)` bytes: 1,536 dimensions need 192 bytes.
-`packedBytes` contains the raw payload, and `init(packedBytes:)` validates its length and clears
-unused high bits. Database metadata is added by the explicit byte representations.
-
-```swift
-let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
-var binary = BinaryEmbeddingVector<8>(quantizing: dense)
-binary[2] = true
-let differingBits = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: false))
-let trueBits = binary.nonzeroBitCount
-```
-
-Sign quantization keeps positive components and discards their magnitudes. Both query targets
-share this packed value. SQLiteVec's `.PackedBitsRepresentation` and Turso's
-`.TursoBytesRepresentation` bind and decode its packed payload directly. Access logical elements
-through the collection API.
-
-`Vec.bit` and `Vec.quantizeBinary` now return `[Bool].PackedBitsRepresentation` by default.
-Their `as:` overloads require a packed-bit representation. This corrects the previous float32
-result representation, which could discard binary data during decoding.
-
-SQLiteVec helpers check vector encodings at compile time. Float32 vectors support L1, L2, cosine,
-arithmetic, and normalization; raw packed bits support Hamming. Both support inspection, slicing,
-iteration, and `MATCH`. Comparisons require matching encodings, and vector-result `as:` overloads
-require the operation's output encoding. Turso Float64, quantized, sparse, and binary formats cannot
-be passed to SQLiteVec helpers.
+### Binary vectors
 
 ```swift
 // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
@@ -322,47 +137,30 @@ struct BinaryEmbedding: Vec0 {
   var label: String
 }
 
-let queryVector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
-let insert = BinaryEmbedding.insert {
-  ($0.embedding, $0.label)
-} values: {
-  (Vec.bit(queryVector), "example")
+let bits: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+let insert = BinaryEmbedding.insert { ($0.embedding, $0.label) } values: {
+  (Vec.bit(bits), "example")
 }
+// INSERT INTO BinaryEmbeddings (embedding, label) VALUES (vec_bit(?), ?);
+
 let query = BinaryEmbedding
-  .where { $0.embedding.match(queryVector) }
+  .where { $0.embedding.match(bits) }
   .order { $0.distance }
   .limit(5)
-  .select { ($0.label, $0.distance) }
 ```
 
-The column `match` helper also accepts computed vector expressions. Use
-`Vec.match(column, to: expression)` for the freeform version; both enforce matching encodings.
+Packed-bit dimensions and slice boundaries must be divisible by eight. `Vec.quantizeBinary`
+converts positive Float32 or Int8 components to true bits. Binary inserts use `Vec.bit`;
+query helpers tag the bytes automatically.
 
-Binary query helpers apply `vec_bit(...)` automatically. Binary inserts and updates need `Vec.bit`
-in their value expression to attach SQLiteVec's required subtype. Slice boundaries must be divisible
-by eight. `Vec.each` follows SQLiteVec's iteration order, most significant bit first within each byte;
-packed-vector collection indices and `Vec.toJSON` use least significant bit first.
+## Turso
 
-## Targets
+`StructuredQueriesTursoVecCore` generates SQL and bindings for Turso Database's native vector
+functions. Execute them with a compatible Turso driver.
 
-`SQLiteVecData` is the main integration target that couples SQLiteData with sqlite-vec. It also exports `StructuredQueriesSQLiteVecCore`.
+### Create a table and search
 
-`StructuredQueriesSQLiteVecCore` is a standalone set of query helpers that model sqlite-vec features in StructuredQueries. Use this if you don't plan to use `SQLiteData` directly.
-
-`StructuredQueriesTursoVecCore` provides `TursoVec` for Turso Database. It generates vector SQL
-and bindings for use with a compatible database driver.
-
-`StructuredQueriesVectorCore` contains reusable `EmbeddingVector`, `VectorBytesRepresentable`,
-numeric and binary vector types, and their byte representations. Both vector query targets export
-it, so existing SQLiteVec imports continue to expose these types.
-
-`SQLiteVecDataTestSupport` provides Swift Testing helpers for downstream packages, including the `.sqliteVecAutoExtension` suite trait for Linux test setup.
-
-## Turso Vector Queries
-
-Create the table through your Turso Database driver before running the queries below. Following
-[Turso's schema example](https://turso.tech/blog/a-complete-guide-to-database-per-agent-architecture),
-use `F32_BLOB(4)` to describe four-dimensional float32 embeddings:
+Execute this schema through your driver:
 
 ```sql
 CREATE TABLE documents (
@@ -372,19 +170,8 @@ CREATE TABLE documents (
 );
 ```
 
-The `NOT NULL` columns match the nonoptional Swift properties below. `@Table` models the table
-for query generation; execute the creation SQL separately through your driver.
-
-`F32_BLOB(N)` has
-[BLOB affinity](https://github.com/tursodatabase/turso/blob/2487f62c372c99a21551a6450d4a10309c7dad2b/core/vdbe/affinity.rs#L186-L202),
-so plain `BLOB` also works. In the inspected Rust Turso engine,
-`N` records the intended dimensions but does not enforce them: an official
-[driver test](https://github.com/tursodatabase/turso-go/blob/ea06d135c592ae9a653ebf6ba5e069c8417c030c/turso_test.go#L354-L366)
-inserts a five-dimensional vector into `F32_BLOB(64)`. `EmbeddingVector<4>` expresses the count
-in Swift and validates it when decoding. This fixed-size example requires Swift 6.2 and the
-platforms listed under [EmbeddingVector](#embeddingvector).
-
-Add `StructuredQueriesTursoVecCore` and import it alongside `StructuredQueriesSQLite`:
+`F32_BLOB(4)` describes a four-dimensional Float32 column with BLOB affinity; plain `BLOB`
+also works. Keep stored and query vectors consistent in format and dimensions.
 
 ```swift
 import StructuredQueriesSQLite
@@ -394,135 +181,152 @@ import StructuredQueriesTursoVecCore
 struct Document {
   var id: Int
   var content: String
-  var embedding: EmbeddingVector<4>
+  @Column(as: [Float].VectorBytesRepresentation.self)
+  var embedding: [Float]
 }
 
-let queryVector = EmbeddingVector<4>([0.2, 0.4, 0.6, 0.8])
+let embedding = TursoVec.vector32("[0.1, 0.3, 0.5, 0.7]")
+let insert = Document.insert { ($0.id, $0.content, $0.embedding) } values: {
+  (1, "Introduction to databases", embedding)
+}
+// INSERT INTO documents (id, content, embedding) VALUES (?, ?, vector32(?));
+
+let vector: [Float].VectorBytesRepresentation = [0.2, 0.4, 0.6, 0.8]
 let query = Document
-  .order { TursoVec.distanceCosine($0.embedding, to: queryVector).asc() }
+  .order { TursoVec.distanceCosine($0.embedding, to: vector).asc() }
   .limit(5)
   .select { ($0.content, TursoVec.extract($0.embedding)) }
+// SELECT content, vector_extract(embedding) FROM documents
+// ORDER BY vector_distance_cos(embedding, ?) ASC LIMIT ?;
+
+let prepared = query.query.prepare { "?\($0)" }
+// Pass prepared.sql and prepared.bindings to your driver.
 ```
 
-For variable-size float32 models, use `[Float]` with
-`@Column(as: [Float].VectorBytesRepresentation.self)`. A plain BLOB column supports dense,
-quantized, binary, and sparse vectors; choose the encoding with the bound value or SQL conversion.
-Keep the vector format and dimensions consistent for distance comparisons. Tables need no
-additional vector conformance.
-Convert JSON explicitly with `TursoVec.vector32`, `vector64`, `vector8`,
-`vector1bit`, or `vector32Sparse` before distance comparisons.
+This performs exact search over the candidate rows. Add a `where` clause to narrow them.
+The target provides scalar vector functions; experimental sparse indexing uses separate DDL.
 
-| Conversion | Swift representation |
+### Formats and functions
+
+Convert JSON explicitly with the constructor for the column's format:
+
+| Helper | Swift result |
 | --- | --- |
-| `vector32` / `vector` | `[Float].VectorBytesRepresentation` |
-| `vector64` | `[Double].VectorBytesRepresentation` |
-| `vector8` | `Quantized8Vector` |
-| `vector1bit` | `[Bool].TursoBytesRepresentation` |
-| `vector32Sparse` | `SparseFloat32Vector` |
+| `TursoVec.vector32` / `vector` | `[Float].VectorBytesRepresentation` |
+| `TursoVec.vector64` | `[Double].VectorBytesRepresentation` |
+| `TursoVec.vector8` | `Quantized8Vector` |
+| `TursoVec.vector1bit` | `[Bool].TursoBytesRepresentation` |
+| `TursoVec.vector32Sparse` | `SparseFloat32Vector` |
 
-`TursoVec` offers cosine, L2, negative dot product, and Jaccard distances with matching formats,
-dense concatenation, and dense or sparse slicing. `TursoVec.distanceHamming` expresses binary
-Hamming distance using Turso's `vector_distance_cos` SQL function and returns `Double` (SQL REAL).
-Local `BinaryEmbeddingVector.hammingDistance(to:)` returns `Int`. Binary L2 is unavailable.
-`Quantized8Vector` retains unsigned byte codes, scale, and shift for
-Turso's affine 8-bit quantization, rather than IEEE FP8 or signed int8. Use
-`try Quantized8Vector(quantizing: values)` to quantize once, or `init(codes:scale:shift:)` for
-existing components. Reading and rebinding preserve them; `decodedValues()` reconstructs floats.
+Distance helpers cover cosine, L2, negative dot product, and Jaccard with matching formats.
+`concat` joins two dense Float32 or Float64 vectors; `slice` accepts those formats and sparse
+Float32. Use `as:` to select a matching fixed-size result.
 
-Sparse blobs store only nonzero float32 values, their indices, and the original dimension count.
-This is useful for TF-IDF, bag-of-words, and other mostly zero feature vectors. The Swift value
-retains sparse indices and values. `denseValues()` explicitly expands them. Sparse storage alone
-does not create an index.
-
-On Swift 6.2, `InlineQuantized8Vector<N>` stores its codes inline, and
-`SizedSparseFloat32Vector<N>` fixes the logical dimensions while keeping a variable number of sparse
-entries. These four encoded types live in `StructuredQueriesTursoVecCore` and can be used as column
-types directly. Shared dense vectors and byte strategies remain in `StructuredQueriesVectorCore`.
-
-`EmbeddingVector<N>.quantized8()` and `.sparseFloat32()` provide explicit, throwing conversions
-to these dimension-preserving types. These conveniences live in the Turso target:
+`Quantized8Vector` stores affine unsigned-byte codes, scale, and shift. It differs from IEEE FP8
+and sqlite-vec's signed Int8. `SparseFloat32Vector` stores only entries and their indices, plus the
+logical dimension count: useful for TF-IDF, bag-of-words, and other mostly zero feature vectors.
+Both types work directly as column values:
 
 ```swift
-let quantized = try EmbeddingVector<3>([0, 127.5, 255]).quantized8()
-let sparse = try EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5]).sparseFloat32()
+// CREATE TABLE compressed_documents (id INTEGER PRIMARY KEY, embedding BLOB NOT NULL);
+@Table("compressed_documents")
+struct CompressedDocument {
+  var id: Int
+  var embedding: Quantized8Vector
+}
+
+let compressed = try Quantized8Vector(quantizing: [0, 127.5, 255])
+let decoded = compressed.decodedValues() // [0, 128, 255]
+let sparse = try SparseFloat32Vector(compressing: [0, 0, 1.5, 0, 0, 2.5])
+let dense = sparse.denseValues() // [0, 0, 1.5, 0, 0, 2.5]
 ```
 
-Fixed-size representations are available on the corresponding `EmbeddingVector<N>`,
-`EmbeddingVector64<N>` and `BinaryEmbeddingVector<N>` types. Use
-`as:` on conversions, concat, or slice to select a matching fixed-size result.
+Turso binary columns use `.TursoBytesRepresentation` on `[Bool]` or `BinaryEmbeddingVector<N>`.
+It preserves the exact dimension count, including partial bytes. `distanceHamming` emits
+`vector_distance_cos` and returns a `Double` bit count. Binary L2 is unavailable.
 
-Shared float32 bytes agree with SQLiteVec on little-endian platforms. SQLiteVec binary columns
-use `.PackedBitsRepresentation` (dimensions divisible by eight), while Turso uses
-`.TursoBytesRepresentation` to preserve dimension metadata.
+## Vector values
 
-Vectors and their representations expose `vectorBytes` and `init(vectorBytes:)` independently
-of query decoding. Fixed-size byte decoding validates dimensions; `EmbeddingVector<N>(validating:)`
-also constructs a fixed vector from a scalar array. For example:
+Both query modules export `StructuredQueriesVectorCore`. Array strategies work with `@Column(as:)`;
+fixed-size values provide mutable collections, hashing, Codable, and dimension-checked decoding.
+The Turso target also supplies quantized and sparse values.
+
+| Value | Database representation |
+| --- | --- |
+| `EmbeddingVector<N>` (Float32) | Direct binding or `.VectorBytesRepresentation` |
+| `EmbeddingVector64<N>` (Float64) | `.VectorBytesRepresentation` for Turso |
+| `BinaryEmbeddingVector<N>` | `.PackedBitsRepresentation` for sqlite-vec; `.TursoBytesRepresentation` for Turso |
+| `FixedEmbeddingVector<N, Int8>` | `.Int8BytesRepresentation` for sqlite-vec |
+| `InlineQuantized8Vector<N>` | Direct binding for Turso |
+| `SizedSparseFloat32Vector<N>` | Direct binding for Turso |
+
+Fixed-size types require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
 ```swift
+let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
+let binary = BinaryEmbeddingVector<8>(quantizing: dense)
+let distance = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: false))
+
 let bytes = [Float(1), 2, 3].vectorBytes
 let restored = try EmbeddingVector<3>(vectorBytes: bytes)
-let validated = try EmbeddingVector<3>(validating: [1, 2, 3])
-let quantized = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
-let decoded = try Quantized8Vector(vectorBytes: quantized.vectorBytes)
 ```
 
-`VectorBytesRepresentable.Encoding` uses an existing canonical representation to identify the
-byte layout. Inline quantized vectors share `Quantized8Vector`'s encoding, and sized sparse vectors
-share `SparseFloat32Vector`'s encoding. `VectorScalar` supplies generic little-endian codecs through
-an unsigned `BitPattern`, `bitPattern`, and `init(bitPattern:)`. Float16 uses raw binary16 bytes;
-Float and Double use their format framing. Float16 arrays and fixed vectors can use the generic
-representations for serialization, but SQLiteVec and Turso do not support this vector format.
-Float32 and Float64 aliases are already covered. Float80 lacks the standard-library Codable and
-complete integer bit-pattern APIs required for conformance. Other floating-point conformances can
-reuse or override the codecs.
+Float32 bytes are shared by both engines on little-endian platforms. Float16 representations
+provide serialization only; neither engine supports binary16 vector queries. Query helpers enforce
+compatible encodings, and fixed-size representations validate decoded dimensions.
 
-Turso's experimental sparse indexing uses a separate mechanism and has no helper in this package.
-Exact search orders candidate rows by distance; use a `where` clause to reduce the candidate set
-when needed.
+## Testing sqlite-vec
 
-See the [Turso vector reference](https://docs.turso.tech/sql-reference/functions/vector).
-SQL tests link to documentation examples, and byte fixtures link to pinned Turso source revisions.
-They require no Turso instance.
+Use the `.sqliteVecAutoExtension` suite trait on non-Apple platforms; Apple connections load the
+extension through their preparation callback:
 
-## Package Traits
+```swift
+import SQLiteVecData
+import SQLiteVecDataTestSupport
+import Testing
 
-The library ships with `NEON` (enabled by default) and `AVX` traits for SIMD in the vendored SQLite Vec code on both ARM and x86 respectively.
+@Suite(.sqliteVecAutoExtension)
+struct `Vector tests` {
+  private let database: DatabaseQueue
+
+  init() throws {
+    var configuration = Configuration()
+    #if canImport(Darwin)
+      configuration.prepareDatabase { try $0.loadSQLiteVecExtension() }
+    #endif
+    self.database = try DatabaseQueue(configuration: configuration)
+  }
+
+  @Test
+  func `Searches Vectors`() throws {
+    try self.database.write { db in
+      // Create a vec0 table and run queries here.
+    }
+  }
+}
+```
+
+## Products
+
+| Product | Purpose |
+| --- | --- |
+| `SQLiteVecData` | SQLiteData integration; exports sqlite-vec query helpers |
+| `StructuredQueriesSQLiteVecCore` | Standalone sqlite-vec query helpers |
+| `StructuredQueriesTursoVecCore` | Turso Database query helpers and encoded values |
+| `StructuredQueriesVectorCore` | Shared vector values, byte strategies, and codecs |
+| `SQLiteVecDataTestSupport` | Swift Testing setup helpers |
+| `CSQLiteVec` | Bundled sqlite-vec C extension |
+
+The `NEON` package trait enables ARM SIMD by default; `AVX` enables SIMD on supported x86 processors.
 
 ## Documentation
 
-The documentation for releases and main are available here.
-
-* [SQLiteVecData (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/sqlitevecdata/)
-* [SQLiteVecData (0.x.x)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/~/documentation/sqlitevecdata/)
-* [StructuredQueriesSQLiteVecCore (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriessqliteveccore/)
-* [StructuredQueriesSQLiteVecCore (0.x.x)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/~/documentation/structuredqueriessqliteveccore/)
-* [StructuredQueriesTursoVecCore (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/)
-* [StructuredQueriesVectorCore (main)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
-
-## Installation
-
-You can add SQLiteVecData to an Xcode project by adding it to your project as a package.
-> https://github.com/mhayes853/sqlite-vec-data
-
-If you want to use SQLiteVecData in a SwiftPM project, add it to your `Package.swift`.
-
-```swift
-dependencies: [
-  .package(url: "https://github.com/mhayes853/sqlite-vec-data", from: "0.5.0")
-]
-```
-
-Then add the product to any target that needs it.
-
-```swift
-.product(name: "SQLiteVecData", package: "sqlite-vec-data")
-```
-
-For Turso query helpers, use the `StructuredQueriesTursoVecCore` product instead. Add the
-`StructuredQueriesSQLite` product from `swift-structured-queries` if your target uses the `@Table`,
-`@Column`, or `#sql` macros.
+- [SQLiteVecData](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/sqlitevecdata/)
+- [sqlite-vec query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriessqliteveccore/)
+- [Turso query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/)
+- [Shared vector types](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
+- [Migration guide](Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md)
 
 ## License
 
-This library is licensed under an MIT License. See [LICENSE](https://github.com/mhayes853/sqlite-vec-data/blob/main/LICENSE) for details.
+[MIT](LICENSE)

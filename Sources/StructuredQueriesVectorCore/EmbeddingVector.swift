@@ -190,7 +190,7 @@ import StructuredQueriesCore
   }
   // MARK: - Precision Aliases
 
-  /// A fixed-size float32 embedding vector. Its direct query binding remains compatible with SQLiteVec.
+  /// A fixed-size Float32 embedding vector with direct query binding for sqlite-vec and Turso.
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public typealias EmbeddingVector<let count: Int> = FixedEmbeddingVector<count, Float>
 
