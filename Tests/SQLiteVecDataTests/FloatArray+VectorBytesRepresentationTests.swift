@@ -3,17 +3,16 @@ import SQLiteVecData
 import SQLiteVecDataTestSupport
 import Testing
 
-@Suite("FloatArrayVectorBytesRepresentation tests", .sqliteVecAutoExtension)
+@Suite("FloatArrayVectorBytesRepresentation tests")
 struct FloatArrayVectorBytesRepresentationTests {
   private let database: DatabaseQueue
 
   init() async throws {
-    self.database = try DatabaseQueue()
+    var configuration = Configuration()
+    try configuration.prepareSQLiteVec()
+    self.database = try DatabaseQueue(configuration: configuration)
 
     try await self.database.write { db in
-      #if canImport(Darwin)
-        try db.loadSQLiteVecExtension()
-      #endif
       try #sql(
         """
         CREATE VIRTUAL TABLE TestEmbeddings USING vec0(

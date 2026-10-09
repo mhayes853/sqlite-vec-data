@@ -5,17 +5,16 @@ import SnapshotTesting
 import StructuredQueriesTestSupport
 import Testing
 
-@Suite("Vec0Query tests", .sqliteVecAutoExtension)
+@Suite("Vec0Query tests")
 struct Vec0QueryTests {
   private let database: DatabaseQueue
 
   init() async throws {
-    self.database = try DatabaseQueue()
+    var configuration = Configuration()
+    try configuration.prepareSQLiteVec()
+    self.database = try DatabaseQueue(configuration: configuration)
 
     try await self.database.write { db in
-      #if canImport(Darwin)
-        try db.loadSQLiteVecExtension()
-      #endif
       try #sql(
         """
         CREATE VIRTUAL TABLE Embeddings USING vec0(

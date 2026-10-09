@@ -1,21 +1,20 @@
+import CustomDump
 import SQLiteVecData
 import SQLiteVecDataTestSupport
 import SnapshotTesting
 import StructuredQueriesTestSupport
 import Testing
-import CustomDump
 
-@Suite(.sqliteVecAutoExtension)
+@Suite
 struct `VecEach tests` {
   private let database: DatabaseQueue
 
   init() async throws {
-    self.database = try DatabaseQueue()
+    var configuration = Configuration()
+    try configuration.prepareSQLiteVec()
+    self.database = try DatabaseQueue(configuration: configuration)
 
     try await self.database.write { db in
-      #if canImport(Darwin)
-        try db.loadSQLiteVecExtension()
-      #endif
       try #sql(
         "CREATE VIRTUAL TABLE VecEachEmbeddings USING vec0(embedding float[3], label text)",
         as: Void.self
@@ -105,7 +104,8 @@ struct `VecEach tests` {
 
   @Test("Vec Each Filters Elements")
   func vecEachFiltersElements() async throws {
-    let query = VecEachEmbedding
+    let query =
+      VecEachEmbedding
       .where {
         Vec.each($0.embedding)
           .where { $0.value.lt(Float(0)) }
@@ -136,7 +136,8 @@ struct `VecEach tests` {
 
   @Test("Vec Each Returns Indexed Elements")
   func vecEachReturnsIndexedElements() async throws {
-    let query = VecEachEmbedding
+    let query =
+      VecEachEmbedding
       .join(VecEachEmbedding.columns.embedding.vecEach()) { _, _ in true }
       .select { ($0.label, $1.rowid, $1.value) }
 

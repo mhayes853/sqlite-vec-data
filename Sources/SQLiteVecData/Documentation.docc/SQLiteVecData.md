@@ -62,23 +62,21 @@ for Float32, signed Int8, binary vectors, and scalar functions.
 
 ### Testing
 
-Add `SQLiteVecDataTestSupport` and use the `.sqliteVecAutoExtension` trait for non-Apple
-connections. Apple connections load the extension in the preparation callback:
+Add `SQLiteVecDataTestSupport` and prepare test connections on any platform. The helper loads each
+Apple connection and registers the auto extension once on other platforms:
 
 ```swift
 import SQLiteVecData
 import SQLiteVecDataTestSupport
 import Testing
 
-@Suite(.sqliteVecAutoExtension)
+@Suite
 struct `Vector tests` {
   private let database: DatabaseQueue
 
   init() throws {
     var configuration = Configuration()
-    #if canImport(Darwin)
-      configuration.prepareDatabase { try $0.loadSQLiteVecExtension() }
-    #endif
+    try configuration.prepareSQLiteVec()
     self.database = try DatabaseQueue(configuration: configuration)
   }
 

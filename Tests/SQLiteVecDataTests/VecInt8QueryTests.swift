@@ -3,17 +3,16 @@ import SQLiteVecData
 import SQLiteVecDataTestSupport
 import Testing
 
-@Suite(.sqliteVecAutoExtension)
+@Suite
 struct `Vec Int8 Query tests` {
   private let database: DatabaseQueue
   private static let vector: [Int8].Int8BytesRepresentation = [-128, -64, 0, 1, 2, 3, 4, 127]
 
   init() async throws {
-    self.database = try DatabaseQueue()
+    var configuration = Configuration()
+    try configuration.prepareSQLiteVec()
+    self.database = try DatabaseQueue(configuration: configuration)
     try await self.database.write { db in
-      #if canImport(Darwin)
-        try db.loadSQLiteVecExtension()
-      #endif
       try #sql(
         "CREATE VIRTUAL TABLE VecInt8Embeddings USING vec0(embedding int8[8], label text)",
         as: Void.self

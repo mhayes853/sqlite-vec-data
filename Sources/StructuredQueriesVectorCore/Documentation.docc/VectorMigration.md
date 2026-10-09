@@ -9,6 +9,7 @@ the new Turso Database target. The table below identifies the changes to check i
 
 | Existing API or behavior | Updated API or behavior |
 | --- | --- |
+| `.sqliteVecAutoExtension` is a no-op on Apple platforms | Unavailable on Apple; use `Configuration.prepareSQLiteVec()` from test support on any platform |
 | `AVX` and `NEON` package traits | `SQLiteVecAVX` (opt-in) and `SQLiteVecNEON` (default) |
 | Vector types defined in `StructuredQueriesSQLiteVecCore` | Shared types defined in `StructuredQueriesVectorCore`, re-exported by the SQLiteVec target |
 | Nominal `EmbeddingVector<N>` struct | `EmbeddingVector<N>` aliases `FixedEmbeddingVector<N, Float>` |

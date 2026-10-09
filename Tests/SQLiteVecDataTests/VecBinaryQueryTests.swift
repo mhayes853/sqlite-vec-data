@@ -3,16 +3,15 @@ import SQLiteVecData
 import SQLiteVecDataTestSupport
 import Testing
 
-@Suite(.sqliteVecAutoExtension)
+@Suite
 struct `Vec Binary Query tests` {
   private let database: DatabaseQueue
 
   init() async throws {
-    self.database = try DatabaseQueue()
+    var configuration = Configuration()
+    try configuration.prepareSQLiteVec()
+    self.database = try DatabaseQueue(configuration: configuration)
     try await self.database.write { db in
-      #if canImport(Darwin)
-        try db.loadSQLiteVecExtension()
-      #endif
       try #sql(
         "CREATE VIRTUAL TABLE VecBinaryEmbeddings USING vec0(embedding bit[16], label text)",
         as: Void.self
