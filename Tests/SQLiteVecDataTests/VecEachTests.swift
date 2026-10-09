@@ -1,6 +1,5 @@
 import CustomDump
 import SQLiteVecData
-import SQLiteVecDataTestSupport
 import SnapshotTesting
 import StructuredQueriesTestSupport
 import Testing
@@ -11,7 +10,7 @@ struct `VecEach tests` {
 
   init() async throws {
     var configuration = Configuration()
-    try configuration.prepareSQLiteVec()
+    configuration.prepareSQLiteVecExtension()
     self.database = try DatabaseQueue(configuration: configuration)
 
     try await self.database.write { db in

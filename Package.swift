@@ -47,6 +47,8 @@ let package = Package(
       // we cannot declare here.
       exclude: ["sqlite-vec.c"],
       cSettings: [
+        // Use SQLite's static extension API for per-connection initialization.
+        .define("SQLITE_CORE"),
         .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["SQLiteVecNEON"])),
         .define("SQLITE_VEC_ENABLE_AVX", to: "1", .when(traits: ["SQLiteVecAVX"]))
       ]

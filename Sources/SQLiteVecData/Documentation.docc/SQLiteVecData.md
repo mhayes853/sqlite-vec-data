@@ -9,19 +9,18 @@ create vec0 tables, and execute StructuredQueries statements through SQLiteData.
 
 ### Load the extension
 
-On Apple platforms, prepare each connection with `loadSQLiteVecExtension()`:
+Prepare each database connection, including database pool readers:
 
 ```swift
 import SQLiteVecData
 
 var configuration = Configuration()
-configuration.prepareDatabase { db in
-  try db.loadSQLiteVecExtension()
-}
+configuration.prepareSQLiteVecExtension()
 let database = try SQLiteData.defaultDatabase(configuration: configuration)
 ```
 
-On other platforms, call ``registerSQLiteVecAutoExtension()`` once before opening connections:
+For process-wide registration on non-Apple platforms, call ``registerSQLiteVecAutoExtension()``
+before opening connections instead:
 
 ```swift
 import SQLiteVecData
@@ -62,12 +61,10 @@ for Float32, signed Int8, binary vectors, and scalar functions.
 
 ### Testing
 
-Add `SQLiteVecDataTestSupport` and prepare test connections on any platform. The helper loads each
-Apple connection and registers the auto extension once on other platforms:
+Use the same connection preparation in tests on any platform:
 
 ```swift
 import SQLiteVecData
-import SQLiteVecDataTestSupport
 import Testing
 
 @Suite
@@ -76,7 +73,7 @@ struct `Vector tests` {
 
   init() throws {
     var configuration = Configuration()
-    try configuration.prepareSQLiteVec()
+    configuration.prepareSQLiteVecExtension()
     self.database = try DatabaseQueue(configuration: configuration)
   }
 

@@ -4,25 +4,24 @@ import GRDB
 extension Database {
   /// Loads the sqlite-vec extension into the current database connection.
   ///
-  /// On Apple platforms, call this at application launch using a `Configuration.prepareDatabase`
-  /// callback so every connection loads sqlite-vec.
-  ///
-  /// On non-Apple platforms, prefer ``registerSQLiteVecAutoExtension()`` before opening any
-  /// database connections. Process-global auto extension registration only affects connections
-  /// opened after registration.
+  /// Use `Configuration.prepareSQLiteVecExtension()` to prepare every connection,
+  /// including database pool readers, on any platform.
   ///
   /// ```swift
   /// var configuration = Configuration()
-  /// configuration.prepareDatabase { db in
-  ///   try db.loadSQLiteVecExtension()
-  /// }
+  /// configuration.prepareSQLiteVecExtension()
   /// let database = try SQLiteData.defaultDatabase(configuration: configuration)
   /// ```
   public func loadSQLiteVecExtension() throws {
-    let code = sqlite3_vec_init(self.sqliteConnection, nil, nil)
+    var errorMessage: UnsafeMutablePointer<CChar>?
+    defer { sqlite3_free(errorMessage) }
+    let code = sqlite3_vec_init(self.sqliteConnection, &errorMessage, nil)
     let resultCode = ResultCode(rawValue: code)
     if resultCode != .SQLITE_OK {
-      throw DatabaseError(resultCode: resultCode, message: "Failed to load SQLiteVec extension.")
+      throw DatabaseError(
+        resultCode: resultCode,
+        message: errorMessage.map { String(cString: $0) } ?? "Failed to load SQLiteVec extension."
+      )
     }
   }
 }

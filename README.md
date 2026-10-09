@@ -36,19 +36,18 @@ For standalone query helpers, also add `StructuredQueriesSQLite` from
 
 ### Set up the database
 
-On Apple platforms, load the extension in the connection preparation callback:
+Prepare each database connection, including database pool readers:
 
 ```swift
 import SQLiteVecData
 
 var configuration = Configuration()
-configuration.prepareDatabase { db in
-  try db.loadSQLiteVecExtension()
-}
+configuration.prepareSQLiteVecExtension()
 let database = try SQLiteData.defaultDatabase(configuration: configuration)
 ```
 
-On other platforms, register the extension once before opening any SQLite connections:
+For process-wide registration on non-Apple platforms, register the auto extension before opening
+connections instead:
 
 ```swift
 import SQLiteVecData
@@ -282,12 +281,10 @@ compatible encodings, and fixed-size representations validate decoded dimensions
 
 ## Testing sqlite-vec
 
-Add `SQLiteVecDataTestSupport` and prepare test connections on any platform. The helper loads each
-Apple connection and registers the auto extension once on other platforms:
+Use the same connection preparation in tests on any platform:
 
 ```swift
 import SQLiteVecData
-import SQLiteVecDataTestSupport
 import Testing
 
 @Suite
@@ -296,7 +293,7 @@ struct `Vector tests` {
 
   init() throws {
     var configuration = Configuration()
-    try configuration.prepareSQLiteVec()
+    configuration.prepareSQLiteVecExtension()
     self.database = try DatabaseQueue(configuration: configuration)
   }
 
@@ -317,7 +314,7 @@ struct `Vector tests` {
 | `StructuredQueriesSQLiteVecCore` | Standalone sqlite-vec query helpers |
 | `StructuredQueriesTursoVecCore` | Turso Database query helpers and encoded values |
 | `StructuredQueriesVectorCore` | Shared vector values, byte strategies, and codecs |
-| `SQLiteVecDataTestSupport` | Swift Testing setup helpers |
+| `SQLiteVecDataTestSupport` | Non-Apple auto-extension suite trait |
 | `CSQLiteVec` | Bundled sqlite-vec C extension |
 
 The `SQLiteVecNEON` trait enables sqlite-vec ARM SIMD by default; `SQLiteVecAVX` enables SIMD on
