@@ -16,22 +16,46 @@ public struct _SQLiteVecAutoExtensionTrait: SuiteTrait {
 }
 
 extension Trait where Self == _SQLiteVecAutoExtensionTrait {
-  /// Registers sqlite-vec as a process-global auto extension for Linux test suites.
+  /// Registers sqlite-vec as a process-global auto extension for non-Apple test suites.
   ///
   /// Use this trait on suites that need `vec0` available before opening SQLite connections. The
-  /// registration happens exactly once per process and is a no-op on Apple platforms. Tests
-  /// should continue using ``GRDB/Database/loadSQLiteVecExtension()`` on the database connection
-  /// directly on Apple platforms.
+  /// registration happens exactly once per process. For tests that also run on Apple platforms,
+  /// use `Configuration.prepareSQLiteVecExtension()` to load the extension into each connection.
   ///
   /// ```swift
   /// import SQLiteVecDataTestSupport
   /// import Testing
   ///
   /// @Suite(.sqliteVecAutoExtension)
-  /// struct MyDatabaseTests {
+  /// struct `Vector tests` {
   ///   // ...
   /// }
   /// ```
+  @available(
+    macOS,
+    unavailable,
+    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
+  )
+  @available(
+    iOS,
+    unavailable,
+    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
+  )
+  @available(
+    tvOS,
+    unavailable,
+    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
+  )
+  @available(
+    watchOS,
+    unavailable,
+    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
+  )
+  @available(
+    visionOS,
+    unavailable,
+    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
+  )
   public static var sqliteVecAutoExtension: Self {
     Self()
   }

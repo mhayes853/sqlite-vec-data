@@ -1,20 +1,19 @@
+import CustomDump
 import SQLiteVecData
-import SQLiteVecDataTestSupport
 import SnapshotTesting
 import StructuredQueriesTestSupport
 import Testing
 
-@Suite("Vec0Query tests", .sqliteVecAutoExtension)
+@Suite("Vec0Query tests")
 struct Vec0QueryTests {
   private let database: DatabaseQueue
 
   init() async throws {
-    self.database = try DatabaseQueue()
+    var configuration = Configuration()
+    configuration.prepareSQLiteVecExtension()
+    self.database = try DatabaseQueue(configuration: configuration)
 
     try await self.database.write { db in
-      #if canImport(Darwin)
-        try db.loadSQLiteVecExtension()
-      #endif
       try #sql(
         """
         CREATE VIRTUAL TABLE Embeddings USING vec0(
@@ -44,7 +43,7 @@ struct Vec0QueryTests {
     let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
     let query =
       Embedding
-      .where { $0.embedding.match(queryVector) }
+      .where { $0.embedding.match(Vec.f32(queryVector)) }
       .order(by: { $0.distance })
       .limit(10)
 
@@ -56,7 +55,7 @@ struct Vec0QueryTests {
       """
       SELECT "Embeddings"."embedding", "Embeddings"."label"
       FROM "Embeddings"
-      WHERE (("Embeddings"."embedding" MATCH '���=��L>���>'))
+      WHERE (("Embeddings"."embedding" MATCH vec_f32('���=��L>���>')))
       ORDER BY "Embeddings"."distance"
       LIMIT 10
       """
@@ -162,7 +161,7 @@ struct Vec0QueryTests {
     let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
     let query =
       Embedding
-      .where { $0.embedding.match(queryVector) }
+      .where { Vec.match($0.embedding, to: queryVector) }
       .where { $0.k.eq(25) }
       .order(by: { $0.distance })
 
@@ -1131,30 +1130,6 @@ struct Vec0QueryTests {
     }
   }
 
-  @Test("Vec QuantizeInt8 Builds A Query Expression")
-  func vecQuantizeInt8Query() async throws {
-    let query =
-      Embedding.select { embeddings in
-        Vec.quantizeInt8(embeddings.embedding, scale: 0.5)
-      }
-
-    assertQuery(query) { query in
-      try self.database.read { db in
-        try query.fetchAll(db)
-      }
-    } sql: {
-      """
-      SELECT vec_quantize_int8("Embeddings"."embedding", 0.5)
-      FROM "Embeddings"
-      """
-    } results: {
-      """
-      SQLite error 1: 2nd argument to vec_quantize_int8() must be 'unit'. - while executing `SELECT vec_quantize_int8("Embeddings"."embedding", 0.5)
-      FROM "Embeddings"`
-      """
-    }
-  }
-
   @Test("Vec ToJSON Can Be Selected Without Needing SQL Expectations")
   func vecToJSONQuery() async throws {
     let query =
@@ -1381,31 +1356,6 @@ struct Vec0QueryTests {
     }
   #endif
 
-  @Test("Vec DistanceHamming Is Available For Queries")
-  func vecDistanceHammingQuery() async throws {
-    let queryVector: [Float].VectorBytesRepresentation = [0.3, 0.4, 0.5]
-    let query =
-      Embedding.select { embeddings in
-        Vec.distanceHamming(embeddings.embedding, to: queryVector)
-      }
-
-    assertQuery(query) { query in
-      try self.database.read { db in
-        try query.fetchAll(db)
-      }
-    } sql: {
-      #"""
-      SELECT vec_distance_hamming("Embeddings"."embedding", '���>���>\0\0\0?')
-      FROM "Embeddings"
-      """#
-    } results: {
-      """
-      SQLite error 1: Cannot calculate hamming distance between two float32 vectors. - while executing `SELECT vec_distance_hamming("Embeddings"."embedding", ?)
-      FROM "Embeddings"`
-      """
-    }
-  }
-
   @Test("Vec Length Can Be Selected")
   func vecLengthQuery() async throws {
     let query =
@@ -1424,59 +1374,93 @@ struct Vec0QueryTests {
       """
     } results: {
       """
-      ┌─────┐
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      └─────┘
+      ┌───┐
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      └───┘
       """
+    }
+  }
+
+  @Test("Vec Scalar Results Use Their Declared Storage Classes")
+  func vecScalarResultStorageClasses() async throws {
+    // GRDB widens INTEGER results to Double, so check the storage class SQLite reports.
+    let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
+    let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+    let query = #sql(
+      """
+      SELECT typeof(\(Vec.distanceL1(vector, to: queryVector))),
+        typeof(\(Vec.distanceL2(vector, to: queryVector))),
+        typeof(\(Vec.distanceCosine(vector, to: queryVector))),
+        typeof(\(Vec.length(vector)))
+      """,
+      as: (String, String, String, String).self
+    )
+    let columnQuery =
+      Embedding
+      .limit(1)
+      .select { #sql("typeof(\($0.embedding.length()))", as: String.self) }
+    let knn =
+      Embedding
+      .where { $0.embedding.match(queryVector) }
+      .limit(1)
+      .select { #sql("typeof(\($0.distance))", as: String.self) }
+    try await self.database.read { db in
+      let result = try #require(try query.fetchOne(db))
+      expectNoDifference(result.0, "real")
+      expectNoDifference(result.1, "real")
+      expectNoDifference(result.2, "real")
+      expectNoDifference(result.3, "integer")
+      expectNoDifference(try columnQuery.fetchOne(db), "integer")
+      expectNoDifference(try knn.fetchOne(db), "real")
     }
   }
 
@@ -2302,672 +2286,30 @@ struct Vec0QueryTests {
 
   @Test("Vec Bit Conversion Can Be Selected")
   func vecBitQuery() async throws {
-    let query =
-      Embedding.select { embeddings in
-        Vec.bit(embeddings.embedding)
-      }
-
-    assertQuery(query) { query in
-      try self.database.read { db in
-        try query.fetchAll(db)
-      }
-    } sql: {
-      """
-      SELECT vec_bit("Embeddings"."embedding")
-      FROM "Embeddings"
-      """
-    } results: {
-      """
-      ┌──────────────┐
-      │ [            │
-      │   [0]: 0.0,  │
-      │   [1]: 1.0,  │
-      │   [2]: 2.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 1.0,  │
-      │   [1]: 2.0,  │
-      │   [2]: 3.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 2.0,  │
-      │   [1]: 3.0,  │
-      │   [2]: 4.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 3.0,  │
-      │   [1]: 4.0,  │
-      │   [2]: 5.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 4.0,  │
-      │   [1]: 5.0,  │
-      │   [2]: 6.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 5.0,  │
-      │   [1]: 6.0,  │
-      │   [2]: 7.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 6.0,  │
-      │   [1]: 7.0,  │
-      │   [2]: 8.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 7.0,  │
-      │   [1]: 8.0,  │
-      │   [2]: 9.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 8.0,  │
-      │   [1]: 9.0,  │
-      │   [2]: 10.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 9.0,  │
-      │   [1]: 10.0, │
-      │   [2]: 11.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 10.0, │
-      │   [1]: 11.0, │
-      │   [2]: 12.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 11.0, │
-      │   [1]: 12.0, │
-      │   [2]: 13.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 12.0, │
-      │   [1]: 13.0, │
-      │   [2]: 14.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 13.0, │
-      │   [1]: 14.0, │
-      │   [2]: 15.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 14.0, │
-      │   [1]: 15.0, │
-      │   [2]: 16.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 15.0, │
-      │   [1]: 16.0, │
-      │   [2]: 17.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 16.0, │
-      │   [1]: 17.0, │
-      │   [2]: 18.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 17.0, │
-      │   [1]: 18.0, │
-      │   [2]: 19.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 18.0, │
-      │   [1]: 19.0, │
-      │   [2]: 20.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 19.0, │
-      │   [1]: 20.0, │
-      │   [2]: 21.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 20.0, │
-      │   [1]: 21.0, │
-      │   [2]: 22.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 21.0, │
-      │   [1]: 22.0, │
-      │   [2]: 23.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 22.0, │
-      │   [1]: 23.0, │
-      │   [2]: 24.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 23.0, │
-      │   [1]: 24.0, │
-      │   [2]: 25.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 24.0, │
-      │   [1]: 25.0, │
-      │   [2]: 26.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 25.0, │
-      │   [1]: 26.0, │
-      │   [2]: 27.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 26.0, │
-      │   [1]: 27.0, │
-      │   [2]: 28.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 27.0, │
-      │   [1]: 28.0, │
-      │   [2]: 29.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 28.0, │
-      │   [1]: 29.0, │
-      │   [2]: 30.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 29.0, │
-      │   [1]: 30.0, │
-      │   [2]: 31.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 30.0, │
-      │   [1]: 31.0, │
-      │   [2]: 32.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 31.0, │
-      │   [1]: 32.0, │
-      │   [2]: 33.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 32.0, │
-      │   [1]: 33.0, │
-      │   [2]: 34.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 33.0, │
-      │   [1]: 34.0, │
-      │   [2]: 35.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 34.0, │
-      │   [1]: 35.0, │
-      │   [2]: 36.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 35.0, │
-      │   [1]: 36.0, │
-      │   [2]: 37.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 36.0, │
-      │   [1]: 37.0, │
-      │   [2]: 38.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 37.0, │
-      │   [1]: 38.0, │
-      │   [2]: 39.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 38.0, │
-      │   [1]: 39.0, │
-      │   [2]: 40.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 39.0, │
-      │   [1]: 40.0, │
-      │   [2]: 41.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 40.0, │
-      │   [1]: 41.0, │
-      │   [2]: 42.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 41.0, │
-      │   [1]: 42.0, │
-      │   [2]: 43.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 42.0, │
-      │   [1]: 43.0, │
-      │   [2]: 44.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 43.0, │
-      │   [1]: 44.0, │
-      │   [2]: 45.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 44.0, │
-      │   [1]: 45.0, │
-      │   [2]: 46.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 45.0, │
-      │   [1]: 46.0, │
-      │   [2]: 47.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 46.0, │
-      │   [1]: 47.0, │
-      │   [2]: 48.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 47.0, │
-      │   [1]: 48.0, │
-      │   [2]: 49.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 48.0, │
-      │   [1]: 49.0, │
-      │   [2]: 50.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 49.0, │
-      │   [1]: 50.0, │
-      │   [2]: 51.0  │
-      │ ]            │
-      └──────────────┘
-      """
-    }
-  }
-
-  @Test("Vec Int8 Conversion Can Be Selected")
-  func vecInt8Query() async throws {
-    let query =
-      Embedding.select { embeddings in
-        Vec.int8(embeddings.embedding)
-      }
-
-    assertQuery(query) { query in
-      try self.database.read { db in
-        try query.fetchAll(db)
-      }
-    } sql: {
-      """
-      SELECT vec_int8("Embeddings"."embedding")
-      FROM "Embeddings"
-      """
-    } results: {
-      """
-      ┌──────────────┐
-      │ [            │
-      │   [0]: 0.0,  │
-      │   [1]: 1.0,  │
-      │   [2]: 2.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 1.0,  │
-      │   [1]: 2.0,  │
-      │   [2]: 3.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 2.0,  │
-      │   [1]: 3.0,  │
-      │   [2]: 4.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 3.0,  │
-      │   [1]: 4.0,  │
-      │   [2]: 5.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 4.0,  │
-      │   [1]: 5.0,  │
-      │   [2]: 6.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 5.0,  │
-      │   [1]: 6.0,  │
-      │   [2]: 7.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 6.0,  │
-      │   [1]: 7.0,  │
-      │   [2]: 8.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 7.0,  │
-      │   [1]: 8.0,  │
-      │   [2]: 9.0   │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 8.0,  │
-      │   [1]: 9.0,  │
-      │   [2]: 10.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 9.0,  │
-      │   [1]: 10.0, │
-      │   [2]: 11.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 10.0, │
-      │   [1]: 11.0, │
-      │   [2]: 12.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 11.0, │
-      │   [1]: 12.0, │
-      │   [2]: 13.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 12.0, │
-      │   [1]: 13.0, │
-      │   [2]: 14.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 13.0, │
-      │   [1]: 14.0, │
-      │   [2]: 15.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 14.0, │
-      │   [1]: 15.0, │
-      │   [2]: 16.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 15.0, │
-      │   [1]: 16.0, │
-      │   [2]: 17.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 16.0, │
-      │   [1]: 17.0, │
-      │   [2]: 18.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 17.0, │
-      │   [1]: 18.0, │
-      │   [2]: 19.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 18.0, │
-      │   [1]: 19.0, │
-      │   [2]: 20.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 19.0, │
-      │   [1]: 20.0, │
-      │   [2]: 21.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 20.0, │
-      │   [1]: 21.0, │
-      │   [2]: 22.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 21.0, │
-      │   [1]: 22.0, │
-      │   [2]: 23.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 22.0, │
-      │   [1]: 23.0, │
-      │   [2]: 24.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 23.0, │
-      │   [1]: 24.0, │
-      │   [2]: 25.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 24.0, │
-      │   [1]: 25.0, │
-      │   [2]: 26.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 25.0, │
-      │   [1]: 26.0, │
-      │   [2]: 27.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 26.0, │
-      │   [1]: 27.0, │
-      │   [2]: 28.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 27.0, │
-      │   [1]: 28.0, │
-      │   [2]: 29.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 28.0, │
-      │   [1]: 29.0, │
-      │   [2]: 30.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 29.0, │
-      │   [1]: 30.0, │
-      │   [2]: 31.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 30.0, │
-      │   [1]: 31.0, │
-      │   [2]: 32.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 31.0, │
-      │   [1]: 32.0, │
-      │   [2]: 33.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 32.0, │
-      │   [1]: 33.0, │
-      │   [2]: 34.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 33.0, │
-      │   [1]: 34.0, │
-      │   [2]: 35.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 34.0, │
-      │   [1]: 35.0, │
-      │   [2]: 36.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 35.0, │
-      │   [1]: 36.0, │
-      │   [2]: 37.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 36.0, │
-      │   [1]: 37.0, │
-      │   [2]: 38.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 37.0, │
-      │   [1]: 38.0, │
-      │   [2]: 39.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 38.0, │
-      │   [1]: 39.0, │
-      │   [2]: 40.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 39.0, │
-      │   [1]: 40.0, │
-      │   [2]: 41.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 40.0, │
-      │   [1]: 41.0, │
-      │   [2]: 42.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 41.0, │
-      │   [1]: 42.0, │
-      │   [2]: 43.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 42.0, │
-      │   [1]: 43.0, │
-      │   [2]: 44.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 43.0, │
-      │   [1]: 44.0, │
-      │   [2]: 45.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 44.0, │
-      │   [1]: 45.0, │
-      │   [2]: 46.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 45.0, │
-      │   [1]: 46.0, │
-      │   [2]: 47.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 46.0, │
-      │   [1]: 47.0, │
-      │   [2]: 48.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 47.0, │
-      │   [1]: 48.0, │
-      │   [2]: 49.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 48.0, │
-      │   [1]: 49.0, │
-      │   [2]: 50.0  │
-      │ ]            │
-      ├──────────────┤
-      │ [            │
-      │   [0]: 49.0, │
-      │   [1]: 50.0, │
-      │   [2]: 51.0  │
-      │ ]            │
-      └──────────────┘
-      """
+    let vector: [Bool].PackedBitsRepresentation = [
+      true, false, true, false, false, false, false, true
+    ]
+    let query = #sql("SELECT \(Vec.bit(vector))", as: [Bool].PackedBitsRepresentation.self)
+    let prepared = query.query.prepare { "?\($0)" }
+    expectNoDifference(prepared.sql, "SELECT vec_bit(?1)")
+    expectNoDifference(prepared.bindings, [.blob([133])])
+    try await self.database.read { db in
+      expectNoDifference(try query.fetchOne(db), vector.queryOutput)
     }
   }
 
   @Test("Vec QuantizeBinary Builds An Expression")
   func vecQuantizeBinaryQuery() async throws {
-    let query =
-      BinaryEmbedding.select { embeddings in
-        Vec.quantizeBinary(embeddings.embedding)
-      }
-
-    assertQuery(query) { query in
-      try self.database.read { db in
-        try query.fetchAll(db)
-      }
-    } sql: {
+    let query = BinaryEmbedding.select { $0.embedding.quantizeBinary() }
+    expectNoDifference(
+      query.query.prepare { "?\($0)" }.sql,
       """
       SELECT vec_quantize_binary("BinaryEmbeddings"."embedding")
       FROM "BinaryEmbeddings"
       """
-    } results: {
-      """
-      ┌────┐
-      │ [] │
-      └────┘
-      """
+    )
+    try await self.database.read { db in
+      expectNoDifference(try query.fetchAll(db), [Array(repeating: true, count: 8)])
     }
   }
 

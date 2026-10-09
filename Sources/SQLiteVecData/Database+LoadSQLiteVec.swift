@@ -1,44 +1,42 @@
 import CSQLiteVec
 import GRDB
+import GRDBSQLite
 
 extension Database {
   /// Loads the sqlite-vec extension into the current database connection.
   ///
-  /// On Apple platforms, call this at application launch using a `Configuration.prepareDatabase`
-  /// callback so every connection loads sqlite-vec.
+  /// Use `Configuration.prepareSQLiteVecExtension()` to prepare every connection,
+  /// including database pool readers, on any platform.
   ///
-  /// On non-Apple platforms, prefer ``registerSQLiteVecAutoExtension()`` before opening any
-  /// database connections. Process-global auto extension registration only affects connections
-  /// opened after registration.
+  /// On non-Apple platforms, this requires the default `SQLiteVecStaticAPI` package trait. Without
+  /// it, use ``registerSQLiteVecAutoExtension()`` instead.
   ///
   /// ```swift
-  /// extension DependencyValues {
-  ///   mutating func bootstrapDatabase() throws {
-  ///     var configuration = Configuration()
-  ///     configuration.prepareDatabase = { db in
-  ///       try db.loadSQLiteVecExtension()
-  ///     }
-  ///     let database = try SQLiteData.defaultDatabase(configuration: configuration)
-  ///     var migrator = DatabaseMigrator()
-  ///     try migrator.migrate(database)
-  ///     defaultDatabase = database
-  ///   }
-  /// }
-  ///
-  /// @main
-  /// struct MyApp: App {
-  ///   init() {
-  ///     prepareDependencies {
-  ///       try! $0.bootstrapDatabase()
-  ///     }
-  ///   }
-  /// }
+  /// var configuration = Configuration()
+  /// configuration.prepareSQLiteVecExtension()
+  /// let database = try SQLiteData.defaultDatabase(configuration: configuration)
   /// ```
   public func loadSQLiteVecExtension() throws {
-    let code = sqlite3_vec_init(self.sqliteConnection, nil, nil)
-    let resultCode = ResultCode(rawValue: code)
-    if resultCode != .SQLITE_OK {
-      throw DatabaseError(resultCode: resultCode, message: "Failed to load SQLiteVec extension.")
-    }
+    #if !canImport(Darwin) && !SQLITE_VEC_STATIC_API
+      // sqlite-vec would read SQLite's functions from a missing extension API table.
+      throw DatabaseError(
+        resultCode: .SQLITE_MISUSE,
+        message: """
+          Loading SQLiteVec into a single connection requires the SQLiteVecStaticAPI package \
+          trait. Use registerSQLiteVecAutoExtension() instead.
+          """
+      )
+    #else
+      var errorMessage: UnsafeMutablePointer<CChar>?
+      defer { sqlite3_free(errorMessage) }
+      let code = sqlite3_vec_init(self.sqliteConnection, &errorMessage, nil)
+      let resultCode = ResultCode(rawValue: code)
+      if resultCode != .SQLITE_OK {
+        throw DatabaseError(
+          resultCode: resultCode,
+          message: errorMessage.map { String(cString: $0) } ?? "Failed to load SQLiteVec extension."
+        )
+      }
+    #endif
   }
 }

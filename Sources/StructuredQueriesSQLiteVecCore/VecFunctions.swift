@@ -1,7 +1,42 @@
 import StructuredQueriesCore
 
 /// A namespace for SQLiteVec SQL functions.
+///
+/// Helpers accept float32, signed Int8, or raw packed-bit encodings according to the operation.
+/// Turso's float64, quantized, sparse, and metadata-bearing binary encodings are not supported.
+/// Int8 and packed-bit scalar operations apply `vec_int8` and `vec_bit` so SQLiteVec interprets
+/// bound blobs correctly.
 public enum Vec {
+  /// Matches a query vector expression against a vec0 float32 column.
+  ///
+  /// The left expression must refer to a vec0 vector column. SQLiteVec enforces the KNN query's
+  /// limit or `k` constraint. The query vector can be a bound value or a computed expression.
+  ///
+  /// ```swift
+  /// let query = Embedding
+  ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+  ///   .limit(5)
+  /// ```
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
+    SQLQueryExpression("(\(expression) MATCH \(vector))")
+  }
+
+  /// Matches a query vector expression against a vec0 packed-bit column.
+  ///
+  /// The left expression must refer to a vec0 binary column. The query vector can be a bound
+  /// value or a computed expression, and `vec_bit` attaches SQLiteVec's required subtype.
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding {
+    SQLQueryExpression("(\(expression) MATCH vec_bit(\(vector)))")
+  }
+
   /// Returns the L2 distance between a vector expression and a query vector.
   /// This calls sqlite-vec's `vec_distance_l2` function.
   ///
@@ -16,10 +51,14 @@ public enum Vec {
   ///   - expression: The vector expression to compare.
   ///   - vector: The query vector to compare.
   /// - Returns: A query expression for the L2 distance.
-  public static func distanceL2(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    to vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Double> {
+  public static func distanceL2<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: W
+  ) -> some QueryExpression<Double>
+  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
     SQLQueryExpression("vec_distance_l2(\(expression), \(bind: vector))")
   }
 
@@ -37,10 +76,14 @@ public enum Vec {
   ///   - expression: The vector expression to compare.
   ///   - vector: The query vector to compare.
   /// - Returns: A query expression for the L1 distance.
-  public static func distanceL1(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    to vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Double> {
+  public static func distanceL1<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: W
+  ) -> some QueryExpression<Double>
+  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
     SQLQueryExpression("vec_distance_l1(\(expression), \(bind: vector))")
   }
 
@@ -58,10 +101,14 @@ public enum Vec {
   ///   - expression: The vector expression to compare.
   ///   - vector: The query vector to compare.
   /// - Returns: A query expression for the cosine distance.
-  public static func distanceCosine(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    to vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Double> {
+  public static func distanceCosine<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: W
+  ) -> some QueryExpression<Double>
+  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
     SQLQueryExpression("vec_distance_cosine(\(expression), \(bind: vector))")
   }
 
@@ -69,8 +116,8 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_distance_hamming` function.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-  /// let query = Embedding.select {
+  /// let queryVector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+  /// let query = BinaryEmbedding.select {
   ///   Vec.distanceHamming($0.embedding, to: queryVector)
   /// }
   /// ```
@@ -79,11 +126,15 @@ public enum Vec {
   ///   - expression: The vector expression to compare.
   ///   - vector: The query vector to compare.
   /// - Returns: A query expression for the Hamming distance.
-  public static func distanceHamming(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    to vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Double> {
-    SQLQueryExpression("vec_distance_hamming(\(expression), \(bind: vector))")
+  public static func distanceHamming<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: W
+  ) -> some QueryExpression<Double>
+  where V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding {
+    SQLQueryExpression("vec_distance_hamming(vec_bit(\(expression)), vec_bit(\(bind: vector)))")
   }
 
   /// Returns the length of a vector expression.
@@ -97,9 +148,9 @@ public enum Vec {
   ///
   /// - Parameter expression: The vector expression to measure.
   /// - Returns: A query expression for the vector length.
-  public static func length(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<Double> {
+  public static func length<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<Int> where V.Encoding == [Float].VectorBytesRepresentation {
     SQLQueryExpression("vec_length(\(expression))")
   }
 
@@ -114,9 +165,9 @@ public enum Vec {
   ///
   /// - Parameter expression: The vector expression to inspect.
   /// - Returns: A query expression for the type string.
-  public static func type(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<String> {
+  public static func type<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<String> where V.Encoding == [Float].VectorBytesRepresentation {
     SQLQueryExpression("vec_type(\(expression))")
   }
 
@@ -131,9 +182,9 @@ public enum Vec {
   ///
   /// - Parameter expression: The vector expression to serialize.
   /// - Returns: A query expression for the JSON string.
-  public static func toJSON(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<String> {
+  public static func toJSON<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<String> where V.Encoding == [Float].VectorBytesRepresentation {
     SQLQueryExpression("vec_to_json(\(expression))")
   }
 
@@ -152,11 +203,19 @@ public enum Vec {
   ///   - vector: The query vector to add.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the summed vector.
-  public static func add<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    _ vector: some VectorBytesRepresentable & QueryBindable,
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: W,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == [Float].VectorBytesRepresentation
+  {
     SQLQueryExpression("vec_add(\(expression), \(bind: vector))")
   }
 
@@ -174,10 +233,11 @@ public enum Vec {
   ///   - expression: The vector expression to add to.
   ///   - vector: The query vector to add.
   /// - Returns: A query expression for the summed vector.
-  public static func add(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    _ vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+  public static func add<V: VectorBytesRepresentable, W: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: W
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
     Self.add(expression, vector, as: [Float].VectorBytesRepresentation.self)
   }
 
@@ -196,11 +256,19 @@ public enum Vec {
   ///   - vector: The query vector to subtract.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the difference vector.
-  public static func sub<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    _ vector: some VectorBytesRepresentable & QueryBindable,
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: W,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == [Float].VectorBytesRepresentation
+  {
     SQLQueryExpression("vec_sub(\(expression), \(bind: vector))")
   }
 
@@ -218,10 +286,11 @@ public enum Vec {
   ///   - expression: The vector expression to subtract from.
   ///   - vector: The query vector to subtract.
   /// - Returns: A query expression for the difference vector.
-  public static func sub(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    _ vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+  public static func sub<V: VectorBytesRepresentable, W: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: W
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
     Self.sub(expression, vector, as: [Float].VectorBytesRepresentation.self)
   }
 
@@ -240,12 +309,18 @@ public enum Vec {
   ///   - end: The exclusive end index.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the sliced vector.
-  public static func slice<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func slice<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
     start: Int,
     end: Int,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Float].VectorBytesRepresentation
+  {
     SQLQueryExpression("vec_slice(\(expression), \(raw: start), \(raw: end))")
   }
 
@@ -263,11 +338,12 @@ public enum Vec {
   ///   - start: The start index.
   ///   - end: The exclusive end index.
   /// - Returns: A query expression for the sliced vector.
-  public static func slice(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func slice<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
     start: Int,
     end: Int
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
     Self.slice(
       expression,
       start: start,
@@ -290,11 +366,17 @@ public enum Vec {
   ///   - range: The half-open range to extract.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the sliced vector.
-  public static func slice<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func slice<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
     range: Range<Int>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Float].VectorBytesRepresentation
+  {
     Self.slice(expression, start: range.lowerBound, end: range.upperBound, as: result)
   }
 
@@ -311,10 +393,11 @@ public enum Vec {
   ///   - expression: The vector expression to slice.
   ///   - range: The half-open range to extract.
   /// - Returns: A query expression for the sliced vector.
-  public static func slice(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func slice<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
     range: Range<Int>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
     Self.slice(expression, range: range, as: [Float].VectorBytesRepresentation.self)
   }
 
@@ -332,11 +415,17 @@ public enum Vec {
   ///   - range: The closed range to extract.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the sliced vector.
-  public static func slice<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func slice<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
     range: ClosedRange<Int>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Float].VectorBytesRepresentation
+  {
     Self.slice(expression, start: range.lowerBound, end: range.upperBound + 1, as: result)
   }
 
@@ -353,10 +442,11 @@ public enum Vec {
   ///   - expression: The vector expression to slice.
   ///   - range: The closed range to extract.
   /// - Returns: A query expression for the sliced vector.
-  public static func slice(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func slice<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
     range: ClosedRange<Int>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
     Self.slice(expression, range: range, as: [Float].VectorBytesRepresentation.self)
   }
 
@@ -375,12 +465,18 @@ public enum Vec {
   ///   - length: The number of elements to extract.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the sliced vector.
-  public static func slice<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func slice<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
     start: Int,
     length: Int,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Float].VectorBytesRepresentation
+  {
     Self.slice(expression, range: start..<(start + length), as: result)
   }
 
@@ -398,11 +494,12 @@ public enum Vec {
   ///   - start: The start index.
   ///   - length: The number of elements to extract.
   /// - Returns: A query expression for the sliced vector.
-  public static func slice(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func slice<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
     start: Int,
     length: Int
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
     Self.slice(expression, range: start..<(start + length))
   }
 
@@ -419,10 +516,16 @@ public enum Vec {
   ///   - expression: The vector expression to normalize.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the normalized vector.
-  public static func normalize<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func normalize<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Float].VectorBytesRepresentation
+  {
     SQLQueryExpression("vec_normalize(\(expression))")
   }
 
@@ -437,9 +540,10 @@ public enum Vec {
   ///
   /// - Parameter expression: The vector expression to normalize.
   /// - Returns: A query expression for the normalized vector.
-  public static func normalize(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+  public static func normalize<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
     Self.normalize(expression, as: [Float].VectorBytesRepresentation.self)
   }
 
@@ -456,10 +560,13 @@ public enum Vec {
   ///   - expression: The vector expression to convert.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the converted vector.
-  public static func f32<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func f32<V: VectorBytesRepresentable, T: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Float].VectorBytesRepresentation
+  {
     SQLQueryExpression("vec_f32(\(expression))")
   }
 
@@ -474,18 +581,20 @@ public enum Vec {
   ///
   /// - Parameter expression: The vector expression to convert.
   /// - Returns: A query expression for the converted vector.
-  public static func f32(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+  public static func f32<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
     Self.f32(expression, as: [Float].VectorBytesRepresentation.self)
   }
 
   /// Converts a vector expression to a bit representation and returns the result in the requested type.
-  /// This calls sqlite-vec's `vec_bit` function.
+  /// This calls sqlite-vec's `vec_bit` function, reinterpreting the blob's bytes as bits.
+  /// Use `quantizeBinary` to quantize numeric components by sign instead.
   ///
   /// ```swift
   /// let query = Embedding.select {
-  ///   Vec.bit($0.embedding, as: [Float].VectorBytesRepresentation.self)
+  ///   Vec.bit($0.embedding, as: [Bool].PackedBitsRepresentation.self)
   /// }
   /// ```
   ///
@@ -493,15 +602,19 @@ public enum Vec {
   ///   - expression: The vector expression to convert.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the converted vector.
-  public static func bit<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func bit<V: VectorBytesRepresentable, T: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Bool].PackedBitsRepresentation
+  {
     SQLQueryExpression("vec_bit(\(expression))")
   }
 
-  /// Converts a vector expression to a bit representation and returns the result as a float vector.
-  /// This calls sqlite-vec's `vec_bit` function.
+  /// Converts a vector expression to a bit representation and returns logical bits.
+  /// This calls sqlite-vec's `vec_bit` function, reinterpreting the blob's bytes as bits.
+  /// Use `quantizeBinary` to quantize numeric components by sign instead.
   ///
   /// ```swift
   /// let query = Embedding.select {
@@ -511,93 +624,47 @@ public enum Vec {
   ///
   /// - Parameter expression: The vector expression to convert.
   /// - Returns: A query expression for the converted vector.
-  public static func bit(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
-    Self.bit(expression, as: [Float].VectorBytesRepresentation.self)
+  public static func bit<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
+    Self.bit(expression, as: [Bool].PackedBitsRepresentation.self)
   }
 
-  /// Converts a vector expression to an int8 representation and returns the result in the requested type.
-  /// This calls sqlite-vec's `vec_int8` function.
+  /// Quantizes Float32 components in the unit range to signed Int8 codes.
   ///
-  /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.int8($0.embedding, as: [Float].VectorBytesRepresentation.self)
-  /// }
-  /// ```
+  /// This calls `vec_quantize_int8(vector, 'unit')`. SQLiteVec maps the range [-1, 1] to
+  /// [-128, 127], clamps out-of-range components, and truncates toward zero. It does not normalize
+  /// the input. Use `Vec.normalize` first when unit-length normalization is appropriate.
   ///
   /// - Parameters:
-  ///   - expression: The vector expression to convert.
-  ///   - result: The result representation type.
-  /// - Returns: A query expression for the converted vector.
-  public static func int8<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  ///   - expression: The Float32 vector expression to quantize.
+  ///   - result: A signed Int8 result representation, optionally validating fixed dimensions.
+  public static func quantizeInt8<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
-    SQLQueryExpression("vec_int8(\(expression))")
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Int8].Int8BytesRepresentation
+  {
+    SQLQueryExpression("vec_quantize_int8(\(expression), 'unit')")
   }
 
-  /// Converts a vector expression to an int8 representation and returns the result as a float vector.
-  /// This calls sqlite-vec's `vec_int8` function.
+  /// Quantizes Float32 components in [-1, 1] to signed Int8 codes, clamping out-of-range values.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.int8($0.embedding)
-  /// }
+  /// let query = Embedding.select { $0.embedding.quantizeInt8() }
   /// ```
-  ///
-  /// - Parameter expression: The vector expression to convert.
-  /// - Returns: A query expression for the converted vector.
-  public static func int8(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
-    Self.int8(expression, as: [Float].VectorBytesRepresentation.self)
-  }
-
-  /// Quantizes a vector expression to int8 and returns the result in the requested representation.
-  /// This calls sqlite-vec's `vec_quantize_int8` function.
-  ///
-  /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.quantizeInt8($0.embedding, scale: 1.0, as: [Float].VectorBytesRepresentation.self)
-  /// }
-  /// ```
-  ///
-  /// - Parameters:
-  ///   - expression: The vector expression to quantize.
-  ///   - scale: The scale value passed to sqlite-vec.
-  ///   - result: The result representation type.
-  /// - Returns: A query expression for the quantized vector.
-  public static func quantizeInt8<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    scale: Double,
-    as result: T.Type
-  ) -> some QueryExpression<T> {
-    SQLQueryExpression("vec_quantize_int8(\(expression), \(raw: scale))")
-  }
-
-  /// Quantizes a vector expression to int8 and returns the result as a float vector.
-  /// This calls sqlite-vec's `vec_quantize_int8` function.
-  ///
-  /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.quantizeInt8($0.embedding, scale: 1.0)
-  /// }
-  /// ```
-  ///
-  /// - Parameters:
-  ///   - expression: The vector expression to quantize.
-  ///   - scale: The scale value passed to sqlite-vec.
-  /// - Returns: A query expression for the quantized vector.
-  public static func quantizeInt8(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
-    scale: Double
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
-    Self.quantizeInt8(
-      expression,
-      scale: scale,
-      as: [Float].VectorBytesRepresentation.self
-    )
+  /// The result contains codes, not reconstructed Float32 components. SQLiteVec supports only
+  /// the `unit` quantization mode; this helper does not normalize the input.
+  public static func quantizeInt8<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Int8].Int8BytesRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
+    Self.quantizeInt8(expression, as: [Int8].Int8BytesRepresentation.self)
   }
 
   /// Quantizes a vector expression to a binary representation and returns the result in the requested type.
@@ -605,7 +672,7 @@ public enum Vec {
   ///
   /// ```swift
   /// let query = Embedding.select {
-  ///   Vec.quantizeBinary($0.embedding, as: [Float].VectorBytesRepresentation.self)
+  ///   Vec.quantizeBinary($0.embedding, as: [Bool].PackedBitsRepresentation.self)
   /// }
   /// ```
   ///
@@ -613,14 +680,20 @@ public enum Vec {
   ///   - expression: The vector expression to quantize.
   ///   - result: The result representation type.
   /// - Returns: A query expression for the quantized vector.
-  public static func quantizeBinary<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>,
+  public static func quantizeBinary<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
     as result: T.Type
-  ) -> some QueryExpression<T> {
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == [Bool].PackedBitsRepresentation
+  {
     SQLQueryExpression("vec_quantize_binary(\(expression))")
   }
 
-  /// Quantizes a vector expression to a binary representation and returns the result as a float vector.
+  /// Quantizes a vector expression to a binary representation and returns logical bits.
   /// This calls sqlite-vec's `vec_quantize_binary` function.
   ///
   /// ```swift
@@ -631,9 +704,152 @@ public enum Vec {
   ///
   /// - Parameter expression: The vector expression to quantize.
   /// - Returns: A query expression for the quantized vector.
-  public static func quantizeBinary(
-    _ expression: some QueryExpression<some VectorBytesRepresentable>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
-    Self.quantizeBinary(expression, as: [Float].VectorBytesRepresentation.self)
+  public static func quantizeBinary<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
+  where V.Encoding == [Float].VectorBytesRepresentation {
+    Self.quantizeBinary(expression, as: [Bool].PackedBitsRepresentation.self)
+  }
+
+  // MARK: - Packed Bits
+
+  /// Returns the dimension count of a packed-bit vector.
+  public static func length<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<Int> where V.Encoding == [Bool].PackedBitsRepresentation {
+    SQLQueryExpression("vec_length(vec_bit(\(expression)))")
+  }
+
+  /// Returns the SQLiteVec type of a packed-bit vector.
+  public static func type<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<String> where V.Encoding == [Bool].PackedBitsRepresentation {
+    SQLQueryExpression("vec_type(vec_bit(\(expression)))")
+  }
+
+  /// Returns the JSON elements of a packed-bit vector.
+  public static func toJSON<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<String> where V.Encoding == [Bool].PackedBitsRepresentation {
+    SQLQueryExpression("vec_to_json(vec_bit(\(expression)))")
+  }
+
+  /// Slices packed bits. The start and end indices must be divisible by eight.
+  public static func slice<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    start: Int,
+    end: Int,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding == [Bool].PackedBitsRepresentation, T.Encoding == [Bool].PackedBitsRepresentation
+  {
+    SQLQueryExpression("vec_slice(vec_bit(\(expression)), \(raw: start), \(raw: end))")
+  }
+
+  /// Slices packed bits. The start and end indices must be divisible by eight.
+  public static func slice<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    start: Int,
+    end: Int
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
+  where V.Encoding == [Bool].PackedBitsRepresentation {
+    Self.slice(
+      expression,
+      start: start,
+      end: end,
+      as: [Bool].PackedBitsRepresentation.self
+    )
+  }
+
+  /// Slices packed bits. The start and end indices must be divisible by eight.
+  public static func slice<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    range: Range<Int>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding == [Bool].PackedBitsRepresentation, T.Encoding == [Bool].PackedBitsRepresentation
+  {
+    Self.slice(expression, start: range.lowerBound, end: range.upperBound, as: result)
+  }
+
+  /// Slices packed bits. The start and end indices must be divisible by eight.
+  public static func slice<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    range: Range<Int>
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
+  where V.Encoding == [Bool].PackedBitsRepresentation {
+    Self.slice(expression, range: range, as: [Bool].PackedBitsRepresentation.self)
+  }
+
+  /// Slices packed bits. The start and end indices must be divisible by eight.
+  public static func slice<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    range: ClosedRange<Int>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding == [Bool].PackedBitsRepresentation, T.Encoding == [Bool].PackedBitsRepresentation
+  {
+    Self.slice(expression, start: range.lowerBound, end: range.upperBound + 1, as: result)
+  }
+
+  /// Slices packed bits. The start and end indices must be divisible by eight.
+  public static func slice<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    range: ClosedRange<Int>
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
+  where V.Encoding == [Bool].PackedBitsRepresentation {
+    Self.slice(expression, range: range, as: [Bool].PackedBitsRepresentation.self)
+  }
+
+  /// Slices packed bits. The start and end indices must be divisible by eight.
+  public static func slice<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    start: Int,
+    length: Int,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding == [Bool].PackedBitsRepresentation, T.Encoding == [Bool].PackedBitsRepresentation
+  {
+    Self.slice(expression, range: start..<(start + length), as: result)
+  }
+
+  /// Slices packed bits. The start and end indices must be divisible by eight.
+  public static func slice<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    start: Int,
+    length: Int
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
+  where V.Encoding == [Bool].PackedBitsRepresentation {
+    Self.slice(expression, range: start..<(start + length))
+  }
+
+  /// Marks a packed-bit blob with SQLiteVec's binary subtype.
+  public static func bit<V: VectorBytesRepresentable, T: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding == [Bool].PackedBitsRepresentation, T.Encoding == [Bool].PackedBitsRepresentation
+  {
+    SQLQueryExpression("vec_bit(\(expression))")
+  }
+
+  /// Marks a packed-bit blob with SQLiteVec's binary subtype.
+  public static func bit<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
+  where V.Encoding == [Bool].PackedBitsRepresentation {
+    Self.bit(expression, as: [Bool].PackedBitsRepresentation.self)
   }
 }

@@ -64,8 +64,11 @@ extension TableDefinition where QueryValue: Vec0 {
 
 // MARK: - Match
 
-extension TableColumnExpression where Root: Vec0, Value: VectorBytesRepresentable {
-  /// Matches a query vector against a vec0 column.
+extension TableColumnExpression
+where
+  Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Float].VectorBytesRepresentation
+{
+  /// Matches a bound or computed query vector against a vec0 column.
   ///
   /// ```swift
   /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
@@ -74,23 +77,21 @@ extension TableColumnExpression where Root: Vec0, Value: VectorBytesRepresentabl
   ///   .select { $0.label }
   /// ```
   ///
-  /// - Parameter vector: The query vector to match.
+  /// - Parameter vector: The bound or computed query vector to match.
   /// - Returns: A boolean query expression for filtering.
-  public func match(
-    _ vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Bool> {
-    SQLQueryExpression(
-      """
-      (\(Root.self).\(quote: name) MATCH \(vector))
-      """
-    )
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool> where V.Encoding == Value.Encoding {
+    Vec.match(self, to: vector)
   }
 }
 
 // MARK: - Column Expression Helpers
 
 extension TableColumnExpression
-where Root: Vec0, Value: VectorBytesRepresentable {
+where
+  Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Float].VectorBytesRepresentation
+{
   /// Returns the L2 distance between this column and a query vector.
   /// This calls sqlite-vec's `vec_distance_l2` function.
   ///
@@ -103,9 +104,9 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   ///
   /// - Parameter vector: The query vector to compare.
   /// - Returns: A query expression for the L2 distance.
-  public func distanceL2(
-    to vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Double> {
+  public func distanceL2<V: VectorBytesRepresentable & QueryBindable>(
+    to vector: V
+  ) -> some QueryExpression<Double> where V.Encoding == Value.Encoding {
     Vec.distanceL2(self, to: vector)
   }
 
@@ -121,9 +122,9 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   ///
   /// - Parameter vector: The query vector to compare.
   /// - Returns: A query expression for the L1 distance.
-  public func distanceL1(
-    to vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Double> {
+  public func distanceL1<V: VectorBytesRepresentable & QueryBindable>(
+    to vector: V
+  ) -> some QueryExpression<Double> where V.Encoding == Value.Encoding {
     Vec.distanceL1(self, to: vector)
   }
 
@@ -139,28 +140,10 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   ///
   /// - Parameter vector: The query vector to compare.
   /// - Returns: A query expression for the cosine distance.
-  public func distanceCosine(
-    to vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Double> {
+  public func distanceCosine<V: VectorBytesRepresentable & QueryBindable>(
+    to vector: V
+  ) -> some QueryExpression<Double> where V.Encoding == Value.Encoding {
     Vec.distanceCosine(self, to: vector)
-  }
-
-  /// Returns the Hamming distance between this column and a query vector.
-  /// This calls sqlite-vec's `vec_distance_hamming` function.
-  ///
-  /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-  /// let query = Embedding.select {
-  ///   $0.embedding.distanceHamming(to: queryVector)
-  /// }
-  /// ```
-  ///
-  /// - Parameter vector: The query vector to compare.
-  /// - Returns: A query expression for the Hamming distance.
-  public func distanceHamming(
-    to vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Double> {
-    Vec.distanceHamming(self, to: vector)
   }
 
   /// Returns the length of the vector stored in this column.
@@ -173,7 +156,7 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   /// ```
   ///
   /// - Returns: A query expression for the vector length.
-  public func length() -> some QueryExpression<Double> {
+  public func length() -> some QueryExpression<Int> {
     Vec.length(self)
   }
 
@@ -217,9 +200,9 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   ///
   /// - Parameter vector: The query vector to add.
   /// - Returns: A query expression for the summed vector.
-  public func add(
-    _ vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Value> {
+  public func add<V: VectorBytesRepresentable & QueryBindable>(
+    _ vector: V
+  ) -> some QueryExpression<Value> where V.Encoding == Value.Encoding {
     Vec.add(self, vector, as: Value.self)
   }
 
@@ -235,9 +218,9 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   ///
   /// - Parameter vector: The query vector to subtract.
   /// - Returns: A query expression for the difference vector.
-  public func sub(
-    _ vector: some VectorBytesRepresentable & QueryBindable
-  ) -> some QueryExpression<Value> {
+  public func sub<V: VectorBytesRepresentable & QueryBindable>(
+    _ vector: V
+  ) -> some QueryExpression<Value> where V.Encoding == Value.Encoding {
     Vec.sub(self, vector, as: Value.self)
   }
 
@@ -353,41 +336,29 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   /// ```
   ///
   /// - Returns: A query expression for the bit vector.
-  public func bit() -> some QueryExpression<Value> {
-    Vec.bit(self, as: Value.self)
+  public func bit() -> some QueryExpression<[Bool].PackedBitsRepresentation> {
+    Vec.bit(self)
   }
 
-  /// Converts the vector stored in this column to an int8 representation.
-  /// This calls sqlite-vec's `vec_int8` function.
-  ///
-  /// ```swift
-  /// let query = Embedding.select {
-  ///   $0.embedding.int8()
-  /// }
-  /// ```
-  ///
-  /// - Returns: A query expression for the int8 vector.
-  public func int8() -> some QueryExpression<Value> {
-    Vec.int8(self, as: Value.self)
+  /// Returns logical bits using a matching packed-bit representation.
+  public func bit<T: VectorBytesRepresentable & QueryBindable>(
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].PackedBitsRepresentation {
+    Vec.bit(self, as: result)
   }
 
-  /// Quantizes the vector stored in this column to int8.
-  /// This calls sqlite-vec's `vec_quantize_int8` function.
+  /// Quantizes Float32 components in [-1, 1] to signed Int8 codes.
   ///
-  /// ```swift
-  /// let query = Embedding.select {
-  ///   $0.embedding.quantizeInt8(scale: 1.0)
-  /// }
-  /// ```
-  ///
-  /// - Parameter scale: The scale value passed to sqlite-vec.
-  /// - Returns: A query expression for the quantized vector.
-  public func quantizeInt8(scale: Double) -> some QueryExpression<Value> {
-    Vec.quantizeInt8(
-      self,
-      scale: scale,
-      as: Value.self
-    )
+  /// SQLiteVec clamps out-of-range components; it does not normalize the input.
+  public func quantizeInt8() -> some QueryExpression<[Int8].Int8BytesRepresentation> {
+    Vec.quantizeInt8(self)
+  }
+
+  /// Quantizes to a signed Int8 representation with optional fixed-dimension validation.
+  public func quantizeInt8<T: VectorBytesRepresentable & QueryBindable>(
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Encoding == [Int8].Int8BytesRepresentation {
+    Vec.quantizeInt8(self, as: result)
   }
 
   /// Quantizes the vector stored in this column to a binary representation.
@@ -400,7 +371,194 @@ where Root: Vec0, Value: VectorBytesRepresentable {
   /// ```
   ///
   /// - Returns: A query expression for the quantized vector.
-  public func quantizeBinary() -> some QueryExpression<Value> {
-    Vec.quantizeBinary(self, as: Value.self)
+  public func quantizeBinary() -> some QueryExpression<[Bool].PackedBitsRepresentation> {
+    Vec.quantizeBinary(self)
+  }
+
+  /// Returns logical bits using a matching packed-bit representation.
+  public func quantizeBinary<T: VectorBytesRepresentable & QueryBindable>(
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].PackedBitsRepresentation {
+    Vec.quantizeBinary(self, as: result)
+  }
+}
+
+// MARK: - Int8 Column Helpers
+
+extension TableColumnExpression
+where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Int8].Int8BytesRepresentation
+{
+  /// Matches a bound or computed query against this vec0 Int8 column.
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool> where V.Encoding == Value.Encoding {
+    Vec.match(self, to: vector)
+  }
+
+  /// Marks this signed-byte column with SQLiteVec's Int8 subtype.
+  public func int8() -> some QueryExpression<Value> {
+    Vec.int8(self, as: Value.self)
+  }
+
+  /// Returns the L1 distance to a signed Int8 query with matching dimensions.
+  public func distanceL1<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double> where V.Encoding == Value.Encoding {
+    Vec.distanceL1(self, to: vector)
+  }
+
+  /// Returns the L2 distance to a signed Int8 query with matching dimensions.
+  public func distanceL2<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double> where V.Encoding == Value.Encoding {
+    Vec.distanceL2(self, to: vector)
+  }
+
+  /// Returns the cosine distance to a signed Int8 query with matching dimensions.
+  public func distanceCosine<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double> where V.Encoding == Value.Encoding {
+    Vec.distanceCosine(self, to: vector)
+  }
+
+  /// Returns the number of signed Int8 components.
+  public func length() -> some QueryExpression<Int> {
+    Vec.length(self)
+  }
+
+  /// Returns the SQLiteVec type string.
+  public func type() -> some QueryExpression<String> {
+    Vec.type(self)
+  }
+
+  /// Returns the signed Int8 components as JSON.
+  public func toJSON() -> some QueryExpression<String> {
+    Vec.toJSON(self)
+  }
+
+  /// Adds a signed Int8 query with matching dimensions.
+  public func add<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Value> where V.Encoding == Value.Encoding {
+    Vec.add(self, vector, as: Value.self)
+  }
+
+  /// Subtracts a signed Int8 query with matching dimensions.
+  public func sub<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Value> where V.Encoding == Value.Encoding {
+    Vec.sub(self, vector, as: Value.self)
+  }
+
+  /// Slices signed Int8 components using an inclusive start and exclusive end.
+  public func slice(start: Int, end: Int) -> some QueryExpression<[Int8].Int8BytesRepresentation> {
+    Vec.slice(self, start: start, end: end)
+  }
+
+  /// Slices signed Int8 components using a half-open range.
+  public func slice(_ range: Range<Int>) -> some QueryExpression<[Int8].Int8BytesRepresentation> {
+    Vec.slice(self, range: range)
+  }
+
+  /// Slices signed Int8 components using a closed range.
+  public func slice(_ range: ClosedRange<Int>) -> some QueryExpression<
+    [Int8].Int8BytesRepresentation
+  > {
+    Vec.slice(self, range: range)
+  }
+
+  /// Slices signed Int8 components using a start index and component count.
+  public func slice(start: Int, length: Int) -> some QueryExpression<[Int8].Int8BytesRepresentation>
+  {
+    Vec.slice(self, start: start, length: length)
+  }
+
+  /// Quantizes signed Int8 components by sign into packed bits. Dimensions must be divisible by eight.
+  public func quantizeBinary() -> some QueryExpression<[Bool].PackedBitsRepresentation> {
+    Vec.quantizeBinary(self)
+  }
+
+  /// Quantizes signed Int8 components into a matching packed-bit representation.
+  public func quantizeBinary<T: VectorBytesRepresentable & QueryBindable>(
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].PackedBitsRepresentation {
+    Vec.quantizeBinary(self, as: result)
+  }
+}
+
+// MARK: - Binary Column Helpers
+
+extension TableColumnExpression
+where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Bool].PackedBitsRepresentation
+{
+  /// Matches a bound or computed packed-bit query against this vec0 binary column.
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool> where V.Encoding == Value.Encoding {
+    Vec.match(self, to: vector)
+  }
+
+  /// Returns the Hamming distance to a packed-bit query.
+  public func distanceHamming<V: VectorBytesRepresentable & QueryBindable>(
+    to vector: V
+  ) -> some QueryExpression<Double> where V.Encoding == Value.Encoding {
+    Vec.distanceHamming(self, to: vector)
+  }
+
+  /// Returns the number of logical bits in this vector.
+  public func length() -> some QueryExpression<Int> {
+    Vec.length(self)
+  }
+
+  /// Returns SQLiteVec's type string for this binary vector.
+  public func type() -> some QueryExpression<String> {
+    Vec.type(self)
+  }
+
+  /// Returns the JSON elements of this binary vector.
+  public func toJSON() -> some QueryExpression<String> {
+    Vec.toJSON(self)
+  }
+
+  /// Slices this binary vector. Start and end indices must be divisible by eight.
+  public func slice(
+    start: Int,
+    end: Int
+  ) -> some QueryExpression<Value> {
+    Vec.slice(self, start: start, end: end, as: Value.self)
+  }
+
+  /// Slices this binary vector. Start and end indices must be divisible by eight.
+  public func slice(
+    _ range: Range<Int>
+  ) -> some QueryExpression<Value> {
+    Vec.slice(self, range: range, as: Value.self)
+  }
+
+  /// Slices this binary vector. Start and end indices must be divisible by eight.
+  public func slice(
+    _ range: ClosedRange<Int>
+  ) -> some QueryExpression<Value> {
+    Vec.slice(self, range: range, as: Value.self)
+  }
+
+  /// Slices this binary vector. Start and end indices must be divisible by eight.
+  public func slice(
+    start: Int,
+    length: Int
+  ) -> some QueryExpression<Value> {
+    self.slice(start..<start + length)
+  }
+
+  /// Marks this binary blob with SQLiteVec's binary subtype.
+  public func bit() -> some QueryExpression<[Bool].PackedBitsRepresentation> {
+    Vec.bit(self)
+  }
+
+  /// Marks this binary blob with SQLiteVec's binary subtype.
+  public func bit<T: VectorBytesRepresentable & QueryBindable>(
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Encoding == [Bool].PackedBitsRepresentation {
+    Vec.bit(self, as: result)
   }
 }
