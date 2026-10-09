@@ -150,7 +150,7 @@ public enum Vec {
   /// - Returns: A query expression for the vector length.
   public static func length<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == [Float].VectorBytesRepresentation {
+  ) -> some QueryExpression<Int> where V.Encoding == [Float].VectorBytesRepresentation {
     SQLQueryExpression("vec_length(\(expression))")
   }
 
@@ -716,7 +716,7 @@ public enum Vec {
   /// Returns the dimension count of a packed-bit vector.
   public static func length<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == [Bool].PackedBitsRepresentation {
+  ) -> some QueryExpression<Int> where V.Encoding == [Bool].PackedBitsRepresentation {
     SQLQueryExpression("vec_length(vec_bit(\(expression)))")
   }
 

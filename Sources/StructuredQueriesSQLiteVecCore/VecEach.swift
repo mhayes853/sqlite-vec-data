@@ -1,6 +1,13 @@
 import StructuredQueriesCore
 
+/// A table representation for `vec_each` over Float32 vectors.
+public typealias VecEach = VecEachOf<Float>
+
 /// A table representation for `vec_each`.
+///
+/// The element type matches the storage class SQLiteVec reports for each encoding: Float32
+/// vectors yield ``VecEach`` (`VecEachOf<Float>`), Int8 vectors yield `VecEachOf<Int8>`, and
+/// packed-bit vectors yield `VecEachOf<Bool>`.
 ///
 /// ```swift
 /// let query = Embedding
@@ -19,7 +26,8 @@ import StructuredQueriesCore
 /// ```
 ///
 /// In debug builds, using this invalid entry point triggers a precondition failure.
-public struct VecEach: Hashable, Sendable, Table {
+public struct VecEachOf<Value>: Hashable, Sendable, Table
+where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOutput == Value {
   public static var tableName: String { "vec_each" }
 
   public static var columns: TableColumns { TableColumns() }
@@ -39,8 +47,8 @@ public struct VecEach: Hashable, Sendable, Table {
       guard isBuildingVecEachStatement else {
         preconditionFailure(
           """
-          VecEach cannot be queried through static table entry points because vec_each requires \
-          its hidden vector column. Use vecEach() or Vec.each(_:) instead.
+          VecEachOf cannot be queried through static table entry points because vec_each \
+          requires its hidden vector column. Use vecEach() or Vec.each(_:) instead.
           """
         )
       }
@@ -52,10 +60,10 @@ public struct VecEach: Hashable, Sendable, Table {
   public let rowid: Int
 
   /// The current vector element.
-  public let value: Float
+  public let value: Value
 
   public struct TableColumns: Sendable, TableDefinition {
-    public typealias QueryValue = VecEach
+    public typealias QueryValue = VecEachOf<Value>
 
     public static var allColumns: [any TableColumnExpression] {
       [TableColumns().rowid, TableColumns().value]
@@ -64,18 +72,18 @@ public struct VecEach: Hashable, Sendable, Table {
     public static var writableColumns: [any WritableTableColumnExpression] { [] }
 
     /// The zero-based index of the current vector element.
-    public var rowid: GeneratedColumn<VecEach, Int> {
-      GeneratedColumn("rowid", keyPath: \VecEach.rowid)
+    public var rowid: GeneratedColumn<VecEachOf<Value>, Int> {
+      GeneratedColumn("rowid", keyPath: \VecEachOf<Value>.rowid)
     }
 
     /// The current vector element.
-    public var value: GeneratedColumn<VecEach, Float> {
-      GeneratedColumn("value", keyPath: \VecEach.value)
+    public var value: GeneratedColumn<VecEachOf<Value>, Value> {
+      GeneratedColumn("value", keyPath: \VecEachOf<Value>.value)
     }
   }
 
   public struct Selection: TableExpression {
-    public typealias QueryValue = VecEach
+    public typealias QueryValue = VecEachOf<Value>
 
     public var allColumns: [any QueryExpression]
 
@@ -85,15 +93,15 @@ public struct VecEach: Hashable, Sendable, Table {
   }
 }
 
-extension VecEach: QueryRepresentable {
-  public typealias QueryOutput = VecEach
+extension VecEachOf: QueryRepresentable {
+  public typealias QueryOutput = VecEachOf<Value>
 }
 
-extension VecEach: QueryDecodable {
+extension VecEachOf: QueryDecodable {
   public init(decoder: inout some QueryDecoder) throws {
     try self.init(
       rowid: Int(decoder: &decoder),
-      value: Float(decoder: &decoder)
+      value: Value(decoder: &decoder)
     )
   }
 }
@@ -146,9 +154,10 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Float].Vecto
 extension Vec {
   /// Iterates over the logical bits of a packed-bit vector using `vec_each`.
   /// Within each byte, SQLiteVec reports the most significant bit first.
+  /// Each element's `value` is an integer `0` or `1`, decoded as a `Bool`.
   public static func each<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> SelectOf<VecEach> where V.Encoding == [Bool].PackedBitsRepresentation {
+  ) -> SelectOf<VecEachOf<Bool>> where V.Encoding == [Bool].PackedBitsRepresentation {
     expression.vecEach()
   }
 }
@@ -157,16 +166,17 @@ extension QueryExpression
 where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Bool].PackedBitsRepresentation {
   /// Iterates over a packed-bit vector, applying SQLiteVec's binary subtype.
   /// Within each byte, SQLiteVec's `vec_each` reports the most significant bit first.
-  public func vecEach() -> SelectOf<VecEach> {
+  public func vecEach() -> SelectOf<VecEachOf<Bool>> {
     vecEachStatement(vector: "vec_bit(\(self))")
   }
 }
 
 extension Vec {
   /// Iterates over signed Int8 components using SQLiteVec's `vec_each`.
+  /// Each element's `value` is an integer, decoded as an `Int8`.
   public static func each<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> SelectOf<VecEach> where V.Encoding == [Int8].Int8BytesRepresentation {
+  ) -> SelectOf<VecEachOf<Int8>> where V.Encoding == [Int8].Int8BytesRepresentation {
     expression.vecEach()
   }
 }
@@ -174,17 +184,18 @@ extension Vec {
 extension QueryExpression
 where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Int8].Int8BytesRepresentation {
   /// Iterates over signed Int8 components, applying SQLiteVec's required subtype.
-  public func vecEach() -> SelectOf<VecEach> {
+  public func vecEach() -> SelectOf<VecEachOf<Int8>> {
     vecEachStatement(vector: "vec_int8(\(self))")
   }
 }
 
 // MARK: - Helpers
 
-private func vecEachStatement(vector: QueryFragment) -> SelectOf<VecEach> {
-  func statement() -> SelectOf<VecEach> {
-    VecEach.where { _ in
-      SQLQueryExpression("\(VecEach.self).\(quote: "vector") = \(vector)")
+private func vecEachStatement<Value>(vector: QueryFragment) -> SelectOf<VecEachOf<Value>>
+where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOutput == Value {
+  func statement() -> SelectOf<VecEachOf<Value>> {
+    VecEachOf<Value>.where { _ in
+      SQLQueryExpression("\(VecEachOf<Value>.self).\(quote: "vector") = \(vector)")
     }
     .asSelect()
   }

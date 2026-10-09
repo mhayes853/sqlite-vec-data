@@ -62,6 +62,12 @@ let normalized = Vec.normalize(vector) // vec_normalize(?)
 let sliced = Vec.slice(vector, start: 0, end: 2) // vec_slice(?, 0, 2)
 ```
 
+Distance helpers return `REAL` values decoded as `Double`, including the Int8 L1 distance, which
+SQLiteVec computes as an integer and the helper casts to `REAL`. `length()` and `Vec.length` return
+the dimension count as an `Int`. Float32 iteration yields ``VecEach`` elements, an alias of
+`VecEachOf<Float>`; Int8 and packed-bit vectors yield `VecEachOf<Int8>` and `VecEachOf<Bool>`
+because SQLiteVec reports their elements as integers.
+
 Column and namespace helpers support these encodings:
 
 | Operation | Float32 | Signed Int8 | Packed bits |

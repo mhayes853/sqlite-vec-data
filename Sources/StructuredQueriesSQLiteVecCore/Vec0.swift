@@ -156,7 +156,7 @@ where
   /// ```
   ///
   /// - Returns: A query expression for the vector length.
-  public func length() -> some QueryExpression<Double> {
+  public func length() -> some QueryExpression<Int> {
     Vec.length(self)
   }
 
@@ -422,7 +422,7 @@ where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Int8].Int8
   }
 
   /// Returns the number of signed Int8 components.
-  public func length() -> some QueryExpression<Double> {
+  public func length() -> some QueryExpression<Int> {
     Vec.length(self)
   }
 
@@ -506,7 +506,7 @@ where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Bool].Pack
   }
 
   /// Returns the number of logical bits in this vector.
-  public func length() -> some QueryExpression<Double> {
+  public func length() -> some QueryExpression<Int> {
     Vec.length(self)
   }
 

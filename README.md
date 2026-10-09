@@ -102,6 +102,11 @@ Column helpers also support arithmetic, slicing, inspection, and `.vecEach()` fo
 correlated subqueries. Float32 and signed Int8 support L1, L2, and cosine distances;
 normalization requires Float32. Binary vectors support Hamming distance.
 
+Distance helpers return `REAL` values decoded as `Double`; the Int8 L1 helper casts SQLiteVec's
+integer result. `length()` returns an `Int`. Iteration yields `VecEach` (`VecEachOf<Float>`) for
+Float32, and `VecEachOf<Int8>` or `VecEachOf<Bool>` for the integer elements of Int8 and binary
+vectors.
+
 ### Signed Int8 vectors
 
 ```swift

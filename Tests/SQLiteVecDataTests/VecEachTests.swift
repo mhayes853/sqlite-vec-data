@@ -39,6 +39,18 @@ struct `VecEach tests` {
     expectNoDifference(rows.map(\.value), [1, -2, 3])
   }
 
+  @Test("Vec Each Float32 Values Are Real")
+  func vecEachFloat32ValuesAreReal() async throws {
+    // GRDB widens INTEGER results to Float, so check the storage class SQLite reports.
+    let vector: [Float].VectorBytesRepresentation = [1, -2, 3]
+    let query = Vec.each(vector).select { #sql("typeof(\($0.value))", as: String.self) }
+    let types = try await self.database.read { db in
+      try query.fetchAll(db)
+    }
+
+    expectNoDifference(types, ["real", "real", "real"])
+  }
+
   @Test("Vec Each Counts Elements")
   func vecEachCountsElements() async throws {
     let query = VecEachEmbedding.select {

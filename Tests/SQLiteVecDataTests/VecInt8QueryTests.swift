@@ -110,7 +110,47 @@ struct `Vec Int8 Query tests` {
       expectNoDifference(result.4, vector.queryOutput)
       expectNoDifference(result.5, [-64, 0, 1])
       expectNoDifference(result.6, [false, false, false, true, true, true, true, true])
-      expectNoDifference(try each.fetchAll(db), vector.queryOutput.map(Float.init))
+      expectNoDifference(try each.fetchAll(db), vector.queryOutput)
+    }
+  }
+
+  @Test
+  func `Int8 Scalar Results Use Their Declared Storage Classes`() async throws {
+    // GRDB widens INTEGER results to Double, so check the storage class SQLite reports.
+    let vector = Self.vector
+    let near: [Int8].Int8BytesRepresentation = [-127, -64, 0, 1, 2, 3, 4, 127]
+    let query = #sql(
+      """
+      SELECT typeof(\(Vec.distanceL1(near, to: vector))),
+        typeof(\(Vec.distanceL2(near, to: vector))),
+        typeof(\(Vec.distanceCosine(near, to: vector))),
+        typeof(\(Vec.length(vector)))
+      """,
+      as: (String, String, String, String).self
+    )
+    let columnQuery =
+      VecInt8Embedding
+      .where { $0.label.eq("near") }
+      .select {
+        (
+          $0.embedding.distanceL1(to: vector), $0.embedding.length(),
+          #sql("typeof(\($0.embedding.distanceL1(to: vector)))", as: String.self),
+          #sql("typeof(\($0.embedding.length()))", as: String.self)
+        )
+      }
+    let eachTypes = Vec.each(vector).select { #sql("typeof(\($0.value))", as: String.self) }
+    try await self.database.read { db in
+      let result = try #require(try query.fetchOne(db))
+      expectNoDifference(result.0, "real")
+      expectNoDifference(result.1, "real")
+      expectNoDifference(result.2, "real")
+      expectNoDifference(result.3, "integer")
+      let columnResult = try #require(try columnQuery.fetchOne(db))
+      expectNoDifference(columnResult.0, 1)
+      expectNoDifference(columnResult.1, 8)
+      expectNoDifference(columnResult.2, "real")
+      expectNoDifference(columnResult.3, "integer")
+      expectNoDifference(Set(try eachTypes.fetchAll(db)), ["integer"])
     }
   }
 

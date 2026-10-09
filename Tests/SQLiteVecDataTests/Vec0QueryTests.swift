@@ -1376,59 +1376,93 @@ struct Vec0QueryTests {
       """
     } results: {
       """
-      ┌─────┐
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      │ 3.0 │
-      └─────┘
+      ┌───┐
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      │ 3 │
+      └───┘
       """
+    }
+  }
+
+  @Test("Vec Scalar Results Use Their Declared Storage Classes")
+  func vecScalarResultStorageClasses() async throws {
+    // GRDB widens INTEGER results to Double, so check the storage class SQLite reports.
+    let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
+    let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+    let query = #sql(
+      """
+      SELECT typeof(\(Vec.distanceL1(vector, to: queryVector))),
+        typeof(\(Vec.distanceL2(vector, to: queryVector))),
+        typeof(\(Vec.distanceCosine(vector, to: queryVector))),
+        typeof(\(Vec.length(vector)))
+      """,
+      as: (String, String, String, String).self
+    )
+    let columnQuery =
+      Embedding
+      .limit(1)
+      .select { #sql("typeof(\($0.embedding.length()))", as: String.self) }
+    let knn =
+      Embedding
+      .where { $0.embedding.match(queryVector) }
+      .limit(1)
+      .select { #sql("typeof(\($0.distance))", as: String.self) }
+    try await self.database.read { db in
+      let result = try #require(try query.fetchOne(db))
+      expectNoDifference(result.0, "real")
+      expectNoDifference(result.1, "real")
+      expectNoDifference(result.2, "real")
+      expectNoDifference(result.3, "integer")
+      expectNoDifference(try columnQuery.fetchOne(db), "integer")
+      expectNoDifference(try knn.fetchOne(db), "real")
     }
   }
 

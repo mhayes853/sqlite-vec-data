@@ -20,6 +20,8 @@ the new Turso Database target. The table below identifies the changes to check i
 | Binary functions return Float32 representations | Binary functions return packed-bit representations |
 | `quantizeInt8(scale:)` passes an unsupported numeric argument | `quantizeInt8()` emits SQLiteVec's supported `'unit'` argument and returns signed Int8 codes |
 | `int8()` exposes Int8 bytes as Float32 values | `Vec.int8` accepts signed-byte expressions or integer JSON and returns an Int8 representation |
+| `length()` and `Vec.length` return `Double` | They return `Int`, matching the integer SQLiteVec's `vec_length` produces |
+| `vecEach()` and `Vec.each` always return `SelectOf<VecEach>` with `Float` values | `VecEach` aliases `VecEachOf<Float>` for Float32 vectors; Int8 and packed bits return `VecEachOf<Int8>` and `VecEachOf<Bool>` |
 
 ### Imports and package products
 
@@ -143,7 +145,7 @@ function. Add the operation's supported encoding constraint:
 ```swift
 func float32Length<V: VectorBytesRepresentable>(
   _ vector: some QueryExpression<V>
-) -> some QueryExpression<Double> where V.Encoding == [Float].VectorBytesRepresentation {
+) -> some QueryExpression<Int> where V.Encoding == [Float].VectorBytesRepresentation {
   Vec.length(vector)
 }
 ```
@@ -155,6 +157,21 @@ operations cannot silently mix Float32 and Int8, or raw binary and Turso binary 
 
 The result selected by `as:` must match the operation's output encoding. Its dimension constraint
 is checked when decoding, so select a fixed result whose count matches a slice's length.
+
+### Decode lengths and vector elements with their SQL types
+
+`vec_length` returns an integer, so `length()` and `Vec.length` now return `some QueryExpression<Int>`.
+Replace `Double` with `Int` where you decode or compare a length.
+
+`vec_each` reports Float32 elements as `REAL` values, and Int8 and packed-bit elements as integers.
+Element tables are now generic over their value type: Float32 vectors keep `VecEach`, an alias of
+`VecEachOf<Float>`, while Int8 vectors return `VecEachOf<Int8>` and packed bits return
+`VecEachOf<Bool>`. Compare an Int8 element's `value` with `Int8` literals and a bit's `value` with
+`true` or `false`, rather than with `Float` values. Code that names `VecEach` for an Int8 or binary
+vector must use the matching `VecEachOf` type.
+
+Distance helpers continue to return `Double`. SQLiteVec computes Int8 L1 distances as integers, so
+that helper now wraps its SQL in `CAST(... AS REAL)`.
 
 ### Decode binary results as bits
 

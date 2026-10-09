@@ -90,7 +90,7 @@ struct `Vec Binary Query tests` {
       SELECT \(Vec.length(vector)), \(Vec.type(vector)), \(Vec.toJSON(vector)),
         \(Vec.slice(vector, range: 8..<16))
       """,
-      as: (Double, String, String, [Bool].PackedBitsRepresentation).self
+      as: (Int, String, String, [Bool].PackedBitsRepresentation).self
     )
     try await self.database.read { db in
       let result = try #require(try query.fetchOne(db))
@@ -110,6 +110,38 @@ struct `Vec Binary Query tests` {
   }
 
   @Test
+  func `Binary Scalar Results Use Their Declared Storage Classes`() async throws {
+    // GRDB widens INTEGER results to Double, so check the storage class SQLite reports.
+    let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+    let other = try [Bool].PackedBitsRepresentation(vectorBytes: [0x05, 0x01])
+    let query = #sql(
+      """
+      SELECT typeof(\(Vec.distanceHamming(vector, to: other))), typeof(\(Vec.length(vector)))
+      """,
+      as: (String, String).self
+    )
+    let columnQuery =
+      VecBinaryEmbedding
+      .where { $0.label.eq("near") }
+      .select {
+        (
+          #sql("typeof(\($0.embedding.distanceHamming(to: other)))", as: String.self),
+          #sql("typeof(\($0.embedding.length()))", as: String.self)
+        )
+      }
+    let eachTypes = Vec.each(vector).select { #sql("typeof(\($0.value))", as: String.self) }
+    try await self.database.read { db in
+      let result = try #require(try query.fetchOne(db))
+      expectNoDifference(result.0, "real")
+      expectNoDifference(result.1, "integer")
+      let columnResult = try #require(try columnQuery.fetchOne(db))
+      expectNoDifference(columnResult.0, "real")
+      expectNoDifference(columnResult.1, "integer")
+      expectNoDifference(Set(try eachTypes.fetchAll(db)), ["integer"])
+    }
+  }
+
+  @Test
   func `Binary Iteration Uses SQLiteVec Bit Order`() async throws {
     let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85])
     let query = Vec.each(vector).order { $0.rowid }
@@ -119,7 +151,7 @@ struct `Vec Binary Query tests` {
       let rows = try query.fetchAll(db)
       expectNoDifference(rows.map(\.rowid), Array(0..<8))
       // vec_each visits bits most significant first; packed storage indexes least significant first.
-      expectNoDifference(rows.map(\.value), [1, 0, 0, 0, 0, 1, 0, 1])
+      expectNoDifference(rows.map(\.value), [true, false, false, false, false, true, false, true])
     }
   }
 

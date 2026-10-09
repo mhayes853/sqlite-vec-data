@@ -53,13 +53,16 @@ extension Vec {
   }
 
   /// Returns the L1 distance between signed Int8 vectors with matching dimensions.
-  /// SQLiteVec's Int8 subtype is applied to both expressions.
+  /// SQLiteVec's Int8 subtype is applied to both expressions. SQLiteVec computes Int8 L1
+  /// distances as integers, so the result is cast to `REAL` to match the other distances.
   public static func distanceL1<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
   where V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding {
-    SQLQueryExpression("vec_distance_l1(vec_int8(\(expression)), vec_int8(\(vector)))")
+    SQLQueryExpression(
+      "CAST(vec_distance_l1(vec_int8(\(expression)), vec_int8(\(vector))) AS REAL)"
+    )
   }
 
   /// Returns the L2 distance between signed Int8 vectors with matching dimensions.
@@ -85,7 +88,7 @@ extension Vec {
   /// Returns the number of Int8 components.
   public static func length<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == [Int8].Int8BytesRepresentation {
+  ) -> some QueryExpression<Int> where V.Encoding == [Int8].Int8BytesRepresentation {
     SQLQueryExpression("vec_length(vec_int8(\(expression)))")
   }
 
