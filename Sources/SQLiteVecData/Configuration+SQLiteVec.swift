@@ -6,6 +6,8 @@ extension Configuration {
   /// Includes database pool readers and preserves existing database preparation callbacks.
   /// Registration is scoped to these connections on every platform.
   ///
+  /// On non-Apple platforms, this requires the default `SQLiteVecStaticAPI` package trait.
+  ///
   /// ```swift
   /// var configuration = Configuration()
   /// configuration.prepareSQLiteVecExtension()

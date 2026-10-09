@@ -11,6 +11,7 @@ the new Turso Database target. The table below identifies the changes to check i
 | --- | --- |
 | `.sqliteVecAutoExtension` is a no-op on Apple platforms | Unavailable on Apple; use `Configuration.prepareSQLiteVecExtension()` from `SQLiteVecData` on any platform |
 | `AVX` and `NEON` package traits | `SQLiteVecAVX` (opt-in) and `SQLiteVecNEON` (default) |
+| sqlite-vec only uses the API table passed to its entry point | The default `SQLiteVecStaticAPI` trait calls the linked SQLite's functions directly; disable it for SQLite builds that do not export them |
 | Vector types defined in `StructuredQueriesSQLiteVecCore` | Shared types defined in `StructuredQueriesVectorCore`, re-exported by the SQLiteVec target |
 | Nominal `EmbeddingVector<N>` struct | `EmbeddingVector<N>` aliases `FixedEmbeddingVector<N, Float>` |
 | `EmbeddingVector<N>.VectorBytesRepresentation` aliases the vector itself | A wrapper whose `queryOutput` is the vector; direct Float32 binding still works |

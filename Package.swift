@@ -15,7 +15,7 @@ let package = Package(
     .library(name: "SQLiteVecDataTestSupport", targets: ["SQLiteVecDataTestSupport"])
   ],
   traits: [
-    .default(enabledTraits: ["SQLiteVecNEON"]),
+    .default(enabledTraits: ["SQLiteVecNEON", "SQLiteVecStaticAPI"]),
     .trait(
       name: "SQLiteVecNEON",
       description: "Enable sqlite-vec NEON vector implementations on ARM."
@@ -23,6 +23,13 @@ let package = Package(
     .trait(
       name: "SQLiteVecAVX",
       description: "Enable sqlite-vec AVX vector implementations on AVX-capable x86 processors."
+    ),
+    .trait(
+      name: "SQLiteVecStaticAPI",
+      description: """
+        Compile sqlite-vec against the linked SQLite's functions instead of the API table SQLite \
+        passes to extensions. Required for per-connection setup on non-Apple platforms.
+        """
     )
   ],
   dependencies: [
@@ -47,8 +54,10 @@ let package = Package(
       // we cannot declare here.
       exclude: ["sqlite-vec.c"],
       cSettings: [
-        // Use SQLite's static extension API for per-connection initialization.
-        .define("SQLITE_CORE"),
+        // Use SQLite's static extension API for per-connection initialization. Without it,
+        // sqlite-vec only uses the API table passed to its entry point, so it works with SQLite
+        // builds that do not export every `sqlite3_*` function.
+        .define("SQLITE_CORE", .when(traits: ["SQLiteVecStaticAPI"])),
         .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["SQLiteVecNEON"])),
         .define("SQLITE_VEC_ENABLE_AVX", to: "1", .when(traits: ["SQLiteVecAVX"]))
       ]
@@ -79,6 +88,9 @@ let package = Package(
         "CSQLiteVec",
         "StructuredQueriesSQLiteVecCore",
         .product(name: "SQLiteData", package: "sqlite-data")
+      ],
+      swiftSettings: [
+        .define("SQLITE_VEC_STATIC_API", .when(traits: ["SQLiteVecStaticAPI"]))
       ]
     ),
     .target(

@@ -320,6 +320,11 @@ struct `Vector tests` {
 The `SQLiteVecNEON` trait enables sqlite-vec ARM SIMD by default; `SQLiteVecAVX` enables SIMD on
 supported x86 processors.
 
+The default `SQLiteVecStaticAPI` trait compiles sqlite-vec against the linked SQLite's functions,
+which per-connection setup needs on non-Apple platforms. Packages that bring their own SQLite
+builds, such as Turso Database, can disable it so sqlite-vec only uses the API table SQLite passes
+to `sqlite3_vec_init`. Without it, use `registerSQLiteVecAutoExtension()` on non-Apple platforms.
+
 ## Documentation
 
 - [SQLiteVecData](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/sqlitevecdata/)
