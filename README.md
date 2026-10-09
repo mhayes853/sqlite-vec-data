@@ -322,7 +322,8 @@ struct `Vector tests` {
 | `SQLiteVecDataTestSupport` | Swift Testing setup helpers |
 | `CSQLiteVec` | Bundled sqlite-vec C extension |
 
-The `NEON` package trait enables ARM SIMD by default; `AVX` enables SIMD on supported x86 processors.
+The `SQLiteVecNEON` trait enables sqlite-vec ARM SIMD by default; `SQLiteVecAVX` enables SIMD on
+supported x86 processors.
 
 ## Documentation
 

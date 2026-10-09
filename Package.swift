@@ -15,11 +15,14 @@ let package = Package(
     .library(name: "SQLiteVecDataTestSupport", targets: ["SQLiteVecDataTestSupport"])
   ],
   traits: [
-    .default(enabledTraits: ["NEON"]),
-    .trait(name: "NEON", description: "Enable NEON vector implementations on ARM."),
+    .default(enabledTraits: ["SQLiteVecNEON"]),
     .trait(
-      name: "AVX",
-      description: "Enable AVX vector implementations on AVX-capable x86 processors."
+      name: "SQLiteVecNEON",
+      description: "Enable sqlite-vec NEON vector implementations on ARM."
+    ),
+    .trait(
+      name: "SQLiteVecAVX",
+      description: "Enable sqlite-vec AVX vector implementations on AVX-capable x86 processors."
     )
   ],
   dependencies: [
@@ -44,8 +47,8 @@ let package = Package(
       // we cannot declare here.
       exclude: ["sqlite-vec.c"],
       cSettings: [
-        .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["NEON"])),
-        .define("SQLITE_VEC_ENABLE_AVX", to: "1", .when(traits: ["AVX"]))
+        .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["SQLiteVecNEON"])),
+        .define("SQLITE_VEC_ENABLE_AVX", to: "1", .when(traits: ["SQLiteVecAVX"]))
       ]
     ),
     .target(
@@ -100,7 +103,7 @@ let package = Package(
         .product(name: "IssueReportingTestSupport", package: "xctest-dynamic-overlay")
       ],
       swiftSettings: [
-        .define("SQLITE_VEC_AVX_ENABLED", .when(traits: ["AVX"]))
+        .define("SQLITE_VEC_AVX_ENABLED", .when(traits: ["SQLiteVecAVX"]))
       ]
     )
   ]
