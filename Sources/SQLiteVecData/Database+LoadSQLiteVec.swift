@@ -1,5 +1,6 @@
 import CSQLiteVec
 import GRDB
+import GRDBSQLite
 
 extension Database {
   /// Loads the sqlite-vec extension into the current database connection.
