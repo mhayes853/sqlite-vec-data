@@ -10,30 +10,6 @@ Vector search in Swift: [SQLiteData](https://github.com/pointfreeco/sqlite-data)
 
 SQL comments show the generated queries with placeholders for bound values.
 
-## Installation
-
-Add the package to your Xcode project or `Package.swift`:
-
-```swift
-dependencies: [
-  .package(url: "https://github.com/mhayes853/sqlite-vec-data", from: "1.0.0")
-]
-```
-
-Choose the product for your database:
-
-```swift
-// sqlite-vec with SQLiteData:
-.product(name: "SQLiteVecData", package: "sqlite-vec-data")
-
-// Turso Database query helpers:
-.product(name: "StructuredQueriesTursoVecCore", package: "sqlite-vec-data")
-```
-
-For standalone query helpers, also add `StructuredQueriesSQLite` from
-[swift-structured-queries](https://github.com/pointfreeco/swift-structured-queries) to use
-`@Table`, `@Column`, and `#sql`.
-
 ## sqlite-vec
 
 ### Set up the database
@@ -393,6 +369,30 @@ to `sqlite3_vec_init`. Without it, use `registerSQLiteVecAutoExtension()` on non
 - [Turso query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/)
 - [Shared vector types](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
 - [Migration guide](Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md)
+
+## Installation
+
+Add the package to your Xcode project or `Package.swift`:
+
+```swift
+dependencies: [
+  .package(url: "https://github.com/mhayes853/sqlite-vec-data", from: "1.0.0")
+]
+```
+
+Choose the product for your database:
+
+```swift
+// sqlite-vec with SQLiteData:
+.product(name: "SQLiteVecData", package: "sqlite-vec-data")
+
+// Turso Database query helpers:
+.product(name: "StructuredQueriesTursoVecCore", package: "sqlite-vec-data")
+```
+
+For standalone query helpers, also add `StructuredQueriesSQLite` from
+[swift-structured-queries](https://github.com/pointfreeco/swift-structured-queries) to use
+`@Table`, `@Column`, and `#sql`.
 
 ## License
 
