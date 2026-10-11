@@ -5,6 +5,9 @@ import StructuredQueriesCore
 /// ```swift
 /// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
 /// let query = Vec.each(vector).select { ($0.rowid, $0.value) }
+/// // SELECT "vec_each"."rowid", "vec_each"."value"
+/// // FROM "vec_each"
+/// // WHERE ("vec_each"."vector" = ?)
 /// ```
 public typealias VecEach = VecEachOf<Float>
 
@@ -21,6 +24,11 @@ public typealias VecEach = VecEachOf<Float>
 ///   .select { embedding, element in
 ///     (embedding.label, element.rowid, element.value)
 ///   }
+/// // SELECT "Embeddings"."label", "vec_each"."rowid", "vec_each"."value"
+/// // FROM "Embeddings"
+/// // JOIN "vec_each"
+/// // ON ?
+/// // WHERE ("vec_each"."vector" = "Embeddings"."embedding")
 /// ```
 ///
 /// Do not use static table entry points directly because `vec_each` requires its hidden `vector`
@@ -29,6 +37,7 @@ public typealias VecEach = VecEachOf<Float>
 /// ```swift
 /// // ❌ Invalid: No vector was provided to SQLite Vec.
 /// let query = VecEach.all
+/// // SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each"
 /// ```
 ///
 /// In debug builds, using this invalid entry point triggers a precondition failure.
@@ -95,6 +104,9 @@ where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOu
     /// ```swift
     /// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
     /// let query = Vec.each(vector).select { $0.rowid }
+    /// // SELECT "vec_each"."rowid"
+    /// // FROM "vec_each"
+    /// // WHERE ("vec_each"."vector" = ?)
     /// ```
     public var rowid: GeneratedColumn<VecEachOf<Value>, Int> {
       GeneratedColumn("rowid", keyPath: \VecEachOf<Value>.rowid)
@@ -106,6 +118,9 @@ where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOu
     /// ```swift
     /// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
     /// let query = Vec.each(vector).select { $0.value }
+    /// // SELECT "vec_each"."value"
+    /// // FROM "vec_each"
+    /// // WHERE ("vec_each"."vector" = ?)
     /// ```
     public var value: GeneratedColumn<VecEachOf<Value>, Value> {
       GeneratedColumn("value", keyPath: \VecEachOf<Value>.value)
@@ -145,6 +160,10 @@ extension Vec {
   /// let query = Vec.each(vector)
   ///   .order { $0.rowid }
   ///   .select { ($0.rowid, $0.value) }
+  /// // SELECT "vec_each"."rowid", "vec_each"."value"
+  /// // FROM "vec_each"
+  /// // WHERE ("vec_each"."vector" = ?)
+  /// // ORDER BY "vec_each"."rowid"
   /// ```
   ///
   /// - Parameter expression: The vector expression to iterate over.
@@ -174,6 +193,10 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Float].Vecto
   ///       .exists()
   ///   }
   ///   .select(\.label)
+  /// // SELECT "Embeddings"."label"
+  /// // FROM "Embeddings"
+  /// // WHERE (EXISTS (SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each" WHERE
+  /// //   ("vec_each"."vector" = "Embeddings"."embedding") AND (("vec_each"."value") < (?))))
   /// ```
   ///
   /// - Returns: A select statement over the vector's indexed elements.
@@ -190,7 +213,8 @@ extension Vec {
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let query = Vec.each(vector).select { ($0.rowid, $0.value) }
-  /// // SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each"
+  /// // SELECT "vec_each"."rowid", "vec_each"."value"
+  /// // FROM "vec_each"
   /// // WHERE ("vec_each"."vector" = vec_bit(?))
   /// ```
   public static func each<V: VectorBytesRepresentable>(
@@ -208,7 +232,8 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Bool].Packed
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let query = vector.vecEach().select { ($0.rowid, $0.value) }
-  /// // SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each"
+  /// // SELECT "vec_each"."rowid", "vec_each"."value"
+  /// // FROM "vec_each"
   /// // WHERE ("vec_each"."vector" = vec_bit(?))
   /// ```
   public func vecEach() -> SelectOf<VecEachOf<Bool>> {
@@ -223,7 +248,8 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let query = Vec.each(vector).select { ($0.rowid, $0.value) }
-  /// // SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each"
+  /// // SELECT "vec_each"."rowid", "vec_each"."value"
+  /// // FROM "vec_each"
   /// // WHERE ("vec_each"."vector" = vec_int8(?))
   /// ```
   public static func each<V: VectorBytesRepresentable>(
@@ -240,7 +266,8 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Int8].Int8By
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let query = vector.vecEach().select { ($0.rowid, $0.value) }
-  /// // SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each"
+  /// // SELECT "vec_each"."rowid", "vec_each"."value"
+  /// // FROM "vec_each"
   /// // WHERE ("vec_each"."vector" = vec_int8(?))
   /// ```
   public func vecEach() -> SelectOf<VecEachOf<Int8>> {

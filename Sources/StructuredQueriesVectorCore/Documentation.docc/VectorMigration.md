@@ -56,6 +56,10 @@ let vector = EmbeddingVector<3>([0.1, 0.2, 0.3])
 let query = Embedding
   .where { $0.embedding.match(vector) }
   .limit(5)
+// SELECT "Embeddings"."embedding"
+// FROM "Embeddings"
+// WHERE (("Embeddings"."embedding" MATCH ?))
+// LIMIT ?
 ```
 
 On supported little-endian platforms, valid existing Float32 blobs and Codable scalar arrays retain
@@ -150,7 +154,7 @@ function. Add the operation's supported encoding constraint:
 func float32Length<V: VectorBytesRepresentable>(
   _ vector: some QueryExpression<V>
 ) -> some QueryExpression<Int> where V.Encoding == [Float].VectorBytesRepresentation {
-  Vec.length(vector)
+  Vec.length(vector) // vec_length(?)
 }
 ```
 
@@ -165,7 +169,9 @@ Column slices return variable-size representations by default:
 
 ```swift
 let prefix = Embedding.columns.embedding.slice(0..<2)
+// vec_slice("Embeddings"."embedding", 0, 2)
 let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2>.self)
+// vec_slice("Embeddings"."embedding", 0, 2)
 ```
 
 The result selected by `as:` must match the operation's output encoding. Its dimension constraint
@@ -194,10 +200,12 @@ Use `[Bool].PackedBitsRepresentation` for variable-size SQLiteVec binary results
 ```swift
 let floats: [Float].VectorBytesRepresentation = [1, -1, 1, 0, -1, 1, 0, -1]
 let bits = Vec.quantizeBinary(floats)
+// vec_quantize_binary(?)
 let fixedBits = Vec.quantizeBinary(
   floats,
   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
 )
+// vec_quantize_binary(?)
 ```
 
 `Vec.bit` reinterprets existing blob bytes as bits; it does not quantize numerical components.
@@ -218,8 +226,11 @@ Replace both namespace and column calls that passed `scale:`:
 ```swift
 // Before: Vec.quantizeInt8(Embedding.columns.embedding, scale: 1.0)
 let codes = Vec.quantizeInt8(Embedding.columns.embedding)
+// vec_quantize_int8("Embeddings"."embedding", 'unit')
 // Before: Embedding.select { $0.embedding.quantizeInt8(scale: 1.0) }
 let query = Embedding.select { $0.embedding.quantizeInt8() }
+// SELECT vec_quantize_int8("Embeddings"."embedding", 'unit')
+// FROM "Embeddings"
 ```
 
 The old numeric argument caused a SQLite error. The new SQL is
@@ -249,9 +260,14 @@ let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
 let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
   (Vec.int8(codes), "example")
 }
+// INSERT INTO "Int8Embeddings" ("embedding", "label") VALUES (vec_int8(?), ?)
 let neighbors = Int8Embedding
   .where { $0.embedding.match(codes) }
   .limit(5)
+// SELECT "Int8Embeddings"."embedding", "Int8Embeddings"."label"
+// FROM "Int8Embeddings"
+// WHERE (("Int8Embeddings"."embedding" MATCH vec_int8(?)))
+// LIMIT ?
 ```
 
 Int8 scalar helpers and `MATCH` attach `vec_int8` automatically because SQL subtypes do not survive

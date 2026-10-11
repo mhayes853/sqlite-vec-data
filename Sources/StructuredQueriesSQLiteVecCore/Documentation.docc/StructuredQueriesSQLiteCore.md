@@ -8,6 +8,8 @@ Model virtual tables with ``Vec0`` and use column helpers or the ``Vec`` namespa
 queries. This module exports `StructuredQueriesVectorCore`; load the sqlite-vec extension through
 `SQLiteVecData` or your SQLite driver.
 
+SQL comments show the generated queries with placeholders for bound values.
+
 ### Create a table and search
 
 Execute the schema before querying:
@@ -30,8 +32,11 @@ let query = Embedding
   .order { $0.distance }
   .limit(5)
   .select { ($0.label, $0.distance) }
-// SELECT label, distance FROM Embeddings
-// WHERE embedding MATCH ? ORDER BY distance LIMIT ?;
+// SELECT "Embeddings"."label", "Embeddings"."distance"
+// FROM "Embeddings"
+// WHERE (("Embeddings"."embedding" MATCH ?))
+// ORDER BY "Embeddings"."distance"
+// LIMIT ?
 ```
 
 `match` accepts bound values and computed expressions with matching encodings:
@@ -40,11 +45,18 @@ let query = Embedding
 let query = Embedding
   .where { $0.embedding.match(Vec.normalize(vector)) }
   .limit(5)
-// WHERE embedding MATCH vec_normalize(?)
+// SELECT "Embeddings"."embedding", "Embeddings"."label"
+// FROM "Embeddings"
+// WHERE (("Embeddings"."embedding" MATCH vec_normalize(?)))
+// LIMIT ?
 
 let freeform = Embedding
   .where { Vec.match($0.embedding, to: Vec.normalize(vector)) }
   .limit(5)
+// SELECT "Embeddings"."embedding", "Embeddings"."label"
+// FROM "Embeddings"
+// WHERE (("Embeddings"."embedding" MATCH vec_normalize(?)))
+// LIMIT ?
 ```
 
 The left operand must be a vec0 vector column. A nearest-neighbor query requires `LIMIT` or a
@@ -56,13 +68,17 @@ constraint on vec0's `k` column.
 let distances = Embedding.select {
   ($0.label, $0.embedding.distanceCosine(to: vector.normalize()))
 }
-// SELECT label, vec_distance_cosine(embedding, vec_normalize(?)) FROM Embeddings;
+// SELECT "Embeddings"."label", vec_distance_cosine("Embeddings"."embedding", vec_normalize(?))
+// FROM "Embeddings"
 
-let normalized = Vec.normalize(vector) // vec_normalize(?)
+let normalized = Vec.normalize(vector)
+// vec_normalize(?)
 let prefix = Embedding.columns.embedding.slice(0..<2) // Decodes as [Float]
+// vec_slice("Embeddings"."embedding", 0, 2)
 let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2>.self)
-// vec_slice(Embeddings.embedding, 0, 2); fixedPrefix decodes as EmbeddingVector<2>
-let sliced = Vec.slice(vector, start: 0, end: 2) // vec_slice(?, 0, 2)
+// vec_slice("Embeddings"."embedding", 0, 2)
+let sliced = Vec.slice(vector, start: 0, end: 2)
+// vec_slice(?, 0, 2)
 ```
 
 Scalar helpers accept bound values or computed vector expressions and also work on ordinary BLOB
@@ -97,13 +113,21 @@ used with sqlite-vec helpers.
 let elements = Vec.each(vector)
   .order { $0.rowid }
   .select { ($0.rowid, $0.value) }
-// SELECT rowid, value FROM vec_each WHERE vector = ? ORDER BY rowid;
+// SELECT "vec_each"."rowid", "vec_each"."value"
+// FROM "vec_each"
+// WHERE ("vec_each"."vector" = ?)
+// ORDER BY "vec_each"."rowid"
 
 let joined = Embedding
   .join(Embedding.columns.embedding.vecEach()) { _, _ in true }
   .select { embedding, element in
     (embedding.label, element.rowid, element.value)
   }
+// SELECT "Embeddings"."label", "vec_each"."rowid", "vec_each"."value"
+// FROM "Embeddings"
+// JOIN "vec_each"
+// ON ?
+// WHERE ("vec_each"."vector" = "Embeddings"."embedding")
 
 let withNegativeElements = Embedding
   .where {
@@ -112,6 +136,10 @@ let withNegativeElements = Embedding
       .exists()
   }
   .select(\.label)
+// SELECT "Embeddings"."label"
+// FROM "Embeddings"
+// WHERE (EXISTS (SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each" WHERE
+//   ("vec_each"."vector" = "Embeddings"."embedding") AND (("vec_each"."value") < (?))))
 ```
 
 Both helpers supply `vec_each`'s hidden vector constraint, including in correlated subqueries.
@@ -133,12 +161,17 @@ let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
 let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
   (Vec.int8(codes), "example")
 }
-// INSERT INTO Int8Embeddings (embedding, label) VALUES (vec_int8(?), ?);
+// INSERT INTO "Int8Embeddings" ("embedding", "label") VALUES (vec_int8(?), ?)
 
 let query = Int8Embedding
   .where { $0.embedding.match(codes) }
   .order { $0.distance }
   .limit(5)
+// SELECT "Int8Embeddings"."embedding", "Int8Embeddings"."label"
+// FROM "Int8Embeddings"
+// WHERE (("Int8Embeddings"."embedding" MATCH vec_int8(?)))
+// ORDER BY "Int8Embeddings"."distance"
+// LIMIT ?
 ```
 
 `Vec.int8` tags signed bytes or parses integer JSON, such as `Vec.int8("[-128, 0, 127]")`.
@@ -146,11 +179,13 @@ Insert and update expressions need that subtype; query helpers attach it automat
 
 ```swift
 let floats: [Float].VectorBytesRepresentation = [-1, 0, 0.5, 2]
-let codes = Vec.quantizeInt8(floats) // vec_quantize_int8(?, 'unit')
+let codes = Vec.quantizeInt8(floats)
+// vec_quantize_int8(?, 'unit')
 let fixedCodes = Vec.quantizeInt8(
   floats,
   as: FixedEmbeddingVector<4, Int8>.Int8BytesRepresentation.self
 )
+// vec_quantize_int8(?, 'unit')
 ```
 
 Quantization maps [-1, 1] to signed codes, clamps out-of-range values, and truncates toward zero
@@ -175,12 +210,17 @@ let bits: [Bool].PackedBitsRepresentation = [true, false, true, false, false, fa
 let insert = BinaryEmbedding.insert { ($0.embedding, $0.label) } values: {
   (Vec.bit(bits), "example")
 }
-// INSERT INTO BinaryEmbeddings (embedding, label) VALUES (vec_bit(?), ?);
+// INSERT INTO "BinaryEmbeddings" ("embedding", "label") VALUES (vec_bit(?), ?)
 
 let query = BinaryEmbedding
   .where { $0.embedding.match(bits) }
   .order { $0.distance }
   .limit(5)
+// SELECT "BinaryEmbeddings"."embedding", "BinaryEmbeddings"."label"
+// FROM "BinaryEmbeddings"
+// WHERE (("BinaryEmbeddings"."embedding" MATCH vec_bit(?)))
+// ORDER BY "BinaryEmbeddings"."distance"
+// LIMIT ?
 ```
 
 Use `Vec.bit` for binary insert and update expressions; query helpers apply it automatically.

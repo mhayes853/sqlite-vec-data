@@ -38,6 +38,11 @@ extension TableDefinition where QueryValue: Vec0 {
   ///   .order { $0.distance.asc() }
   ///   .limit(5)
   ///   .select { ($0.label, $0.distance) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."distance"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH ?))
+  /// // ORDER BY "Embeddings"."distance" ASC
+  /// // LIMIT ?
   /// ```
   public var distance: some QueryExpression<Double> {
     SQLQueryExpression(
@@ -55,6 +60,9 @@ extension TableDefinition where QueryValue: Vec0 {
   ///   Embedding
   ///   .where { $0.embedding.match(queryVector) && $0.k.eq(5) }
   ///   .select { ($0.label, $0.k) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."k"
+  /// // FROM "Embeddings"
+  /// // WHERE ((("Embeddings"."embedding" MATCH ?)) AND (("Embeddings"."k") = (?)))
   /// ```
   public var k: some QueryExpression<Int> {
     SQLQueryExpression(
@@ -84,6 +92,10 @@ where
   ///
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH ?))
+  /// // LIMIT ?
   /// ```
   public func match<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
@@ -110,6 +122,10 @@ where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Int8].Int8
   ///
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_int8(?)))
+  /// // LIMIT ?
   /// ```
   public func match<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
@@ -136,6 +152,10 @@ where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Bool].Pack
   ///
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // LIMIT ?
   /// ```
   public func match<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
@@ -250,6 +270,7 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.slice(start: 1, end: 3)
+  /// // vec_slice(?, 1, 3)
   /// ```
   public func slice(start: Int, end: Int) -> some QueryExpression<[Float].VectorBytesRepresentation>
   {
@@ -262,6 +283,7 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.slice(start: 1, end: 3, as: EmbeddingVector<2>.self)
+  /// // vec_slice(?, 1, 3)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     start: Int,
@@ -277,6 +299,7 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.slice(1..<3)
+  /// // vec_slice(?, 1, 3)
   /// ```
   public func slice(_ range: Range<Int>) -> some QueryExpression<[Float].VectorBytesRepresentation>
   {
@@ -289,6 +312,7 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.slice(1..<3, as: EmbeddingVector<2>.self)
+  /// // vec_slice(?, 1, 3)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     _ range: Range<Int>,
@@ -303,6 +327,7 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.slice(1...2)
+  /// // vec_slice(?, 1, 3)
   /// ```
   public func slice(_ range: ClosedRange<Int>) -> some QueryExpression<
     [Float].VectorBytesRepresentation
@@ -316,6 +341,7 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.slice(1...2, as: EmbeddingVector<2>.self)
+  /// // vec_slice(?, 1, 3)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     _ range: ClosedRange<Int>,
@@ -330,6 +356,7 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.slice(start: 1, length: 2)
+  /// // vec_slice(?, 1, 3)
   /// ```
   public func slice(start: Int, length: Int) -> some QueryExpression<
     [Float].VectorBytesRepresentation
@@ -343,6 +370,7 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.slice(start: 1, length: 2, as: EmbeddingVector<2>.self)
+  /// // vec_slice(?, 1, 3)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     start: Int,
@@ -556,6 +584,7 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.slice(start: 1, end: 3)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public func slice(start: Int, end: Int) -> some QueryExpression<[Int8].Int8BytesRepresentation> {
     Vec.slice(self, start: start, end: end)
@@ -571,6 +600,7 @@ where
   ///   end: 3,
   ///   as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
   /// )
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     start: Int,
@@ -586,6 +616,7 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.slice(1..<3)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public func slice(_ range: Range<Int>) -> some QueryExpression<[Int8].Int8BytesRepresentation> {
     Vec.slice(self, range: range)
@@ -597,6 +628,7 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.slice(1..<3, as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     _ range: Range<Int>,
@@ -611,6 +643,7 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.slice(1...2)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public func slice(_ range: ClosedRange<Int>) -> some QueryExpression<
     [Int8].Int8BytesRepresentation
@@ -624,6 +657,7 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.slice(1...2, as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     _ range: ClosedRange<Int>,
@@ -638,6 +672,7 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.slice(start: 1, length: 2)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public func slice(start: Int, length: Int) -> some QueryExpression<[Int8].Int8BytesRepresentation>
   {
@@ -654,6 +689,7 @@ where
   ///   length: 2,
   ///   as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
   /// )
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     start: Int,
@@ -758,6 +794,7 @@ where
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = vector.slice(start: 0, end: 8)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public func slice(start: Int, end: Int) -> some QueryExpression<[Bool].PackedBitsRepresentation> {
     Vec.slice(self, start: start, end: end)
@@ -773,6 +810,7 @@ where
   ///   end: 8,
   ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
   /// )
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     start: Int,
@@ -788,6 +826,7 @@ where
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = vector.slice(0..<8)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public func slice(_ range: Range<Int>) -> some QueryExpression<[Bool].PackedBitsRepresentation> {
     Vec.slice(self, range: range)
@@ -799,6 +838,7 @@ where
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = vector.slice(0..<8, as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     _ range: Range<Int>,
@@ -813,6 +853,7 @@ where
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = vector.slice(0...7)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public func slice(_ range: ClosedRange<Int>) -> some QueryExpression<
     [Bool].PackedBitsRepresentation
@@ -826,6 +867,7 @@ where
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = vector.slice(0...7, as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     _ range: ClosedRange<Int>,
@@ -840,6 +882,7 @@ where
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = vector.slice(start: 0, length: 8)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public func slice(start: Int, length: Int) -> some QueryExpression<
     [Bool].PackedBitsRepresentation
@@ -857,6 +900,7 @@ where
   ///   length: 8,
   ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
   /// )
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public func slice<T: VectorBytesRepresentable & QueryBindable>(
     start: Int,

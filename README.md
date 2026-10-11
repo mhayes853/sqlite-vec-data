@@ -8,6 +8,8 @@ Vector search in Swift: [SQLiteData](https://github.com/pointfreeco/sqlite-data)
 [sqlite-vec](https://github.com/asg017/sqlite-vec), and StructuredQueries helpers for
 [Turso Database](https://docs.turso.tech/sql-reference/functions/vector).
 
+SQL comments show the generated queries with placeholders for bound values.
+
 ## Installation
 
 Add the package to your Xcode project or `Package.swift`:
@@ -75,8 +77,11 @@ let query = Embedding
   .order { $0.distance }
   .limit(5)
   .select { ($0.label, $0.distance) }
-// SELECT label, distance FROM Embeddings
-// WHERE embedding MATCH ? ORDER BY distance LIMIT ?;
+// SELECT "Embeddings"."label", "Embeddings"."distance"
+// FROM "Embeddings"
+// WHERE (("Embeddings"."embedding" MATCH ?))
+// ORDER BY "Embeddings"."distance"
+// LIMIT ?
 ```
 
 `match` accepts a bound vector or a computed expression with the same encoding.
@@ -88,16 +93,22 @@ let query = Embedding
 let distances = Embedding.select {
   ($0.label, $0.embedding.distanceCosine(to: vector.normalize()))
 }
-// SELECT label, vec_distance_cosine(embedding, vec_normalize(?)) FROM Embeddings;
+// SELECT "Embeddings"."label", vec_distance_cosine("Embeddings"."embedding", vec_normalize(?))
+// FROM "Embeddings"
 
-let normalized = Vec.normalize(vector) // vec_normalize(?)
+let normalized = Vec.normalize(vector)
+// vec_normalize(?)
 let prefix = Embedding.columns.embedding.slice(0..<2) // Decodes as [Float]
+// vec_slice("Embeddings"."embedding", 0, 2)
 let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2>.self)
-// vec_slice(Embeddings.embedding, 0, 2); fixedPrefix decodes as EmbeddingVector<2>
+// vec_slice("Embeddings"."embedding", 0, 2)
 let elements = Vec.each(vector)
   .order { $0.rowid }
   .select { ($0.rowid, $0.value) }
-// SELECT rowid, value FROM vec_each WHERE vector = ? ORDER BY rowid;
+// SELECT "vec_each"."rowid", "vec_each"."value"
+// FROM "vec_each"
+// WHERE ("vec_each"."vector" = ?)
+// ORDER BY "vec_each"."rowid"
 ```
 
 Scalar helpers work on bound values, computed expressions, and ordinary BLOB columns. They support
@@ -125,9 +136,10 @@ let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
 let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
   (Vec.int8(codes), "example")
 }
-// INSERT INTO Int8Embeddings (embedding, label) VALUES (vec_int8(?), ?);
+// INSERT INTO "Int8Embeddings" ("embedding", "label") VALUES (vec_int8(?), ?)
 
-let quantized = Vec.quantizeInt8(vector) // vec_quantize_int8(?, 'unit')
+let quantized = Vec.quantizeInt8(vector)
+// vec_quantize_int8(?, 'unit')
 ```
 
 `Vec.int8` tags signed bytes or parses integer JSON. `quantizeInt8` maps [-1, 1] to signed
@@ -149,12 +161,17 @@ let bits: [Bool].PackedBitsRepresentation = [true, false, true, false, false, fa
 let insert = BinaryEmbedding.insert { ($0.embedding, $0.label) } values: {
   (Vec.bit(bits), "example")
 }
-// INSERT INTO BinaryEmbeddings (embedding, label) VALUES (vec_bit(?), ?);
+// INSERT INTO "BinaryEmbeddings" ("embedding", "label") VALUES (vec_bit(?), ?)
 
 let query = BinaryEmbedding
   .where { $0.embedding.match(bits) }
   .order { $0.distance }
   .limit(5)
+// SELECT "BinaryEmbeddings"."embedding", "BinaryEmbeddings"."label"
+// FROM "BinaryEmbeddings"
+// WHERE (("BinaryEmbeddings"."embedding" MATCH vec_bit(?)))
+// ORDER BY "BinaryEmbeddings"."distance"
+// LIMIT ?
 ```
 
 Packed-bit dimensions and slice boundaries must be divisible by eight. `Vec.quantizeBinary`
@@ -194,20 +211,27 @@ struct Document {
 }
 
 let embedding = TursoVec.vector32("[0.1, 0.3, 0.5, 0.7]")
+// vector32(?)
 let insert = Document.insert { ($0.id, $0.content, $0.embedding) } values: {
   (1, "Introduction to databases", embedding)
 }
-// INSERT INTO documents (id, content, embedding) VALUES (?, ?, vector32(?));
+// INSERT INTO "documents" ("id", "content", "embedding") VALUES (?, ?, vector32(?))
 
 let vector: [Float].VectorBytesRepresentation = [0.2, 0.4, 0.6, 0.8]
 let query = Document
   .order { TursoVec.distanceCosine($0.embedding, to: vector).asc() }
   .limit(5)
   .select { ($0.content, TursoVec.extract($0.embedding)) }
-// SELECT content, vector_extract(embedding) FROM documents
-// ORDER BY vector_distance_cos(embedding, ?) ASC LIMIT ?;
+// SELECT "documents"."content", vector_extract("documents"."embedding")
+// FROM "documents"
+// ORDER BY vector_distance_cos("documents"."embedding", ?) ASC
+// LIMIT ?
 
 let prepared = query.query.prepare { "?\($0)" }
+// SELECT "documents"."content", vector_extract("documents"."embedding")
+// FROM "documents"
+// ORDER BY vector_distance_cos("documents"."embedding", ?1) ASC
+// LIMIT ?2
 // Pass prepared.sql and prepared.bindings to your driver.
 ```
 

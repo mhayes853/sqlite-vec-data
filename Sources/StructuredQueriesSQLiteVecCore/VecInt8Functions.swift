@@ -44,7 +44,7 @@ extension Vec {
   ///   "[1,-2,3]",
   ///   as: FixedEmbeddingVector<3, Int8>.Int8BytesRepresentation.self
   /// )
-  /// // vec_int8('[1,-2,3]')
+  /// // vec_int8(?)
   /// ```
   public static func int8<T: VectorBytesRepresentable & QueryBindable>(
     _ json: some QueryExpression<String>,
@@ -57,7 +57,7 @@ extension Vec {
   ///
   /// ```swift
   /// let expression = Vec.int8("[1,-2,3]")
-  /// // vec_int8('[1,-2,3]')
+  /// // vec_int8(?)
   /// ```
   public static func int8(
     _ json: some QueryExpression<String>
@@ -80,6 +80,10 @@ extension Vec {
   ///
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_int8(?)))
+  /// // LIMIT ?
   /// ```
   public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -96,6 +100,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.distanceL1(vector, to: vector)
+  /// // CAST(vec_distance_l1(vec_int8(?), vec_int8(?)) AS REAL)
   /// ```
   public static func distanceL1<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -113,6 +118,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.distanceL2(vector, to: vector)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
   /// ```
   public static func distanceL2<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -128,6 +134,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.distanceCosine(vector, to: vector)
+  /// // vec_distance_cosine(vec_int8(?), vec_int8(?))
   /// ```
   public static func distanceCosine<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -185,6 +192,7 @@ extension Vec {
   ///   vector,
   ///   as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
   /// )
+  /// // vec_add(vec_int8(?), vec_int8(?))
   /// ```
   public static func add<
     V: VectorBytesRepresentable,
@@ -206,6 +214,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.add(vector, vector)
+  /// // vec_add(vec_int8(?), vec_int8(?))
   /// ```
   public static func add<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -224,6 +233,7 @@ extension Vec {
   ///   vector,
   ///   as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
   /// )
+  /// // vec_sub(vec_int8(?), vec_int8(?))
   /// ```
   public static func sub<
     V: VectorBytesRepresentable,
@@ -245,6 +255,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.sub(vector, vector)
+  /// // vec_sub(vec_int8(?), vec_int8(?))
   /// ```
   public static func sub<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -264,6 +275,7 @@ extension Vec {
   ///   end: 3,
   ///   as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
   /// )
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -283,6 +295,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.slice(vector, start: 1, end: 3)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -302,6 +315,7 @@ extension Vec {
   ///   range: 1..<3,
   ///   as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
   /// )
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -320,6 +334,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.slice(vector, range: 1..<3)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -338,6 +353,7 @@ extension Vec {
   ///   range: 1...2,
   ///   as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
   /// )
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -356,6 +372,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.slice(vector, range: 1...2)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -375,6 +392,7 @@ extension Vec {
   ///   length: 2,
   ///   as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
   /// )
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -394,6 +412,7 @@ extension Vec {
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = Vec.slice(vector, start: 1, length: 2)
+  /// // vec_slice(vec_int8(?), 1, 3)
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,

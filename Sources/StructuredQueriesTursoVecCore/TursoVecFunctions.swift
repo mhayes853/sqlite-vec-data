@@ -11,6 +11,7 @@ import StructuredQueriesCore
 ///   TursoVec.vector32("[1,2,3]"),
 ///   to: TursoVec.vector32("[3,2,1]")
 /// )
+/// // vector_distance_cos(vector32(?), vector32(?))
 /// ```
 public enum TursoVec {
   /// Counts differing binary components with Turso's `vector_distance_cos` specialization.
@@ -19,8 +20,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// // vector1bit(?)
   /// let expression = TursoVec.distanceHamming(vector, to: TursoVec.vector1bit("[3,2,1]"))
-  /// // vector_distance_cos(vector1bit('[1,2,3]'), vector1bit('[3,2,1]'))
+  /// // vector_distance_cos(vector1bit(?), vector1bit(?))
   /// ```
   public static func distanceHamming<
     L: VectorBytesRepresentable & QueryBindable,
@@ -37,7 +39,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector32("[1,2,3]")
-  /// // vector32('[1,2,3]')
+  /// // vector32(?)
   /// ```
   public static func vector32(
     _ expression: some QueryExpression
@@ -50,7 +52,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector32("[1,2,3]", as: EmbeddingVector<3>.self)
-  /// // vector32('[1,2,3]')
+  /// // vector32(?)
   /// ```
   public static func vector32<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
@@ -63,7 +65,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector64("[1,2,3]")
-  /// // vector64('[1,2,3]')
+  /// // vector64(?)
   /// ```
   public static func vector64(
     _ expression: some QueryExpression
@@ -79,7 +81,7 @@ public enum TursoVec {
   ///   "[1,2,3]",
   ///   as: EmbeddingVector64<3>.VectorBytesRepresentation.self
   /// )
-  /// // vector64('[1,2,3]')
+  /// // vector64(?)
   /// ```
   public static func vector64<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
@@ -92,7 +94,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector8("[1,2,3]")
-  /// // vector8('[1,2,3]')
+  /// // vector8(?)
   /// ```
   public static func vector8(
     _ expression: some QueryExpression
@@ -105,7 +107,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector8("[1,2,3]", as: InlineQuantized8Vector<3>.self)
-  /// // vector8('[1,2,3]')
+  /// // vector8(?)
   /// ```
   public static func vector8<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
@@ -118,7 +120,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector1bit("[1,2,3]")
-  /// // vector1bit('[1,2,3]')
+  /// // vector1bit(?)
   /// ```
   public static func vector1bit(
     _ expression: some QueryExpression
@@ -134,7 +136,7 @@ public enum TursoVec {
   ///   "[1,2,3]",
   ///   as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self
   /// )
-  /// // vector1bit('[1,2,3]')
+  /// // vector1bit(?)
   /// ```
   public static func vector1bit<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
@@ -147,7 +149,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector32Sparse("[1,2,3]")
-  /// // vector32_sparse('[1,2,3]')
+  /// // vector32_sparse(?)
   /// ```
   public static func vector32Sparse(
     _ expression: some QueryExpression
@@ -160,7 +162,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector32Sparse("[1,2,3]", as: SizedSparseFloat32Vector<3>.self)
-  /// // vector32_sparse('[1,2,3]')
+  /// // vector32_sparse(?)
   /// ```
   public static func vector32Sparse<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
@@ -173,7 +175,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.vector("[1,2,3]")
-  /// // vector('[1,2,3]')
+  /// // vector(?)
   /// ```
   public static func vector(
     _ expression: some QueryExpression
@@ -185,7 +187,7 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let expression = TursoVec.extract(TursoVec.vector32("[1,2,3]"))
-  /// // vector_extract(vector32('[1,2,3]'))
+  /// // vector_extract(vector32(?))
   /// ```
   public static func extract(
     _ expression: some QueryExpression
@@ -198,8 +200,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector32("[3,2,1]"))
-  /// // vector_distance_cos(vector32('[1,2,3]'), vector32('[3,2,1]'))
+  /// // vector_distance_cos(vector32(?), vector32(?))
   /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
@@ -217,8 +220,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector64("[3,2,1]"))
-  /// // vector_distance_cos(vector64('[1,2,3]'), vector64('[3,2,1]'))
+  /// // vector_distance_cos(vector64(?), vector64(?))
   /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
@@ -236,8 +240,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector8("[1,2,3]")
+  /// // vector8(?)
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector8("[3,2,1]"))
-  /// // vector_distance_cos(vector8('[1,2,3]'), vector8('[3,2,1]'))
+  /// // vector_distance_cos(vector8(?), vector8(?))
   /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
@@ -254,8 +259,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// // vector1bit(?)
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector1bit("[3,2,1]"))
-  /// // vector_distance_cos(vector1bit('[1,2,3]'), vector1bit('[3,2,1]'))
+  /// // vector_distance_cos(vector1bit(?), vector1bit(?))
   /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
@@ -273,8 +279,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse(?)
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
-  /// // vector_distance_cos(vector32_sparse('[1,2,3]'), vector32_sparse('[3,2,1]'))
+  /// // vector_distance_cos(vector32_sparse(?), vector32_sparse(?))
   /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
@@ -292,8 +299,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
   /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector32("[3,2,1]"))
-  /// // vector_distance_l2(vector32('[1,2,3]'), vector32('[3,2,1]'))
+  /// // vector_distance_l2(vector32(?), vector32(?))
   /// ```
   public static func distanceL2<
     L: VectorBytesRepresentable & QueryBindable,
@@ -311,8 +319,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
   /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector64("[3,2,1]"))
-  /// // vector_distance_l2(vector64('[1,2,3]'), vector64('[3,2,1]'))
+  /// // vector_distance_l2(vector64(?), vector64(?))
   /// ```
   public static func distanceL2<
     L: VectorBytesRepresentable & QueryBindable,
@@ -330,8 +339,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector8("[1,2,3]")
+  /// // vector8(?)
   /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector8("[3,2,1]"))
-  /// // vector_distance_l2(vector8('[1,2,3]'), vector8('[3,2,1]'))
+  /// // vector_distance_l2(vector8(?), vector8(?))
   /// ```
   public static func distanceL2<
     L: VectorBytesRepresentable & QueryBindable,
@@ -348,8 +358,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse(?)
   /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
-  /// // vector_distance_l2(vector32_sparse('[1,2,3]'), vector32_sparse('[3,2,1]'))
+  /// // vector_distance_l2(vector32_sparse(?), vector32_sparse(?))
   /// ```
   public static func distanceL2<
     L: VectorBytesRepresentable & QueryBindable,
@@ -367,8 +378,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector32("[3,2,1]"))
-  /// // vector_distance_dot(vector32('[1,2,3]'), vector32('[3,2,1]'))
+  /// // vector_distance_dot(vector32(?), vector32(?))
   /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
@@ -386,8 +398,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector64("[3,2,1]"))
-  /// // vector_distance_dot(vector64('[1,2,3]'), vector64('[3,2,1]'))
+  /// // vector_distance_dot(vector64(?), vector64(?))
   /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
@@ -405,8 +418,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector8("[1,2,3]")
+  /// // vector8(?)
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector8("[3,2,1]"))
-  /// // vector_distance_dot(vector8('[1,2,3]'), vector8('[3,2,1]'))
+  /// // vector_distance_dot(vector8(?), vector8(?))
   /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
@@ -423,8 +437,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// // vector1bit(?)
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector1bit("[3,2,1]"))
-  /// // vector_distance_dot(vector1bit('[1,2,3]'), vector1bit('[3,2,1]'))
+  /// // vector_distance_dot(vector1bit(?), vector1bit(?))
   /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
@@ -442,8 +457,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse(?)
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
-  /// // vector_distance_dot(vector32_sparse('[1,2,3]'), vector32_sparse('[3,2,1]'))
+  /// // vector_distance_dot(vector32_sparse(?), vector32_sparse(?))
   /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
@@ -461,8 +477,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector32("[3,2,1]"))
-  /// // vector_distance_jaccard(vector32('[1,2,3]'), vector32('[3,2,1]'))
+  /// // vector_distance_jaccard(vector32(?), vector32(?))
   /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
@@ -480,8 +497,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector64("[3,2,1]"))
-  /// // vector_distance_jaccard(vector64('[1,2,3]'), vector64('[3,2,1]'))
+  /// // vector_distance_jaccard(vector64(?), vector64(?))
   /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
@@ -499,8 +517,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector8("[1,2,3]")
+  /// // vector8(?)
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector8("[3,2,1]"))
-  /// // vector_distance_jaccard(vector8('[1,2,3]'), vector8('[3,2,1]'))
+  /// // vector_distance_jaccard(vector8(?), vector8(?))
   /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
@@ -517,8 +536,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// // vector1bit(?)
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector1bit("[3,2,1]"))
-  /// // vector_distance_jaccard(vector1bit('[1,2,3]'), vector1bit('[3,2,1]'))
+  /// // vector_distance_jaccard(vector1bit(?), vector1bit(?))
   /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
@@ -536,8 +556,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse(?)
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
-  /// // vector_distance_jaccard(vector32_sparse('[1,2,3]'), vector32_sparse('[3,2,1]'))
+  /// // vector_distance_jaccard(vector32_sparse(?), vector32_sparse(?))
   /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
@@ -555,7 +576,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
   /// let expression = TursoVec.concat(vector, vector)
+  /// // vector_concat(vector32(?), vector32(?))
   /// ```
   public static func concat<
     L: VectorBytesRepresentable & QueryBindable,
@@ -573,7 +596,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
   /// let expression = TursoVec.concat(vector, vector, as: EmbeddingVector<6>.self)
+  /// // vector_concat(vector32(?), vector32(?))
   /// ```
   public static func concat<
     L: VectorBytesRepresentable & QueryBindable,
@@ -596,7 +621,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
   /// let expression = TursoVec.concat(vector, vector)
+  /// // vector_concat(vector64(?), vector64(?))
   /// ```
   public static func concat<
     L: VectorBytesRepresentable & QueryBindable,
@@ -614,11 +641,13 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
   /// let expression = TursoVec.concat(
   ///   vector,
   ///   vector,
   ///   as: EmbeddingVector64<6>.VectorBytesRepresentation.self
   /// )
+  /// // vector_concat(vector64(?), vector64(?))
   /// ```
   public static func concat<
     L: VectorBytesRepresentable & QueryBindable,
@@ -641,8 +670,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
   /// let expression = TursoVec.slice(vector, from: 0, to: 2)
-  /// // vector_slice(vector32('[1,2,3]'), 0, 2)
+  /// // vector_slice(vector32(?), ?, ?)
   /// ```
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
@@ -658,8 +688,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
   /// let expression = TursoVec.slice(vector, from: 0, to: 2, as: EmbeddingVector<2>.self)
-  /// // vector_slice(vector32('[1,2,3]'), 0, 2)
+  /// // vector_slice(vector32(?), ?, ?)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable & QueryBindable,
@@ -679,8 +710,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
   /// let expression = TursoVec.slice(vector, from: 0, to: 2)
-  /// // vector_slice(vector64('[1,2,3]'), 0, 2)
+  /// // vector_slice(vector64(?), ?, ?)
   /// ```
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
@@ -696,13 +728,14 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
   /// let expression = TursoVec.slice(
   ///   vector,
   ///   from: 0,
   ///   to: 2,
   ///   as: EmbeddingVector64<2>.VectorBytesRepresentation.self
   /// )
-  /// // vector_slice(vector64('[1,2,3]'), 0, 2)
+  /// // vector_slice(vector64(?), ?, ?)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable & QueryBindable,
@@ -722,8 +755,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse(?)
   /// let expression = TursoVec.slice(vector, from: 0, to: 2)
-  /// // vector_slice(vector32_sparse('[1,2,3]'), 0, 2)
+  /// // vector_slice(vector32_sparse(?), ?, ?)
   /// ```
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
@@ -739,8 +773,9 @@ public enum TursoVec {
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse(?)
   /// let expression = TursoVec.slice(vector, from: 0, to: 2, as: SizedSparseFloat32Vector<2>.self)
-  /// // vector_slice(vector32_sparse('[1,2,3]'), 0, 2)
+  /// // vector_slice(vector32_sparse(?), ?, ?)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable & QueryBindable,

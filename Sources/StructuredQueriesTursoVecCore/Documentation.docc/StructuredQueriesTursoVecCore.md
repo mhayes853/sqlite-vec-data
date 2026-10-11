@@ -9,6 +9,8 @@ StructuredQueries helpers for Turso Database's native vector functions.
 Use a compatible Turso driver to execute statements. This module exports
 `StructuredQueriesVectorCore`; ordinary `@Table` models need no extra vector conformance.
 
+SQL comments show the generated queries with placeholders for bound values.
+
 ### Create a table and search
 
 Execute this schema through your driver, following
@@ -41,20 +43,27 @@ struct Document {
 }
 
 let embedding = TursoVec.vector32("[0.1, 0.3, 0.5, 0.7]", as: EmbeddingVector<4>.self)
+// vector32(?)
 let insert = Document.insert { ($0.id, $0.content, $0.embedding) } values: {
   (1, "Introduction to databases", embedding)
 }
-// INSERT INTO documents (id, content, embedding) VALUES (?, ?, vector32(?));
+// INSERT INTO "documents" ("id", "content", "embedding") VALUES (?, ?, vector32(?))
 
 let vector = EmbeddingVector<4>([0.2, 0.4, 0.6, 0.8])
 let query = Document
   .order { TursoVec.distanceCosine($0.embedding, to: vector).asc() }
   .limit(5)
   .select { ($0.content, TursoVec.extract($0.embedding)) }
-// SELECT content, vector_extract(embedding) FROM documents
-// ORDER BY vector_distance_cos(embedding, ?) ASC LIMIT ?;
+// SELECT "documents"."content", vector_extract("documents"."embedding")
+// FROM "documents"
+// ORDER BY vector_distance_cos("documents"."embedding", ?) ASC
+// LIMIT ?
 
 let prepared = query.query.prepare { "?\($0)" }
+// SELECT "documents"."content", vector_extract("documents"."embedding")
+// FROM "documents"
+// ORDER BY vector_distance_cos("documents"."embedding", ?1) ASC
+// LIMIT ?2
 // Pass prepared.sql and prepared.bindings to your driver.
 ```
 
@@ -78,7 +87,8 @@ Convert JSON explicitly using the constructor for the column's format:
 let distances = Document.select {
   TursoVec.distanceCosine($0.embedding, to: TursoVec.vector32("[0.2, 0.4, 0.6, 0.8]"))
 }
-// SELECT vector_distance_cos(embedding, vector32(?)) FROM documents;
+// SELECT vector_distance_cos("documents"."embedding", vector32(?))
+// FROM "documents"
 ```
 
 `distanceCosine`, `distanceL2`, `distanceDot` (negative dot product), and `distanceJaccard`
@@ -129,7 +139,8 @@ let sparse = try SparseFloat32Vector(compressing: [0, 0, 1.5, 0, 0, 2.5])
 let supplied = try SparseFloat32Vector(dimensions: 6, indices: [2, 5], values: [1.5, 2.5])
 let dense = sparse.denseValues() // [0, 0, 1.5, 0, 0, 2.5]
 let query = SparseDocument.select { TursoVec.distanceJaccard($0.embedding, to: sparse) }
-// SELECT vector_distance_jaccard(embedding, ?) FROM sparse_documents;
+// SELECT vector_distance_jaccard("sparse_documents"."embedding", ?)
+// FROM "sparse_documents"
 ```
 
 Compression omits positive and negative zeros. The component initializer preserves explicit zeros
@@ -154,7 +165,8 @@ struct BinaryDocument {
 let binary = BinaryEmbeddingVector<9>(quantizing: EmbeddingVector<9>([1, -1, 1, -1, -1, -1, -1, 1, 1]))
 let binding = BinaryEmbeddingVector<9>.TursoBytesRepresentation(queryOutput: binary)
 let query = BinaryDocument.select { TursoVec.distanceHamming($0.embedding, to: binding) }
-// SELECT vector_distance_cos(embedding, ?) FROM binary_documents;
+// SELECT vector_distance_cos("binary_documents"."embedding", ?)
+// FROM "binary_documents"
 ```
 
 Binary cosine returns Hamming distance; `distanceHamming` names that operation explicitly and
@@ -179,10 +191,13 @@ operands. For sparse concatenation, convert through dense Float32:
 
 ```swift
 let left = TursoVec.vector32Sparse("[0, 1]")
+// vector32_sparse(?)
 let right = TursoVec.vector32Sparse("[2, 0]")
+// vector32_sparse(?)
 let joined = TursoVec.vector32Sparse(
   TursoVec.concat(TursoVec.vector32(left), TursoVec.vector32(right))
 )
+// vector32_sparse(vector_concat(vector32(vector32_sparse(?)), vector32(vector32_sparse(?))))
 ```
 
 This workaround uses dense intermediate storage; the
@@ -207,9 +222,13 @@ let quantized = try EmbeddingVector<3>([0, 127.5, 255]).quantized8()
 let sparse = try EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5]).sparseFloat32()
 
 let converted = TursoVec.vector8("[1, 2, 3, 4]", as: InlineQuantized8Vector<4>.self)
+// vector8(?)
 let sparseResult = TursoVec.vector32Sparse("[0, 1, 0, 2]", as: SizedSparseFloat32Vector<4>.self)
+// vector32_sparse(?)
 let doubles = TursoVec.vector64("[1, 2, 3, 4]", as: EmbeddingVector64<4>.VectorBytesRepresentation.self)
+// vector64(?)
 let sliced = TursoVec.slice(TursoVec.vector32("[1, 2, 3, 4]"), from: 1, to: 3, as: EmbeddingVector<2>.self)
+// vector_slice(vector32(?), ?, ?)
 
 let restored = try Quantized8Vector(vectorBytes: quantized.vectorBytes)
 ```

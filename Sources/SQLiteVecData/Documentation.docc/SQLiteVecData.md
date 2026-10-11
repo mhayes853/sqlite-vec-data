@@ -48,8 +48,11 @@ let query = Embedding
   .order { $0.distance }
   .limit(5)
   .select { ($0.label, $0.distance) }
-// SELECT label, distance FROM Embeddings
-// WHERE embedding MATCH ? ORDER BY distance LIMIT ?;
+// SELECT "Embeddings"."label", "Embeddings"."distance"
+// FROM "Embeddings"
+// WHERE (("Embeddings"."embedding" MATCH ?))
+// ORDER BY "Embeddings"."distance"
+// LIMIT ?
 
 let neighbors = try database.read { db in
   try query.fetchAll(db)

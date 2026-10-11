@@ -24,6 +24,10 @@ public enum Vec {
   ///   Embedding
   ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
   ///   .limit(5)
+  /// // SELECT "Embeddings"."embedding", "Embeddings"."label"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_normalize(?)))
+  /// // LIMIT ?
   /// ```
   public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -48,6 +52,10 @@ public enum Vec {
   ///
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // LIMIT ?
   /// ```
   public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -65,6 +73,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.distanceL2($0.embedding, to: queryVector)
   /// }
+  /// // SELECT vec_distance_l2("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -90,6 +100,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.distanceL1($0.embedding, to: queryVector)
   /// }
+  /// // SELECT vec_distance_l1("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -115,6 +127,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.distanceCosine($0.embedding, to: queryVector)
   /// }
+  /// // SELECT vec_distance_cosine("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -142,6 +156,8 @@ public enum Vec {
   /// let query = BinaryEmbedding.select {
   ///   Vec.distanceHamming($0.embedding, to: queryVector)
   /// }
+  /// // SELECT vec_distance_hamming(vec_bit("BinaryEmbeddings"."embedding"), vec_bit(?))
+  /// // FROM "BinaryEmbeddings"
   /// ```
   ///
   /// - Parameters:
@@ -166,6 +182,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.length($0.embedding)
   /// }
+  /// // SELECT vec_length("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameter expression: The vector expression to measure.
@@ -183,6 +201,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.type($0.embedding)
   /// }
+  /// // SELECT vec_type("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameter expression: The vector expression to inspect.
@@ -200,6 +220,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.toJSON($0.embedding)
   /// }
+  /// // SELECT vec_to_json("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameter expression: The vector expression to serialize.
@@ -218,6 +240,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.add($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
   /// }
+  /// // SELECT vec_add("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -249,6 +273,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.add($0.embedding, queryVector)
   /// }
+  /// // SELECT vec_add("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -271,6 +297,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.sub($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
   /// }
+  /// // SELECT vec_sub("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -302,6 +330,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.sub($0.embedding, queryVector)
   /// }
+  /// // SELECT vec_sub("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -323,6 +353,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.slice($0.embedding, start: 0, end: 3, as: [Float].VectorBytesRepresentation.self)
   /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -353,6 +385,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.slice($0.embedding, start: 0, end: 3)
   /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -381,6 +415,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.slice($0.embedding, range: 0..<3, as: [Float].VectorBytesRepresentation.self)
   /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -409,6 +445,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.slice($0.embedding, range: 0..<3)
   /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -430,6 +468,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.slice($0.embedding, range: 0...2, as: [Float].VectorBytesRepresentation.self)
   /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -458,6 +498,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.slice($0.embedding, range: 0...2)
   /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -479,6 +521,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.slice($0.embedding, start: 0, length: 3, as: [Float].VectorBytesRepresentation.self)
   /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -509,6 +553,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.slice($0.embedding, start: 0, length: 3)
   /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -532,6 +578,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.normalize($0.embedding, as: [Float].VectorBytesRepresentation.self)
   /// }
+  /// // SELECT vec_normalize("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -558,6 +606,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.normalize($0.embedding)
   /// }
+  /// // SELECT vec_normalize("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameter expression: The vector expression to normalize.
@@ -576,6 +626,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.f32($0.embedding, as: [Float].VectorBytesRepresentation.self)
   /// }
+  /// // SELECT vec_f32("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -599,6 +651,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.f32($0.embedding)
   /// }
+  /// // SELECT vec_f32("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameter expression: The vector expression to convert.
@@ -618,6 +672,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.bit($0.embedding, as: [Bool].PackedBitsRepresentation.self)
   /// }
+  /// // SELECT vec_bit("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -642,6 +698,8 @@ public enum Vec {
   /// let query = Embedding.select {
   ///   Vec.bit($0.embedding)
   /// }
+  /// // SELECT vec_bit("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameter expression: The vector expression to convert.
@@ -688,6 +746,8 @@ public enum Vec {
   ///
   /// ```swift
   /// let query = Embedding.select { $0.embedding.quantizeInt8() }
+  /// // SELECT vec_quantize_int8("Embeddings"."embedding", 'unit')
+  /// // FROM "Embeddings"
   /// ```
   /// The result contains codes, not reconstructed Float32 components. SQLiteVec supports only
   /// the `unit` quantization mode; this helper does not normalize the input.
@@ -795,6 +855,7 @@ public enum Vec {
   ///   end: 8,
   ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
   /// )
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -815,6 +876,7 @@ public enum Vec {
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = Vec.slice(vector, start: 0, end: 8)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -839,6 +901,7 @@ public enum Vec {
   ///   range: 0..<8,
   ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
   /// )
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -858,6 +921,7 @@ public enum Vec {
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = Vec.slice(vector, range: 0..<8)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -876,6 +940,7 @@ public enum Vec {
   ///   range: 0...7,
   ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
   /// )
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -895,6 +960,7 @@ public enum Vec {
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = Vec.slice(vector, range: 0...7)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -914,6 +980,7 @@ public enum Vec {
   ///   length: 8,
   ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
   /// )
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -934,6 +1001,7 @@ public enum Vec {
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = Vec.slice(vector, start: 0, length: 8)
+  /// // vec_slice(vec_bit(?), 0, 8)
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
