@@ -2,20 +2,55 @@ import StructuredQueriesCore
 
 extension Array where Element == Bool {
   /// Packed bits without metadata. Binding requires dimensions divisible by eight.
+  ///
+  /// ```swift
+  /// @Table
+  /// struct Document {
+  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+  ///   var embedding: [Bool]
+  /// }
+  /// ```
   public struct PackedBitsRepresentation:
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
   {
     public typealias Scalar = Bool
     public typealias Encoding = [Bool].PackedBitsRepresentation
     public typealias VectorBytesRepresentation = Self
+    /// The logical vector value bound to or decoded from a query.
+    ///
+    /// ```swift
+    /// let vector = [Bool]
+    ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
+    /// let queryOutput = vector.queryOutput
+    /// ```
     public var queryOutput: [Bool]
 
+    /// Wraps the logical vector value for blob storage and query binding.
+    ///
+    /// ```swift
+    /// let vector = [Bool]
+    ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
+    /// ```
     public init(queryOutput: [Bool]) {
       self.queryOutput = queryOutput
     }
 
+    /// The serialized blob, including any metadata required by this encoding.
+    ///
+    /// ```swift
+    /// let vector = [Bool]
+    ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
+    /// let vectorBytes = vector.vectorBytes
+    /// ```
     public var vectorBytes: [UInt8] { encodePackedBitsVector(self.queryOutput) }
 
+    /// Decodes a vector blob, validating its encoding and dimensions.
+    ///
+    /// ```swift
+    /// let vector = [Bool]
+    ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
+    /// let restored = try [Bool].PackedBitsRepresentation(vectorBytes: vector.vectorBytes)
+    /// ```
     public init(vectorBytes: [UInt8]) throws {
       self.init(queryOutput: decodePackedBitsVector(vectorBytes))
     }
@@ -23,6 +58,11 @@ extension Array where Element == Bool {
 }
 
 extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
+  /// Creates a vector representation from an array literal.
+  ///
+  /// ```swift
+  /// let vector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+  /// ```
   public init(arrayLiteral elements: Bool...) {
     self.init(queryOutput: elements)
   }
@@ -32,18 +72,52 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension BinaryEmbeddingVector {
     /// Packed bits without metadata. Binding requires dimensions divisible by eight.
+    ///
+    /// ```swift
+    /// @Table
+    /// struct Document {
+    ///   @Column(as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+    ///   var embedding: BinaryEmbeddingVector<8>
+    /// }
+    /// ```
     public struct PackedBitsRepresentation:
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Bool
       public typealias Encoding = [Bool].PackedBitsRepresentation
       public typealias VectorBytesRepresentation = Self
+      /// The logical vector value bound to or decoded from a query.
+      ///
+      /// ```swift
+      /// let vector = BinaryEmbeddingVector<8>
+      ///   .PackedBitsRepresentation(
+      ///     queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
+      ///   )
+      /// let queryOutput = vector.queryOutput
+      /// ```
       public var queryOutput: BinaryEmbeddingVector<count>
 
+      /// Wraps the logical vector value for blob storage and query binding.
+      ///
+      /// ```swift
+      /// let vector = BinaryEmbeddingVector<8>
+      ///   .PackedBitsRepresentation(
+      ///     queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
+      ///   )
+      /// ```
       public init(queryOutput: BinaryEmbeddingVector<count>) {
         self.queryOutput = queryOutput
       }
 
+      /// The serialized blob, including any metadata required by this encoding.
+      ///
+      /// ```swift
+      /// let vector = BinaryEmbeddingVector<8>
+      ///   .PackedBitsRepresentation(
+      ///     queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
+      ///   )
+      /// let vectorBytes = vector.vectorBytes
+      /// ```
       public var vectorBytes: [UInt8] {
         precondition(
           BinaryEmbeddingVector<count>.count.isMultiple(of: 8),
@@ -52,6 +126,16 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
         return self.queryOutput.packedBytes
       }
 
+      /// Decodes a vector blob, validating its encoding and dimensions.
+      ///
+      /// ```swift
+      /// let vector = BinaryEmbeddingVector<8>
+      ///   .PackedBitsRepresentation(
+      ///     queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
+      ///   )
+      /// let restored = try BinaryEmbeddingVector<8>
+      ///   .PackedBitsRepresentation(vectorBytes: vector.vectorBytes)
+      /// ```
       public init(vectorBytes: [UInt8]) throws {
         let (dimensions, overflow) = vectorBytes.count.multipliedReportingOverflow(by: 8)
         guard !overflow else { throw VectorDecodingError.invalidBytes }

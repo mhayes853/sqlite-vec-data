@@ -80,11 +80,37 @@ struct `Vector tests` {
   @Test
   func `Searches Vectors`() throws {
     try self.database.write { db in
-      // Create a vec0 table and run queries here.
+      try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
     }
   }
 }
 ```
+
+On non-Apple platforms, add `SQLiteVecDataTestSupport` to your test target and use
+`.sqliteVecAutoExtension` to register sqlite-vec once for the process. Connections opened by the
+suite then support sqlite-vec without configuration:
+
+```swift
+#if !canImport(Darwin)
+import SQLiteVecData
+import SQLiteVecDataTestSupport
+import Testing
+
+@Suite(.sqliteVecAutoExtension)
+struct `Auto Extension Vector tests` {
+  @Test
+  func `Creates A Vector Table`() throws {
+    let database = try DatabaseQueue()
+    try database.write { db in
+      try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
+    }
+  }
+}
+#endif
+```
+
+Registration applies to all subsequent connections in the process. Use connection preparation
+for suites that need isolated registration or run on Apple platforms.
 
 ### Turso Database
 

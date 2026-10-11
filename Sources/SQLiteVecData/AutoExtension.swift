@@ -36,6 +36,16 @@ import GRDBSQLite
 ///
 /// On Apple platforms, use ``Database/loadSQLiteVecExtension()`` to load sqlite-vec into each
 /// database connection instead.
+///
+/// ```swift
+/// #if !canImport(Darwin)
+///   try registerSQLiteVecAutoExtension()
+///   let database = try DatabaseQueue()
+///   try database.write { db in
+///     try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
+///   }
+/// #endif
+/// ```
 public func registerSQLiteVecAutoExtension() throws {
   let vecInit:
     @convention(c) (

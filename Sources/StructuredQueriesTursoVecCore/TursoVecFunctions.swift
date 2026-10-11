@@ -5,10 +5,23 @@ import StructuredQueriesCore
 /// These helpers follow the [vector documentation](https://docs.turso.tech/sql-reference/functions/vector).
 /// Convert JSON explicitly before distance comparisons, using the same format on both sides.
 /// The database checks dimensions and value-dependent restrictions.
+///
+/// ```swift
+/// let distance = TursoVec.distanceCosine(
+///   TursoVec.vector32("[1,2,3]"),
+///   to: TursoVec.vector32("[3,2,1]")
+/// )
+/// ```
 public enum TursoVec {
   /// Counts differing binary components with Turso's `vector_distance_cos` specialization.
   /// The database returns an integer-valued REAL and requires equal dimensions.
   /// See [Turso's limitations](https://docs.turso.tech/guides/vector-search#limitations).
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// let expression = TursoVec.distanceHamming(vector, to: TursoVec.vector1bit("[3,2,1]"))
+  /// // vector_distance_cos(vector1bit('[1,2,3]'), vector1bit('[3,2,1]'))
+  /// ```
   public static func distanceHamming<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -21,6 +34,11 @@ public enum TursoVec {
   }
 
   /// Converts JSON or a supported vector blob to a 32-bit floating-point vector with `vector32`.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector32("[1,2,3]")
+  /// // vector32('[1,2,3]')
+  /// ```
   public static func vector32(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
@@ -29,6 +47,11 @@ public enum TursoVec {
 
   /// Converts a vector with `vector32`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector32("[1,2,3]", as: EmbeddingVector<3>.self)
+  /// // vector32('[1,2,3]')
+  /// ```
   public static func vector32<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
@@ -37,6 +60,11 @@ public enum TursoVec {
   }
 
   /// Converts JSON or a supported vector blob to a 64-bit floating-point vector with `vector64`.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector64("[1,2,3]")
+  /// // vector64('[1,2,3]')
+  /// ```
   public static func vector64(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Double].VectorBytesRepresentation> {
@@ -45,6 +73,14 @@ public enum TursoVec {
 
   /// Converts a vector with `vector64`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector64(
+  ///   "[1,2,3]",
+  ///   as: EmbeddingVector64<3>.VectorBytesRepresentation.self
+  /// )
+  /// // vector64('[1,2,3]')
+  /// ```
   public static func vector64<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
@@ -53,6 +89,11 @@ public enum TursoVec {
   }
 
   /// Converts JSON or a supported vector blob to a quantized float8 vector with `vector8`.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector8("[1,2,3]")
+  /// // vector8('[1,2,3]')
+  /// ```
   public static func vector8(
     _ expression: some QueryExpression
   ) -> some QueryExpression<Quantized8Vector> {
@@ -61,6 +102,11 @@ public enum TursoVec {
 
   /// Converts a vector with `vector8`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector8("[1,2,3]", as: InlineQuantized8Vector<3>.self)
+  /// // vector8('[1,2,3]')
+  /// ```
   public static func vector8<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
@@ -69,6 +115,11 @@ public enum TursoVec {
   }
 
   /// Converts JSON or a supported vector blob to a binary vector with `vector1bit`.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector1bit("[1,2,3]")
+  /// // vector1bit('[1,2,3]')
+  /// ```
   public static func vector1bit(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Bool].TursoBytesRepresentation> {
@@ -77,6 +128,14 @@ public enum TursoVec {
 
   /// Converts a vector with `vector1bit`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector1bit(
+  ///   "[1,2,3]",
+  ///   as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self
+  /// )
+  /// // vector1bit('[1,2,3]')
+  /// ```
   public static func vector1bit<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
@@ -85,6 +144,11 @@ public enum TursoVec {
   }
 
   /// Converts JSON or a supported vector blob to a sparse float32 vector with `vector32_sparse`.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse('[1,2,3]')
+  /// ```
   public static func vector32Sparse(
     _ expression: some QueryExpression
   ) -> some QueryExpression<SparseFloat32Vector> {
@@ -93,6 +157,11 @@ public enum TursoVec {
 
   /// Converts a vector with `vector32_sparse`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector32Sparse("[1,2,3]", as: SizedSparseFloat32Vector<3>.self)
+  /// // vector32_sparse('[1,2,3]')
+  /// ```
   public static func vector32Sparse<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
@@ -101,6 +170,11 @@ public enum TursoVec {
   }
 
   /// Converts JSON or a supported vector blob to float32 using the `vector` alias.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.vector("[1,2,3]")
+  /// // vector('[1,2,3]')
+  /// ```
   public static func vector(
     _ expression: some QueryExpression
   ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
@@ -108,6 +182,11 @@ public enum TursoVec {
   }
 
   /// Extracts a supported vector blob as a JSON array string with `vector_extract`.
+  ///
+  /// ```swift
+  /// let expression = TursoVec.extract(TursoVec.vector32("[1,2,3]"))
+  /// // vector_extract(vector32('[1,2,3]'))
+  /// ```
   public static func extract(
     _ expression: some QueryExpression
   ) -> some QueryExpression<String> {
@@ -116,6 +195,12 @@ public enum TursoVec {
 
   /// Returns cosine distance (`1 - cosine similarity`) between matching vectors.
   /// The database requires equal dimensions. Both operands must use the 32-bit floating-point format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_cos(vector32('[1,2,3]'), vector32('[3,2,1]'))
+  /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -129,6 +214,12 @@ public enum TursoVec {
 
   /// Returns cosine distance (`1 - cosine similarity`) between matching vectors.
   /// The database requires equal dimensions. Both operands must use the 64-bit floating-point format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector64("[3,2,1]"))
+  /// // vector_distance_cos(vector64('[1,2,3]'), vector64('[3,2,1]'))
+  /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -142,6 +233,12 @@ public enum TursoVec {
 
   /// Returns cosine distance (`1 - cosine similarity`) between matching vectors.
   /// The database requires equal dimensions. Both operands must use the quantized float8 format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector8("[1,2,3]")
+  /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector8("[3,2,1]"))
+  /// // vector_distance_cos(vector8('[1,2,3]'), vector8('[3,2,1]'))
+  /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -154,6 +251,12 @@ public enum TursoVec {
 
   /// Returns Hamming distance (the number of differing bits) with `vector_distance_cos`.
   /// The database requires equal dimensions. Both operands must use the binary format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector1bit("[3,2,1]"))
+  /// // vector_distance_cos(vector1bit('[1,2,3]'), vector1bit('[3,2,1]'))
+  /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -167,6 +270,12 @@ public enum TursoVec {
 
   /// Returns cosine distance (`1 - cosine similarity`) between matching vectors.
   /// The database requires equal dimensions. Both operands must use the sparse float32 format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
+  /// // vector_distance_cos(vector32_sparse('[1,2,3]'), vector32_sparse('[3,2,1]'))
+  /// ```
   public static func distanceCosine<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -180,6 +289,12 @@ public enum TursoVec {
 
   /// Returns Euclidean distance between matching vectors.
   /// The database requires equal dimensions. Both operands must use the 32-bit floating-point format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_l2(vector32('[1,2,3]'), vector32('[3,2,1]'))
+  /// ```
   public static func distanceL2<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -193,6 +308,12 @@ public enum TursoVec {
 
   /// Returns Euclidean distance between matching vectors.
   /// The database requires equal dimensions. Both operands must use the 64-bit floating-point format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector64("[3,2,1]"))
+  /// // vector_distance_l2(vector64('[1,2,3]'), vector64('[3,2,1]'))
+  /// ```
   public static func distanceL2<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -206,6 +327,12 @@ public enum TursoVec {
 
   /// Returns Euclidean distance between matching vectors.
   /// The database requires equal dimensions. Both operands must use the quantized float8 format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector8("[1,2,3]")
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector8("[3,2,1]"))
+  /// // vector_distance_l2(vector8('[1,2,3]'), vector8('[3,2,1]'))
+  /// ```
   public static func distanceL2<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -218,6 +345,12 @@ public enum TursoVec {
 
   /// Returns Euclidean distance between matching vectors.
   /// The database requires equal dimensions. Both operands must use the sparse float32 format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
+  /// // vector_distance_l2(vector32_sparse('[1,2,3]'), vector32_sparse('[3,2,1]'))
+  /// ```
   public static func distanceL2<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -231,6 +364,12 @@ public enum TursoVec {
 
   /// Returns the negative dot product between matching vectors; lower values are closer.
   /// The database requires equal dimensions. Both operands must use the 32-bit floating-point format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_dot(vector32('[1,2,3]'), vector32('[3,2,1]'))
+  /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -244,6 +383,12 @@ public enum TursoVec {
 
   /// Returns the negative dot product between matching vectors; lower values are closer.
   /// The database requires equal dimensions. Both operands must use the 64-bit floating-point format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector64("[3,2,1]"))
+  /// // vector_distance_dot(vector64('[1,2,3]'), vector64('[3,2,1]'))
+  /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -257,6 +402,12 @@ public enum TursoVec {
 
   /// Returns the negative dot product between matching vectors; lower values are closer.
   /// The database requires equal dimensions. Both operands must use the quantized float8 format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector8("[1,2,3]")
+  /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector8("[3,2,1]"))
+  /// // vector_distance_dot(vector8('[1,2,3]'), vector8('[3,2,1]'))
+  /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -269,6 +420,12 @@ public enum TursoVec {
 
   /// Returns the negative dot product of the binary vectors interpreted as +1/-1.
   /// The database requires equal dimensions. Both operands must use the binary format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector1bit("[3,2,1]"))
+  /// // vector_distance_dot(vector1bit('[1,2,3]'), vector1bit('[3,2,1]'))
+  /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -282,6 +439,12 @@ public enum TursoVec {
 
   /// Returns the negative dot product between matching vectors; lower values are closer.
   /// The database requires equal dimensions. Both operands must use the sparse float32 format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
+  /// // vector_distance_dot(vector32_sparse('[1,2,3]'), vector32_sparse('[3,2,1]'))
+  /// ```
   public static func distanceDot<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -295,6 +458,12 @@ public enum TursoVec {
 
   /// Returns weighted Jaccard distance between matching vectors.
   /// The database requires equal dimensions. Both operands must use the 32-bit floating-point format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_jaccard(vector32('[1,2,3]'), vector32('[3,2,1]'))
+  /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -308,6 +477,12 @@ public enum TursoVec {
 
   /// Returns weighted Jaccard distance between matching vectors.
   /// The database requires equal dimensions. Both operands must use the 64-bit floating-point format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector64("[3,2,1]"))
+  /// // vector_distance_jaccard(vector64('[1,2,3]'), vector64('[3,2,1]'))
+  /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -321,6 +496,12 @@ public enum TursoVec {
 
   /// Returns weighted Jaccard distance between matching vectors.
   /// The database requires equal dimensions. Both operands must use the quantized float8 format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector8("[1,2,3]")
+  /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector8("[3,2,1]"))
+  /// // vector_distance_jaccard(vector8('[1,2,3]'), vector8('[3,2,1]'))
+  /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -333,6 +514,12 @@ public enum TursoVec {
 
   /// Returns binary Jaccard distance (`1 - intersection / union`) over set bits.
   /// The database requires equal dimensions. Both operands must use the binary format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector1bit("[3,2,1]"))
+  /// // vector_distance_jaccard(vector1bit('[1,2,3]'), vector1bit('[3,2,1]'))
+  /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -346,6 +533,12 @@ public enum TursoVec {
 
   /// Returns weighted Jaccard distance between matching vectors.
   /// The database requires equal dimensions. Both operands must use the sparse float32 format.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
+  /// // vector_distance_jaccard(vector32_sparse('[1,2,3]'), vector32_sparse('[3,2,1]'))
+  /// ```
   public static func distanceJaccard<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -359,6 +552,11 @@ public enum TursoVec {
 
   /// Concatenates two matching vectors; the result has the sum of their dimensions.
   /// Returns an array representation so the output dimension count can change.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// let expression = TursoVec.concat(vector, vector)
+  /// ```
   public static func concat<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -372,6 +570,11 @@ public enum TursoVec {
 
   /// Concatenates two matching vectors; the result has the sum of their dimensions.
   /// Decodes with the requested matching representation, including fixed-dimension validation.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// let expression = TursoVec.concat(vector, vector, as: EmbeddingVector<6>.self)
+  /// ```
   public static func concat<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable,
@@ -390,6 +593,11 @@ public enum TursoVec {
 
   /// Concatenates two matching vectors; the result has the sum of their dimensions.
   /// Returns an array representation so the output dimension count can change.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// let expression = TursoVec.concat(vector, vector)
+  /// ```
   public static func concat<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable
@@ -403,6 +611,15 @@ public enum TursoVec {
 
   /// Concatenates two matching vectors; the result has the sum of their dimensions.
   /// Decodes with the requested matching representation, including fixed-dimension validation.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// let expression = TursoVec.concat(
+  ///   vector,
+  ///   vector,
+  ///   as: EmbeddingVector64<6>.VectorBytesRepresentation.self
+  /// )
+  /// ```
   public static func concat<
     L: VectorBytesRepresentable & QueryBindable,
     R: VectorBytesRepresentable & QueryBindable,
@@ -421,6 +638,12 @@ public enum TursoVec {
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
   /// Returns a variable-size representation so the output dimension count can change.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// let expression = TursoVec.slice(vector, from: 0, to: 2)
+  /// // vector_slice(vector32('[1,2,3]'), 0, 2)
+  /// ```
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
     from start: some QueryExpression<Int>,
@@ -432,6 +655,12 @@ public enum TursoVec {
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
   /// Decodes with the requested matching representation, including fixed-dimension validation.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// let expression = TursoVec.slice(vector, from: 0, to: 2, as: EmbeddingVector<2>.self)
+  /// // vector_slice(vector32('[1,2,3]'), 0, 2)
+  /// ```
   public static func slice<
     V: VectorBytesRepresentable & QueryBindable,
     T: VectorBytesRepresentable & QueryBindable
@@ -447,6 +676,12 @@ public enum TursoVec {
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
   /// Returns a variable-size representation so the output dimension count can change.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// let expression = TursoVec.slice(vector, from: 0, to: 2)
+  /// // vector_slice(vector64('[1,2,3]'), 0, 2)
+  /// ```
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
     from start: some QueryExpression<Int>,
@@ -458,6 +693,17 @@ public enum TursoVec {
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
   /// Decodes with the requested matching representation, including fixed-dimension validation.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// let expression = TursoVec.slice(
+  ///   vector,
+  ///   from: 0,
+  ///   to: 2,
+  ///   as: EmbeddingVector64<2>.VectorBytesRepresentation.self
+  /// )
+  /// // vector_slice(vector64('[1,2,3]'), 0, 2)
+  /// ```
   public static func slice<
     V: VectorBytesRepresentable & QueryBindable,
     T: VectorBytesRepresentable & QueryBindable
@@ -473,6 +719,12 @@ public enum TursoVec {
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
   /// Returns a variable-size representation so the output dimension count can change.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// let expression = TursoVec.slice(vector, from: 0, to: 2)
+  /// // vector_slice(vector32_sparse('[1,2,3]'), 0, 2)
+  /// ```
   public static func slice<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
     from start: some QueryExpression<Int>,
@@ -484,6 +736,12 @@ public enum TursoVec {
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
   /// Decodes with the requested matching representation, including fixed-dimension validation.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// let expression = TursoVec.slice(vector, from: 0, to: 2, as: SizedSparseFloat32Vector<2>.self)
+  /// // vector_slice(vector32_sparse('[1,2,3]'), 0, 2)
+  /// ```
   public static func slice<
     V: VectorBytesRepresentable & QueryBindable,
     T: VectorBytesRepresentable & QueryBindable

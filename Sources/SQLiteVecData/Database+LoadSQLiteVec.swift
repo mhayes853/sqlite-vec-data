@@ -13,7 +13,9 @@ extension Database {
   ///
   /// ```swift
   /// var configuration = Configuration()
-  /// configuration.prepareSQLiteVecExtension()
+  /// configuration.prepareDatabase { db in
+  ///   try db.loadSQLiteVecExtension()
+  /// }
   /// let database = try SQLiteData.defaultDatabase(configuration: configuration)
   /// ```
   public func loadSQLiteVecExtension() throws {

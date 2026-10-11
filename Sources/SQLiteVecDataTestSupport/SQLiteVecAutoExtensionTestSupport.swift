@@ -23,13 +23,22 @@ extension Trait where Self == _SQLiteVecAutoExtensionTrait {
   /// use `Configuration.prepareSQLiteVecExtension()` to load the extension into each connection.
   ///
   /// ```swift
-  /// import SQLiteVecDataTestSupport
-  /// import Testing
+  /// #if !canImport(Darwin)
+  ///   import SQLiteVecData
+  ///   import SQLiteVecDataTestSupport
+  ///   import Testing
   ///
-  /// @Suite(.sqliteVecAutoExtension)
-  /// struct `Vector tests` {
-  ///   // ...
-  /// }
+  ///   @Suite(.sqliteVecAutoExtension)
+  ///   struct `Auto Extension Vector tests` {
+  ///     @Test
+  ///     func `Creates A Vector Table`() throws {
+  ///       let database = try DatabaseQueue()
+  ///       try database.write { db in
+  ///         try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
+  ///       }
+  ///     }
+  ///   }
+  /// #endif
   /// ```
   @available(
     macOS,

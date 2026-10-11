@@ -6,17 +6,44 @@ import StructuredQueriesVectorCore
 /// Use this format for mostly-zero embeddings, such as lexical or bag-of-words vectors.
 /// Binding and decoding retain sparse components without allocating a dense array. Equality
 /// and hashing compare dimensions, indices, and stored value bit patterns, including NaNs.
+///
+/// ```swift
+/// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+/// let dense = vector.denseValues()
+/// ```
 public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
   public typealias QueryOutput = Self
   public typealias Scalar = Float
   public typealias Encoding = SparseFloat32Vector
   public typealias VectorBytesRepresentation = Self
 
+  /// The number of logical vector components.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// let dimensions = vector.dimensions
+  /// ```
   public let dimensions: Int
+  /// The ascending, zero-based positions of the stored sparse components.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// let indices = vector.indices
+  /// ```
   public let indices: [UInt32]
+  /// The stored sparse values, in the same order as `indices`.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// let values = vector.values
+  /// ```
   public let values: [Float]
 
   /// Compresses a dense vector, omitting both positive and negative zeros.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// ```
   public init(compressing values: [Float]) throws {
     guard UInt32(exactly: values.count) != nil else {
       throw TursoVectorError(
@@ -34,6 +61,11 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
 
   /// Creates a vector from sorted, unique, in-range indices and matching values.
   /// Explicit zeros and all float32 bit patterns are preserved.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(dimensions: 3, indices: [1], values: [2])
+  /// let dense = vector.denseValues()  // [0, 2, 0].
+  /// ```
   public init(dimensions: Int, indices: [UInt32], values: [Float]) throws {
     guard let dimensions32 = UInt32(exactly: dimensions), indices.count == values.count,
       indices.allSatisfy({ $0 < dimensions32 }),
@@ -53,6 +85,11 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
   }
 
   /// Allocates a dense array, filling omitted dimensions with positive zero.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// let values = vector.denseValues()
+  /// ```
   public func denseValues() -> [Float] {
     var values = Array(repeating: Float.zero, count: self.dimensions)
     for (index, value) in zip(self.indices, self.values) {
@@ -63,11 +100,23 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
 
   // Layout: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs
   // Serialization: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
+  /// The serialized blob, including any metadata required by this encoding.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// let vectorBytes = vector.vectorBytes
+  /// ```
   public var vectorBytes: [UInt8] {
     Float.encodeVector(self.values) + self.indices.flatMap { sparseWordBytes($0) }
       + sparseWordBytes(UInt32(self.dimensions)) + [9]
   }
 
+  /// Decodes a sparse blob, validating its metadata, indices, and values.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// let restored = try SparseFloat32Vector(vectorBytes: vector.vectorBytes)
+  /// ```
   public init(vectorBytes bytes: [UInt8]) throws {
     guard bytes.count >= 5, (bytes.count - 5).isMultiple(of: 8), bytes.last == 9 else {
       throw VectorDecodingError.invalidBytes
@@ -88,11 +137,23 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
     }
   }
 
+  /// Compares the vector components for equality.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// let equal = vector == vector
+  /// ```
   public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.dimensions == rhs.dimensions && lhs.indices == rhs.indices
       && lhs.values.map(\.bitPattern) == rhs.values.map(\.bitPattern)
   }
 
+  /// Hashes the vector components.
+  ///
+  /// ```swift
+  /// let vector = try SparseFloat32Vector(compressing: [0, 2, 0])
+  /// let vectors = Set([vector])
+  /// ```
   public func hash(into hasher: inout Hasher) {
     hasher.combine(self.dimensions)
     hasher.combine(self.indices)

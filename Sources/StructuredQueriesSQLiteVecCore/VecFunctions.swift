@@ -6,6 +6,12 @@ import StructuredQueriesCore
 /// Turso's float64, quantized, sparse, and metadata-bearing binary encodings are not supported.
 /// Int8 and packed-bit scalar operations apply `vec_int8` and `vec_bit` so SQLiteVec interprets
 /// bound blobs correctly.
+///
+/// ```swift
+/// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
+/// let expression = Vec.length(vector)
+/// // vec_length(?)
+/// ```
 public enum Vec {
   /// Matches a query vector expression against a vec0 float32 column.
   ///
@@ -13,7 +19,9 @@ public enum Vec {
   /// limit or `k` constraint. The query vector can be a bound value or a computed expression.
   ///
   /// ```swift
-  /// let query = Embedding
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query =
+  ///   Embedding
   ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
   ///   .limit(5)
   /// ```
@@ -29,6 +37,18 @@ public enum Vec {
   ///
   /// The left expression must refer to a vec0 binary column. The query vector can be a bound
   /// value or a computed expression, and `vec_bit` attaches SQLiteVec's required subtype.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+  ///   var embedding: [Bool]
+  /// }
+  ///
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
+  /// ```
   public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
@@ -116,7 +136,9 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_distance_hamming` function.
   ///
   /// ```swift
-  /// let queryVector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+  /// let queryVector: [Bool].PackedBitsRepresentation = [
+  ///   true, false, true, false, false, false, false, true
+  /// ]
   /// let query = BinaryEmbedding.select {
   ///   Vec.distanceHamming($0.embedding, to: queryVector)
   /// }
@@ -640,6 +662,15 @@ public enum Vec {
   /// - Parameters:
   ///   - expression: The Float32 vector expression to quantize.
   ///   - result: A signed Int8 result representation, optionally validating fixed dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = Vec.quantizeInt8(
+  ///   vector,
+  ///   as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
+  /// )
+  /// // vec_quantize_int8(?, 'unit')
+  /// ```
   public static func quantizeInt8<
     V: VectorBytesRepresentable,
     T: VectorBytesRepresentable & QueryBindable
@@ -668,12 +699,14 @@ public enum Vec {
   }
 
   /// Quantizes a vector expression to a binary representation and returns the result in the requested type.
-  /// This calls sqlite-vec's `vec_quantize_binary` function.
+  /// This calls sqlite-vec's `vec_quantize_binary` function. Dimensions must be divisible by eight.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.quantizeBinary($0.embedding, as: [Bool].PackedBitsRepresentation.self)
-  /// }
+  /// let vector: [Float].VectorBytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.quantizeBinary(
+  ///   vector, as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  /// )
+  /// // vec_quantize_binary(?)
   /// ```
   ///
   /// - Parameters:
@@ -694,12 +727,12 @@ public enum Vec {
   }
 
   /// Quantizes a vector expression to a binary representation and returns logical bits.
-  /// This calls sqlite-vec's `vec_quantize_binary` function.
+  /// This calls sqlite-vec's `vec_quantize_binary` function. Dimensions must be divisible by eight.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.quantizeBinary($0.embedding)
-  /// }
+  /// let vector: [Float].VectorBytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.quantizeBinary(vector)
+  /// // vec_quantize_binary(?)
   /// ```
   ///
   /// - Parameter expression: The vector expression to quantize.
@@ -714,6 +747,12 @@ public enum Vec {
   // MARK: - Packed Bits
 
   /// Returns the dimension count of a packed-bit vector.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.length(vector)
+  /// // vec_length(vec_bit(?))
+  /// ```
   public static func length<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<Int> where V.Encoding == [Bool].PackedBitsRepresentation {
@@ -721,6 +760,12 @@ public enum Vec {
   }
 
   /// Returns the SQLiteVec type of a packed-bit vector.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.type(vector)
+  /// // vec_type(vec_bit(?))
+  /// ```
   public static func type<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<String> where V.Encoding == [Bool].PackedBitsRepresentation {
@@ -728,6 +773,12 @@ public enum Vec {
   }
 
   /// Returns the JSON elements of a packed-bit vector.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.toJSON(vector)
+  /// // vec_to_json(vec_bit(?))
+  /// ```
   public static func toJSON<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<String> where V.Encoding == [Bool].PackedBitsRepresentation {
@@ -735,6 +786,16 @@ public enum Vec {
   }
 
   /// Slices packed bits. The start and end indices must be divisible by eight.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.slice(
+  ///   vector,
+  ///   start: 0,
+  ///   end: 8,
+  ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  /// )
+  /// ```
   public static func slice<
     V: VectorBytesRepresentable,
     T: VectorBytesRepresentable & QueryBindable
@@ -750,6 +811,11 @@ public enum Vec {
   }
 
   /// Slices packed bits. The start and end indices must be divisible by eight.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.slice(vector, start: 0, end: 8)
+  /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     start: Int,
@@ -765,6 +831,15 @@ public enum Vec {
   }
 
   /// Slices packed bits. The start and end indices must be divisible by eight.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.slice(
+  ///   vector,
+  ///   range: 0..<8,
+  ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  /// )
+  /// ```
   public static func slice<
     V: VectorBytesRepresentable,
     T: VectorBytesRepresentable & QueryBindable
@@ -779,6 +854,11 @@ public enum Vec {
   }
 
   /// Slices packed bits. The start and end indices must be divisible by eight.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.slice(vector, range: 0..<8)
+  /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     range: Range<Int>
@@ -788,6 +868,15 @@ public enum Vec {
   }
 
   /// Slices packed bits. The start and end indices must be divisible by eight.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.slice(
+  ///   vector,
+  ///   range: 0...7,
+  ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  /// )
+  /// ```
   public static func slice<
     V: VectorBytesRepresentable,
     T: VectorBytesRepresentable & QueryBindable
@@ -802,6 +891,11 @@ public enum Vec {
   }
 
   /// Slices packed bits. The start and end indices must be divisible by eight.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.slice(vector, range: 0...7)
+  /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     range: ClosedRange<Int>
@@ -811,6 +905,16 @@ public enum Vec {
   }
 
   /// Slices packed bits. The start and end indices must be divisible by eight.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.slice(
+  ///   vector,
+  ///   start: 0,
+  ///   length: 8,
+  ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  /// )
+  /// ```
   public static func slice<
     V: VectorBytesRepresentable,
     T: VectorBytesRepresentable & QueryBindable
@@ -826,6 +930,11 @@ public enum Vec {
   }
 
   /// Slices packed bits. The start and end indices must be divisible by eight.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.slice(vector, start: 0, length: 8)
+  /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     start: Int,
@@ -836,6 +945,12 @@ public enum Vec {
   }
 
   /// Marks a packed-bit blob with SQLiteVec's binary subtype.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.bit(vector, as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  /// // vec_bit(?)
+  /// ```
   public static func bit<V: VectorBytesRepresentable, T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
     as result: T.Type
@@ -846,6 +961,12 @@ public enum Vec {
   }
 
   /// Marks a packed-bit blob with SQLiteVec's binary subtype.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = Vec.bit(vector)
+  /// // vec_bit(?)
+  /// ```
   public static func bit<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
