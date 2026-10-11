@@ -86,19 +86,23 @@ let query = Embedding
 
 ```swift
 let distances = Embedding.select {
-  ($0.label, $0.embedding.distanceCosine(to: vector))
+  ($0.label, $0.embedding.distanceCosine(to: vector.normalize()))
 }
-// SELECT label, vec_distance_cosine(embedding, ?) FROM Embeddings;
+// SELECT label, vec_distance_cosine(embedding, vec_normalize(?)) FROM Embeddings;
 
 let normalized = Vec.normalize(vector) // vec_normalize(?)
+let prefix = Embedding.columns.embedding.slice(0..<2) // Decodes as [Float]
+let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2>.self)
+// vec_slice(Embeddings.embedding, 0, 2); fixedPrefix decodes as EmbeddingVector<2>
 let elements = Vec.each(vector)
   .order { $0.rowid }
   .select { ($0.rowid, $0.value) }
 // SELECT rowid, value FROM vec_each WHERE vector = ? ORDER BY rowid;
 ```
 
-Column helpers also support arithmetic, slicing, inspection, and `.vecEach()` for joins or
-correlated subqueries. Float32 and signed Int8 support L1, L2, and cosine distances;
+Scalar helpers work on bound values, computed expressions, and ordinary BLOB columns. They support
+arithmetic, slicing, inspection, and `.vecEach()` for joins or correlated subqueries. Slices return
+variable-size results; `as:` selects a matching fixed-size result and validates its dimensions. Float32 and signed Int8 support L1, L2, and cosine distances;
 normalization requires Float32. Binary vectors support Hamming distance.
 
 Distance helpers return `REAL` values decoded as `Double`; the Int8 L1 helper casts SQLiteVec's
@@ -240,10 +244,17 @@ struct CompressedDocument {
 }
 
 let compressed = try Quantized8Vector(quantizing: [0, 127.5, 255])
+let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+let inline = try InlineQuantized8Vector<2>(validating: supplied)
+let sparseComponents = try SparseFloat32Vector(dimensions: 4, indices: [1, 3], values: [2, 5])
+let sized = try SizedSparseFloat32Vector<4>(validating: sparseComponents)
 let decoded = compressed.decodedValues() // [0, 128, 255]
 let sparse = try SparseFloat32Vector(compressing: [0, 0, 1.5, 0, 0, 2.5])
 let dense = sparse.denseValues() // [0, 0, 1.5, 0, 0, 2.5]
 ```
+
+`init(validating:)` preserves encoded components and checks dimensions, without quantizing or
+expanding sparse storage.
 
 Turso binary columns use `.TursoBytesRepresentation` on `[Bool]` or `BinaryEmbeddingVector<N>`.
 It preserves the exact dimension count, including partial bytes. `distanceHamming` emits

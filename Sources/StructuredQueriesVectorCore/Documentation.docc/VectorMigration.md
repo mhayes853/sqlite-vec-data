@@ -25,6 +25,7 @@ the new Turso Database target. The table below identifies the changes to check i
 | `int8()` exposes Int8 bytes as Float32 values | `Vec.int8` accepts signed-byte expressions or integer JSON and returns an Int8 representation |
 | `length()` and `Vec.length` return `Double` | They return `Int`, matching the integer SQLiteVec's `vec_length` produces |
 | `vecEach()` and `Vec.each` always return `SelectOf<VecEach>` with `Float` values | `VecEach` aliases `VecEachOf<Float>` for Float32 vectors; Int8 and packed bits return `VecEachOf<Int8>` and `VecEachOf<Bool>` |
+| Float32 and binary column slices preserve the original vector type | Slices return variable-size representations; use `as:` to select a matching fixed-size result |
 
 ### Imports and package products
 
@@ -157,6 +158,15 @@ Float32 and signed Int8 support L1, L2, cosine distance, addition, and subtracti
 requires Float32. Hamming requires raw packed bits. Inspection, slicing, iteration, and `MATCH`
 support Float32, signed Int8, and packed bits. Comparisons require matching encodings; numeric
 operations cannot silently mix Float32 and Int8, or raw binary and Turso binary framing.
+
+Scalar convenience methods extend `QueryExpression`, including computed vectors and ordinary BLOB
+columns. Distances and arithmetic accept bound or computed operands with matching encodings.
+Column slices return variable-size representations by default:
+
+```swift
+let prefix = Embedding.columns.embedding.slice(0..<2)
+let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2>.self)
+```
 
 The result selected by `as:` must match the operation's output encoding. Its dimension constraint
 is checked when decoding, so select a fixed result whose count matches a slice's length.

@@ -23,11 +23,13 @@ import StructuredQueriesVectorCore
     public var values: [Float] { self.vector.values }
 
     public init(compressing values: EmbeddingVector<count>) throws {
-      try self.init(SparseFloat32Vector(compressing: Array(values)))
+      try self.init(validating: SparseFloat32Vector(compressing: Array(values)))
     }
 
     public init(indices: [UInt32], values: [Float]) throws {
-      try self.init(SparseFloat32Vector(dimensions: Self.count, indices: indices, values: values))
+      try self.init(
+        validating: SparseFloat32Vector(dimensions: Self.count, indices: indices, values: values)
+      )
     }
 
     /// Allocates an inline dense vector, filling omitted dimensions with positive zero.
@@ -42,10 +44,12 @@ import StructuredQueriesVectorCore
     public var vectorBytes: [UInt8] { self.vector.vectorBytes }
 
     public init(vectorBytes: [UInt8]) throws {
-      try self.init(SparseFloat32Vector(vectorBytes: vectorBytes))
+      try self.init(validating: SparseFloat32Vector(vectorBytes: vectorBytes))
     }
 
-    private init(_ vector: SparseFloat32Vector) throws {
+    /// Preserves the encoded components of an existing vector, validating its dimensions.
+    /// Throws `VectorDecodingError.dimensionMismatch` when the dimension counts differ.
+    public init(validating vector: SparseFloat32Vector) throws {
       guard vector.dimensions == Self.count else {
         throw VectorDecodingError.dimensionMismatch(expected: Self.count, actual: vector.dimensions)
       }

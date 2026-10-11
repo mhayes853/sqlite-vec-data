@@ -2313,6 +2313,64 @@ struct Vec0QueryTests {
     }
   }
 
+  @Test
+  func `Float32 Operations Accept Computed Operands`() async throws {
+    let vector: [Float].VectorBytesRepresentation = [2, 0, 0]
+    let unit = vector.normalize()
+    let query = #sql(
+      """
+      SELECT \(Vec.distanceL1(vector, to: unit)), \(vector.distanceL2(to: unit)),
+        \(Vec.distanceCosine(vector, to: unit)), \(vector.add(unit)),
+        \(Vec.sub(vector, unit)), \(unit.sub(vector))
+      """,
+      as: (
+        Double, Double, Double, [Float].VectorBytesRepresentation,
+        [Float].VectorBytesRepresentation, [Float].VectorBytesRepresentation
+      )
+      .self
+    )
+    try await self.database.read { db in
+      let result = try #require(try query.fetchOne(db))
+      expectNoDifference(result.0, 1)
+      expectNoDifference(result.1, 1)
+      expectNoDifference(result.2, 0)
+      expectNoDifference(result.3, [3, 0, 0])
+      expectNoDifference(result.4, [1, 0, 0])
+      expectNoDifference(result.5, [-1, 0, 0])
+    }
+  }
+
+  #if swift(>=6.2)
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Fixed Float32 Column Slices Decode Their New Dimensions`() async throws {
+      // Scalar helpers also apply to ordinary tables that store vector blobs.
+      let query =
+        FixedFloatEmbedding
+        .where { $0.label.eq("item-0.0") }
+        .select {
+          (
+            $0.embedding.slice(0..<2),
+            $0.embedding.slice(0..<2, as: EmbeddingVector<2>.self),
+            $0.embedding.distanceL2(to: $0.embedding.normalize())
+          )
+        }
+      let invalid =
+        FixedFloatEmbedding
+        .where { $0.label.eq("item-0.0") }
+        .select { $0.embedding.slice(start: 0, length: 2, as: EmbeddingVector<3>.self) }
+      try await self.database.read { db in
+        let result = try #require(try query.fetchOne(db))
+        expectNoDifference(result.0, [0, 1])
+        expectNoDifference(result.1, EmbeddingVector<2>([0, 1]))
+        #expect(abs(result.2 - (Double(5).squareRoot() - 1)) < 0.000001)
+        #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
+          try invalid.fetchOne(db)
+        }
+      }
+    }
+  #endif
+
   private func seedDatabase() async throws {
     try await self.database.write { db in
       try Embedding.all.delete().execute(db)
@@ -2352,3 +2410,12 @@ private struct BinaryEmbedding: Vec0 {
 
   var label: String
 }
+
+#if swift(>=6.2)
+  @Table("Embeddings")
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  private struct FixedFloatEmbedding: Hashable, Sendable {
+    var embedding: EmbeddingVector<3>
+    var label: String
+  }
+#endif

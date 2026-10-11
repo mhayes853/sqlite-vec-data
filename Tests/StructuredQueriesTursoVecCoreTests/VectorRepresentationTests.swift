@@ -358,6 +358,11 @@ struct `Vector Representation tests` {
       expectNoDifference([codes[0], codes[1]], [10, 20])
       expectNoDifference(vector.decodedValues(), EmbeddingVector<2>([21, 41]))
       expectNoDifference(vector.queryBinding, .blob(fixture))
+      let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+      expectNoDifference(try InlineQuantized8Vector<2>(validating: supplied), vector)
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
+        _ = try InlineQuantized8Vector<3>(validating: supplied)
+      }
       #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
         _ = try InlineQuantized8Vector<3>(decoder: &decoder)
       }
@@ -382,6 +387,17 @@ struct `Vector Representation tests` {
         sparse,
         try EmbeddingVector<4>([0, 2, 0, 4]).sparseFloat32()
       )
+      // Preserve explicit signed zero and NaN payloads, without compressing dense values again.
+      let supplied = try SparseFloat32Vector(
+        dimensions: 4,
+        indices: [1, 3],
+        values: [-0.0, Float(bitPattern: 0x7fc0_0042)]
+      )
+      let converted = try SizedSparseFloat32Vector<4>(validating: supplied)
+      expectNoDifference(converted.vectorBytes, supplied.vectorBytes)
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 4)) {
+        _ = try SizedSparseFloat32Vector<3>(validating: supplied)
+      }
       let fixture: [UInt8] = [
         0, 0, 0, 64, 0, 0, 128, 64,
         1, 0, 0, 0, 3, 0, 0, 0,

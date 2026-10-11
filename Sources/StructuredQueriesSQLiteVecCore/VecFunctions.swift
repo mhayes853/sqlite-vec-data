@@ -37,7 +37,7 @@ public enum Vec {
     SQLQueryExpression("(\(expression) MATCH vec_bit(\(vector)))")
   }
 
-  /// Returns the L2 distance between a vector expression and a query vector.
+  /// Returns the L2 distance between a vector expression and a bound or computed vector expression.
   /// This calls sqlite-vec's `vec_distance_l2` function.
   ///
   /// ```swift
@@ -53,16 +53,16 @@ public enum Vec {
   /// - Returns: A query expression for the L2 distance.
   public static func distanceL2<
     V: VectorBytesRepresentable,
-    W: VectorBytesRepresentable & QueryBindable
+    W: VectorBytesRepresentable
   >(
     _ expression: some QueryExpression<V>,
-    to vector: W
+    to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
   where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
-    SQLQueryExpression("vec_distance_l2(\(expression), \(bind: vector))")
+    SQLQueryExpression("vec_distance_l2(\(expression), \(vector))")
   }
 
-  /// Returns the L1 distance between a vector expression and a query vector.
+  /// Returns the L1 distance between a vector expression and a bound or computed vector expression.
   /// This calls sqlite-vec's `vec_distance_l1` function.
   ///
   /// ```swift
@@ -78,16 +78,16 @@ public enum Vec {
   /// - Returns: A query expression for the L1 distance.
   public static func distanceL1<
     V: VectorBytesRepresentable,
-    W: VectorBytesRepresentable & QueryBindable
+    W: VectorBytesRepresentable
   >(
     _ expression: some QueryExpression<V>,
-    to vector: W
+    to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
   where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
-    SQLQueryExpression("vec_distance_l1(\(expression), \(bind: vector))")
+    SQLQueryExpression("vec_distance_l1(\(expression), \(vector))")
   }
 
-  /// Returns the cosine distance between a vector expression and a query vector.
+  /// Returns the cosine distance between a vector expression and a bound or computed vector expression.
   /// This calls sqlite-vec's `vec_distance_cosine` function.
   ///
   /// ```swift
@@ -103,16 +103,16 @@ public enum Vec {
   /// - Returns: A query expression for the cosine distance.
   public static func distanceCosine<
     V: VectorBytesRepresentable,
-    W: VectorBytesRepresentable & QueryBindable
+    W: VectorBytesRepresentable
   >(
     _ expression: some QueryExpression<V>,
-    to vector: W
+    to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
   where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
-    SQLQueryExpression("vec_distance_cosine(\(expression), \(bind: vector))")
+    SQLQueryExpression("vec_distance_cosine(\(expression), \(vector))")
   }
 
-  /// Returns the Hamming distance between a vector expression and a query vector.
+  /// Returns the Hamming distance between a vector expression and a bound or computed vector expression.
   /// This calls sqlite-vec's `vec_distance_hamming` function.
   ///
   /// ```swift
@@ -128,13 +128,13 @@ public enum Vec {
   /// - Returns: A query expression for the Hamming distance.
   public static func distanceHamming<
     V: VectorBytesRepresentable,
-    W: VectorBytesRepresentable & QueryBindable
+    W: VectorBytesRepresentable
   >(
     _ expression: some QueryExpression<V>,
-    to vector: W
+    to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
   where V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding {
-    SQLQueryExpression("vec_distance_hamming(vec_bit(\(expression)), vec_bit(\(bind: vector)))")
+    SQLQueryExpression("vec_distance_hamming(vec_bit(\(expression)), vec_bit(\(vector)))")
   }
 
   /// Returns the length of a vector expression.
@@ -205,18 +205,18 @@ public enum Vec {
   /// - Returns: A query expression for the summed vector.
   public static func add<
     V: VectorBytesRepresentable,
-    W: VectorBytesRepresentable & QueryBindable,
+    W: VectorBytesRepresentable,
     T: VectorBytesRepresentable & QueryBindable
   >(
     _ expression: some QueryExpression<V>,
-    _ vector: W,
+    _ vector: some QueryExpression<W>,
     as result: T.Type
   ) -> some QueryExpression<T>
   where
     V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
     T.Encoding == [Float].VectorBytesRepresentation
   {
-    SQLQueryExpression("vec_add(\(expression), \(bind: vector))")
+    SQLQueryExpression("vec_add(\(expression), \(vector))")
   }
 
   /// Adds a query vector to an expression and returns the result as a float vector.
@@ -233,9 +233,9 @@ public enum Vec {
   ///   - expression: The vector expression to add to.
   ///   - vector: The query vector to add.
   /// - Returns: A query expression for the summed vector.
-  public static func add<V: VectorBytesRepresentable, W: VectorBytesRepresentable & QueryBindable>(
+  public static func add<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
-    _ vector: W
+    _ vector: some QueryExpression<W>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
   where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
     Self.add(expression, vector, as: [Float].VectorBytesRepresentation.self)
@@ -258,18 +258,18 @@ public enum Vec {
   /// - Returns: A query expression for the difference vector.
   public static func sub<
     V: VectorBytesRepresentable,
-    W: VectorBytesRepresentable & QueryBindable,
+    W: VectorBytesRepresentable,
     T: VectorBytesRepresentable & QueryBindable
   >(
     _ expression: some QueryExpression<V>,
-    _ vector: W,
+    _ vector: some QueryExpression<W>,
     as result: T.Type
   ) -> some QueryExpression<T>
   where
     V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
     T.Encoding == [Float].VectorBytesRepresentation
   {
-    SQLQueryExpression("vec_sub(\(expression), \(bind: vector))")
+    SQLQueryExpression("vec_sub(\(expression), \(vector))")
   }
 
   /// Subtracts a query vector from an expression and returns the result as a float vector.
@@ -286,9 +286,9 @@ public enum Vec {
   ///   - expression: The vector expression to subtract from.
   ///   - vector: The query vector to subtract.
   /// - Returns: A query expression for the difference vector.
-  public static func sub<V: VectorBytesRepresentable, W: VectorBytesRepresentable & QueryBindable>(
+  public static func sub<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
-    _ vector: W
+    _ vector: some QueryExpression<W>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
   where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
     Self.sub(expression, vector, as: [Float].VectorBytesRepresentation.self)

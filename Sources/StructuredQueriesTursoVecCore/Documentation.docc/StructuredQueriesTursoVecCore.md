@@ -193,9 +193,16 @@ does not shift the second operand's indices.
 
 ``InlineQuantized8Vector`` stores unsigned codes inline with scale and shift.
 ``SizedSparseFloat32Vector`` fixes logical dimensions while keeping a variable number of entries.
-Both bind directly and validate decoded dimensions:
+Both bind directly and validate decoded dimensions. Their `init(validating:)` initializers preserve
+an existing vector's encoded components and check dimensions, without requantizing or expanding
+sparse storage:
 
 ```swift
+let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+let inline = try InlineQuantized8Vector<2>(validating: supplied)
+let sparseComponents = try SparseFloat32Vector(dimensions: 4, indices: [1, 3], values: [2, 5])
+let sized = try SizedSparseFloat32Vector<4>(validating: sparseComponents)
+
 let quantized = try EmbeddingVector<3>([0, 127.5, 255]).quantized8()
 let sparse = try EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5]).sparseFloat32()
 

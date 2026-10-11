@@ -232,6 +232,20 @@ struct `Vec Int8 Query tests` {
           try FixedInt8Embedding.where { $0.label.eq("fixed") }.fetchOne(db),
           record
         )
+        let slicedColumn =
+          FixedInt8Embedding
+          .where { $0.label.eq("fixed") }
+          .select {
+            $0.embedding.slice(
+              start: 0,
+              length: 2,
+              as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
+            )
+          }
+        expectNoDifference(
+          try slicedColumn.fetchOne(db),
+          FixedEmbeddingVector<2, Int8>([-128, -64])
+        )
       }
     }
   #endif

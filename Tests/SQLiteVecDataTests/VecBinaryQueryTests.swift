@@ -156,6 +156,35 @@ struct `Vec Binary Query tests` {
   #if swift(>=6.2)
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Fixed Binary Column Slices Decode Their New Dimensions`() async throws {
+      let query =
+        FixedBinaryEmbedding
+        .where { $0.label.eq("near") }
+        .select {
+          (
+            $0.embedding.slice(start: 0, end: 8),
+            $0.embedding.slice(0...7, as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+          )
+        }
+      let invalid =
+        FixedBinaryEmbedding
+        .where { $0.label.eq("near") }
+        .select {
+          $0.embedding.slice(0..<8, as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+        }
+      try await self.database.read { db in
+        let result = try #require(try query.fetchOne(db))
+        let expected = try BinaryEmbeddingVector<8>(packedBytes: [0x85])
+        expectNoDifference(result.0, Array(expected))
+        expectNoDifference(result.1, expected)
+        #expect(throws: VectorDecodingError.dimensionMismatch(expected: 16, actual: 8)) {
+          try invalid.fetchOne(db)
+        }
+      }
+    }
+
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Quantized Binary Expressions Compose With Fixed Packed Results`() async throws {
       let dense = EmbeddingVector<8>([1, -1, 1, 0, -1, -1, -1, 1])
       let binary = BinaryEmbeddingVector<8>
@@ -167,11 +196,11 @@ struct `Vec Binary Query tests` {
         range: 0...7,
         as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
       )
-      let distance = Vec.distanceHamming(sliced, to: binary)
+      let distance = sliced.distanceHamming(to: Vec.quantizeBinary(dense))
       let prepared = distance.queryFragment.prepare { "?\($0)" }
       expectNoDifference(
         prepared.sql,
-        "vec_distance_hamming(vec_bit(vec_slice(vec_bit(vec_quantize_binary(?1)), 0, 8)), vec_bit(?2))"
+        "vec_distance_hamming(vec_bit(vec_slice(vec_bit(vec_quantize_binary(?1)), 0, 8)), vec_bit(vec_quantize_binary(?2)))"
       )
       let distanceQuery = #sql("SELECT \(distance)", as: Double.self)
       let sliceQuery = #sql(
@@ -192,3 +221,13 @@ private struct VecBinaryEmbedding: Vec0 {
   var embedding: [Bool]
   var label: String
 }
+
+#if swift(>=6.2)
+  @Table("VecBinaryEmbeddings")
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  private struct FixedBinaryEmbedding: Hashable, Sendable, Vec0 {
+    @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+    var embedding: BinaryEmbeddingVector<16>
+    var label: String
+  }
+#endif

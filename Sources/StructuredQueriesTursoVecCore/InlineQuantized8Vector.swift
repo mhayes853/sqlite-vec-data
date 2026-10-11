@@ -23,12 +23,16 @@ import StructuredQueriesVectorCore
     public var dimensions: Int { Self.count }
 
     public init(quantizing values: EmbeddingVector<count>) throws {
-      try self.init(Quantized8Vector(quantizing: Array(values)))
+      try self.init(validating: Quantized8Vector(quantizing: Array(values)))
     }
 
     public init(codes: [count of UInt8], scale: Float, shift: Float) throws {
       try self.init(
-        Quantized8Vector(codes: (0..<Self.count).map { codes[$0] }, scale: scale, shift: shift)
+        validating: Quantized8Vector(
+          codes: (0..<Self.count).map { codes[$0] },
+          scale: scale,
+          shift: shift
+        )
       )
     }
 
@@ -45,7 +49,7 @@ import StructuredQueriesVectorCore
     }
 
     public init(vectorBytes: [UInt8]) throws {
-      try self.init(Quantized8Vector(vectorBytes: vectorBytes))
+      try self.init(validating: Quantized8Vector(vectorBytes: vectorBytes))
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
@@ -62,7 +66,9 @@ import StructuredQueriesVectorCore
       hasher.combine(self.shift.bitPattern)
     }
 
-    private init(_ vector: Quantized8Vector) throws {
+    /// Preserves the encoded components of an existing vector, validating its dimensions.
+    /// Throws `VectorDecodingError.dimensionMismatch` when the dimension counts differ.
+    public init(validating vector: Quantized8Vector) throws {
       guard vector.dimensions == Self.count else {
         throw VectorDecodingError.dimensionMismatch(expected: Self.count, actual: vector.dimensions)
       }

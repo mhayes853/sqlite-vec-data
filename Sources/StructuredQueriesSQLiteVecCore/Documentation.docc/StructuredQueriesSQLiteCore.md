@@ -54,13 +54,20 @@ constraint on vec0's `k` column.
 
 ```swift
 let distances = Embedding.select {
-  ($0.label, $0.embedding.distanceCosine(to: vector))
+  ($0.label, $0.embedding.distanceCosine(to: vector.normalize()))
 }
-// SELECT label, vec_distance_cosine(embedding, ?) FROM Embeddings;
+// SELECT label, vec_distance_cosine(embedding, vec_normalize(?)) FROM Embeddings;
 
 let normalized = Vec.normalize(vector) // vec_normalize(?)
+let prefix = Embedding.columns.embedding.slice(0..<2) // Decodes as [Float]
+let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2>.self)
+// vec_slice(Embeddings.embedding, 0, 2); fixedPrefix decodes as EmbeddingVector<2>
 let sliced = Vec.slice(vector, start: 0, end: 2) // vec_slice(?, 0, 2)
 ```
+
+Scalar helpers accept bound values or computed vector expressions and also work on ordinary BLOB
+columns. Slices return variable-size results; `as:` selects a matching fixed-size result and validates
+its dimensions. `match` remains specific to vec0 columns.
 
 Distance helpers return `REAL` values decoded as `Double`, including the Int8 L1 distance, which
 SQLiteVec computes as an integer and the helper casts to `REAL`. `length()` and `Vec.length` return
