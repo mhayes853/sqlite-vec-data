@@ -239,4 +239,4 @@ macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
 See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/),
 [sqlite-vec API reference](https://alexgarcia.xyz/sqlite-vec/api-reference.html), and
-[migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md).
+[migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

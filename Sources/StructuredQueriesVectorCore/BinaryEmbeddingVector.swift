@@ -151,7 +151,7 @@
       self.clearUnusedBits()
     }
 
-    /// Applies zero-threshold binary quantization using `value > 0`, following Turso's sign rule.
+    /// Applies zero-threshold binary quantization using `value > 0`.
     ///
     /// Positive values, including positive infinity, become true. Zeros, negative values,
     /// and NaNs become false. This discards all magnitude information without normalizing or

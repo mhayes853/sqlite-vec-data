@@ -107,6 +107,28 @@ let binding = EmbeddingVector<3>.VectorBytesRepresentation(queryOutput: vector)
 Float32 vectors remain directly query-bindable, so wrapping is optional when a function accepts
 `EmbeddingVector` itself. Float64 and binary values use their explicit column and binding strategies.
 
+### Select Turso floating-point framing explicitly
+
+`VectorScalar` and the shared `.VectorBytesRepresentation` strategies now use raw little-endian
+payloads for every precision. Float32 decoding rejects incomplete components, including a trailing
+type byte; Double no longer appends or consumes Turso's type byte.
+
+Use `.TursoFloat64BytesRepresentation` on `[Double]`, `InlineArray<N, Double>`, and
+`EmbeddingVector64<N>` for Turso Float64 columns, bindings, and typed query results. This strategy
+retains the existing Turso blob layout. Existing rows need no rewrite when the strategy is updated.
+Use `.TursoFloat32BytesRepresentation` when Float32 rows include the optional type byte. Shared
+Float32 binding and decoding of untagged Float32 remain supported.
+
+```swift
+let values = EmbeddingVector64<3>([1, 2, 3])
+let binding = EmbeddingVector64<3>.TursoFloat64BytesRepresentation(queryOutput: values)
+let expression = TursoVec.distanceL2(binding, to: binding)
+// vector_distance_l2(?, ?)
+```
+
+Raw and Turso Float64 have separate `Encoding` identities. Passing an untagged Float64 payload to
+Turso would identify it as Float32, so Float64 query helpers require the explicit Turso strategy.
+
 ### Update custom vector conformances
 
 `Encoding` identifies the byte layout independently of dimensions. Use the existing canonical
@@ -140,8 +162,9 @@ A fixed-size custom type must validate its own dimension count during byte decod
 Float32 `Encoding` promises Float32-compatible bytes; it does not convert another layout.
 
 Custom `VectorScalar` conformers additionally supply an unsigned fixed-width integer `BitPattern`,
-`bitPattern`, and `init(bitPattern:)`. The default codec preserves those bits in little-endian order.
-Keep or override `encodeVector(_:)` and `decodeVector(_:)` if your format needs framing. Float16, Float, and
+`bitPattern`, and `init(bitPattern:)`. The generic codec preserves those bits in little-endian order.
+`encodeVector(_:)` and `decodeVector(_:)` are extension operations, not protocol requirements.
+Put database framing in a representation supplied by the database integration target. Float16, Float, and
 Double already conform. Float16 uses raw binary16 serialization and is not a database vector format. Adding a scalar conformance does not make a new precision supported by
 SQLiteVec or Turso's query helpers.
 

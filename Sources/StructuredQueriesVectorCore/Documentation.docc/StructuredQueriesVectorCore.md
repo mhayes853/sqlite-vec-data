@@ -4,8 +4,9 @@ Shared vector values, byte representations, and codecs for StructuredQueries.
 
 ## Overview
 
-Both `StructuredQueriesSQLiteVecCore` and `StructuredQueriesTursoVecCore` export this module.
 Use byte strategies with `@Column(as:)`, or fixed-size values for dimension-checked decoding.
+The shared codecs serialize scalar bit patterns and packed logical bits without database framing.
+Database integration targets supply their own formats and query functions.
 
 ### Array representations
 
@@ -24,16 +25,14 @@ struct Document {
 let vector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
 ```
 
-| Strategy | Byte format | Vector query support |
-| --- | --- | --- |
-| `[Float].VectorBytesRepresentation` | Little-endian Float32 | sqlite-vec and Turso |
-| `[Double].VectorBytesRepresentation` | Tagged little-endian Float64 | Turso |
-| `[Float16].VectorBytesRepresentation` | Raw little-endian binary16 | Serialization only |
-| `[Bool].PackedBitsRepresentation` | Packed bits without metadata | sqlite-vec |
+| Strategy | Byte format |
+| --- | --- |
+| `[Float].VectorBytesRepresentation` | Raw little-endian Float32 |
+| `[Double].VectorBytesRepresentation` | Raw little-endian Float64 |
+| `[Float16].VectorBytesRepresentation` | Raw little-endian binary16 |
+| `[Bool].PackedBitsRepresentation` | Packed bits without metadata |
 
-SQLiteVec reads native Float32 memory; shared Float32 bytes are compatible on little-endian
-platforms. Turso's `.TursoBytesRepresentation` adds binary dimension metadata and belongs to the
-Turso target. Signed `.Int8BytesRepresentation` belongs to the sqlite-vec target.
+Serialization support does not imply support for vector queries in a database.
 
 ### Fixed-size vectors
 
@@ -42,7 +41,7 @@ collection, hashing, and Codable scalar arrays:
 
 | Type | Scalar | Query representation |
 | --- | --- | --- |
-| `EmbeddingVector<N>` | `Float` | Direct binding or `.VectorBytesRepresentation` |
+| `EmbeddingVector<N>` | `Float` | Direct raw binding or `.VectorBytesRepresentation` |
 | `EmbeddingVector64<N>` | `Double` | `.VectorBytesRepresentation` |
 | `FixedEmbeddingVector<N, Int8>` | `Int8` | `.Int8BytesRepresentation` from the sqlite-vec target |
 | `BinaryEmbeddingVector<N>` | `Bool` | Explicit binary strategy |
@@ -77,8 +76,8 @@ Sign quantization tests `value > 0`: zeros, negatives, and NaNs become false. It
 Local Hamming distance counts differing bits and returns `Int`.
 
 `.PackedBitsRepresentation` uses least significant bit first and requires dimensions divisible
-by eight. The Turso target supplies `.TursoBytesRepresentation`, which preserves partial-byte
-lengths. Fixed-size strategies bind and decode packed bytes directly.
+by eight. Fixed-size strategies bind and decode packed bytes directly. Database integrations can
+supply formats that record partial-byte lengths.
 
 ### Serialize vector bytes
 
@@ -90,26 +89,25 @@ let fixed = try EmbeddingVector<3>(vectorBytes: bytes)
 let validated = try EmbeddingVector<3>(validating: values)
 ```
 
-`init(vectorBytes:)` validates byte lengths, format metadata, and fixed dimensions.
+`init(vectorBytes:)` validates complete scalar payloads and fixed dimensions.
 `init(validating:)` checks a scalar array's count. Invalid bytes and dimensions throw
 ``VectorDecodingError``. Query binding wraps these bytes in a BLOB; query decoding uses the same
 initializer.
 
 ### Codecs and encoding identity
 
-``VectorScalar`` supplies codecs for Float16, Float, and Double through an unsigned integer
-`BitPattern`, `bitPattern`, and `init(bitPattern:)`. The default codec preserves IEEE bits in
-little-endian order. Float accepts an optional Float32 tag when decoding; Double writes and
-validates Turso's Float64 tag. Custom floating-point conformances can reuse or override these codecs.
-Serialization support does not add a format to database query helpers.
+``VectorScalar`` describes Float16, Float, and Double through an unsigned integer `BitPattern`,
+`bitPattern`, and `init(bitPattern:)`. Generic `encodeVector` and `decodeVector` extension methods
+preserve IEEE bits in little-endian order and reject incomplete components. These operations add
+no format tags and are not protocol customization points. Adding a scalar conformance does not
+add a format to database query helpers.
 
 ``VectorBytesRepresentable`` identifies the byte layout through `Encoding`, a canonical
 representation independent of dimensions. For example, `EmbeddingVector<3>` and
 `[Float].VectorBytesRepresentation` share an encoding. Its `VectorBytesRepresentation` associated
 type selects the wrapper for a particular value, including fixed dimensions.
 
-Turso's `InlineQuantized8Vector<N>` shares `Quantized8Vector`'s encoding, and
-`SizedSparseFloat32Vector<N>` shares `SparseFloat32Vector`'s encoding. These encoded values live
-in the Turso target and bind directly. Their equality compares stored component bit patterns.
+Integration targets can adopt this protocol for database-specific encoded values and strategies
+while leaving shared scalar serialization unchanged.
 
-See <doc:VectorMigration> for migration guidance.
+See the [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

@@ -120,4 +120,4 @@ for suites that need isolated registration or run on Apple platforms.
 For native Turso vector queries, use the separate `StructuredQueriesTursoVecCore` product with a
 compatible Turso driver. See the [Turso query documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/).
 
-See the [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md).
+See the [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

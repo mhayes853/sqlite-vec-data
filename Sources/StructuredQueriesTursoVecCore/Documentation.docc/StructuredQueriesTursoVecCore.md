@@ -78,7 +78,7 @@ Convert JSON explicitly using the constructor for the column's format:
 | Helper | SQL function | Default result |
 | --- | --- | --- |
 | `vector32` / `vector` | `vector32` / `vector` | `[Float].VectorBytesRepresentation` |
-| `vector64` | `vector64` | `[Double].VectorBytesRepresentation` |
+| `vector64` | `vector64` | `[Double].TursoFloat64BytesRepresentation` |
 | `vector8` | `vector8` | `Quantized8Vector` |
 | `vector1bit` | `vector1bit` | `[Bool].TursoBytesRepresentation` |
 | `vector32Sparse` | `vector32_sparse` | `SparseFloat32Vector` |
@@ -95,6 +95,34 @@ let distances = Document.select {
 use smaller values for closer matches. Swift requires matching encodings; the database checks
 matching dimensions. Numeric Jaccard is weighted; binary Jaccard compares true-bit sets.
 Binary L2 is unavailable.
+
+### Floating-point BLOB strategies
+
+Shared `.VectorBytesRepresentation` strategies contain raw little-endian scalar payloads.
+Use `.TursoFloat64BytesRepresentation` for Float64 columns and bindings so the required type byte
+is written and validated. Float32 can use its shared strategy or `.TursoFloat32BytesRepresentation`,
+which additionally accepts the optional Float32 tag when reading existing blobs. The latter writes
+raw Float32, so both strategies share an encoding identity and can be compared directly.
+
+```swift
+@Table("precise_documents")
+struct PreciseDocument {
+  @Column(as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self)
+  var embedding: EmbeddingVector64<3>
+}
+
+let raw = [Double].VectorBytesRepresentation(queryOutput: [1, 2, 3])
+// raw.vectorBytes.count == 24; this is a raw payload, not a Turso vector.
+let turso = [Double].TursoFloat64BytesRepresentation(queryOutput: [1, 2, 3])
+// turso.vectorBytes.count == 25, including the Float64 type byte.
+let query = PreciseDocument.select { TursoVec.distanceL2($0.embedding, to: turso) }
+// SELECT vector_distance_l2("precise_documents"."embedding", ?)
+// FROM "precise_documents"
+```
+
+These strategies also support scalar arrays and `InlineArray`. Fixed-dimension validation and
+floating-point equality and hashing are delegated to the shared raw strategies. Raw Float64 and
+Turso Float64 have separate encoding identities; the query helpers require the Turso identity.
 
 ### Quantized vectors
 
@@ -225,7 +253,7 @@ let converted = TursoVec.vector8("[1, 2, 3, 4]", as: InlineQuantized8Vector<4>.s
 // vector8(?)
 let sparseResult = TursoVec.vector32Sparse("[0, 1, 0, 2]", as: SizedSparseFloat32Vector<4>.self)
 // vector32_sparse(?)
-let doubles = TursoVec.vector64("[1, 2, 3, 4]", as: EmbeddingVector64<4>.VectorBytesRepresentation.self)
+let doubles = TursoVec.vector64("[1, 2, 3, 4]", as: EmbeddingVector64<4>.TursoFloat64BytesRepresentation.self)
 // vector64(?)
 let sliced = TursoVec.slice(TursoVec.vector32("[1, 2, 3, 4]"), from: 1, to: 3, as: EmbeddingVector<2>.self)
 // vector_slice(vector32(?), ?, ?)
@@ -242,4 +270,4 @@ Invalid quantized or sparse constructor components throw ``TursoVectorError``. H
 Malformed bytes instead throw `VectorDecodingError`.
 
 See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
-and [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md).
+and [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

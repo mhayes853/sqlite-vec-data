@@ -69,8 +69,8 @@ public enum TursoVec {
   /// ```
   public static func vector64(
     _ expression: some QueryExpression
-  ) -> some QueryExpression<[Double].VectorBytesRepresentation> {
-    Self.vector64(expression, as: [Double].VectorBytesRepresentation.self)
+  ) -> some QueryExpression<[Double].TursoFloat64BytesRepresentation> {
+    Self.vector64(expression, as: [Double].TursoFloat64BytesRepresentation.self)
   }
 
   /// Converts a vector with `vector64`, decoding into the requested matching representation.
@@ -79,14 +79,14 @@ public enum TursoVec {
   /// ```swift
   /// let expression = TursoVec.vector64(
   ///   "[1,2,3]",
-  ///   as: EmbeddingVector64<3>.VectorBytesRepresentation.self
+  ///   as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self
   /// )
   /// // vector64(?)
   /// ```
   public static func vector64<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == [Double].VectorBytesRepresentation {
+  ) -> some QueryExpression<T> where T.Encoding == [Double].TursoFloat64BytesRepresentation {
     SQLQueryExpression("vector64(\(expression))")
   }
 
@@ -231,7 +231,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
+  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -330,7 +330,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
+  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -409,7 +409,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
+  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
   }
 
@@ -508,7 +508,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
+  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
     SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
   }
 
@@ -631,9 +631,9 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     _ vector: some QueryExpression<R>
-  ) -> some QueryExpression<[Double].VectorBytesRepresentation>
-  where L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding {
-    Self.concat(expression, vector, as: [Double].VectorBytesRepresentation.self)
+  ) -> some QueryExpression<[Double].TursoFloat64BytesRepresentation>
+  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
+    Self.concat(expression, vector, as: [Double].TursoFloat64BytesRepresentation.self)
   }
 
   /// Concatenates two matching vectors; the result has the sum of their dimensions.
@@ -645,7 +645,7 @@ public enum TursoVec {
   /// let expression = TursoVec.concat(
   ///   vector,
   ///   vector,
-  ///   as: EmbeddingVector64<6>.VectorBytesRepresentation.self
+  ///   as: EmbeddingVector64<6>.TursoFloat64BytesRepresentation.self
   /// )
   /// // vector_concat(vector64(?), vector64(?))
   /// ```
@@ -659,7 +659,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    L.Encoding == [Double].VectorBytesRepresentation, L.Encoding == R.Encoding,
+    L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding,
     T.Encoding == L.Encoding
   {
     SQLQueryExpression("vector_concat(\(expression), \(vector))")
@@ -718,9 +718,9 @@ public enum TursoVec {
     _ expression: some QueryExpression<V>,
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
-  ) -> some QueryExpression<[Double].VectorBytesRepresentation>
-  where V.Encoding == [Double].VectorBytesRepresentation {
-    Self.slice(expression, from: start, to: end, as: [Double].VectorBytesRepresentation.self)
+  ) -> some QueryExpression<[Double].TursoFloat64BytesRepresentation>
+  where V.Encoding == [Double].TursoFloat64BytesRepresentation {
+    Self.slice(expression, from: start, to: end, as: [Double].TursoFloat64BytesRepresentation.self)
   }
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
@@ -733,7 +733,7 @@ public enum TursoVec {
   ///   vector,
   ///   from: 0,
   ///   to: 2,
-  ///   as: EmbeddingVector64<2>.VectorBytesRepresentation.self
+  ///   as: EmbeddingVector64<2>.TursoFloat64BytesRepresentation.self
   /// )
   /// // vector_slice(vector64(?), ?, ?)
   /// ```
@@ -746,7 +746,7 @@ public enum TursoVec {
     to end: some QueryExpression<Int>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding == [Double].VectorBytesRepresentation, T.Encoding == V.Encoding {
+  where V.Encoding == [Double].TursoFloat64BytesRepresentation, T.Encoding == V.Encoding {
     SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 

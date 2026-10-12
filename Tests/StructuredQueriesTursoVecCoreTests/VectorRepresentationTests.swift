@@ -182,22 +182,8 @@ struct `Vector Representation tests` {
   }
 
   @Test
-  func `Preserves IEEE Bit Patterns Through Scalar Dispatch`() throws {
+  func `Preserves Turso Floating Point Frames`() throws {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
-    // Signed zero, the least subnormal, infinity, and a signaling NaN retain their IEEE bits.
-    // Float16 uses the generic, untagged codec. This is a serialization format rather than a
-    // supported database vector type. Signed zero, subnormal, infinity, and NaN bits survive.
-    let halfBits: [UInt16] = [0x8000, 1, 0x7c00, 0x7c01]
-    let halfBytes: [UInt8] = [0, 128, 1, 0, 0, 124, 1, 124]
-    expectNoDifference(
-      [Float16].VectorBytesRepresentation(queryOutput: halfBits.map { Float16(bitPattern: $0) })
-        .queryBinding,
-      .blob(halfBytes)
-    )
-    expectNoDifference(try [Float16](vectorBytes: halfBytes).map(\.bitPattern), halfBits)
-    #expect(throws: VectorDecodingError.invalidBytes) {
-      try Float16.decodeVector([0])
-    }
     let floatBits: [UInt32] = [0x8000_0000, 1, 0x7f80_0000, 0x7f80_0123]
     let doubleBits: [UInt64] = [
       0x8000_0000_0000_0000, 1, 0x7ff0_0000_0000_0000, 0x7ff0_0000_0000_0123
@@ -208,26 +194,35 @@ struct `Vector Representation tests` {
       0, 0, 0, 0, 0, 0, 240, 127, 35, 1, 0, 0, 0, 0, 240, 127, 2
     ]
     expectNoDifference(
-      [Float].VectorBytesRepresentation(queryOutput: floatBits.map { Float(bitPattern: $0) })
+      [Float].TursoFloat32BytesRepresentation(queryOutput: floatBits.map { Float(bitPattern: $0) })
         .queryBinding,
       .blob(floatBytes)
     )
     expectNoDifference(
-      [Double].VectorBytesRepresentation(queryOutput: doubleBits.map { Double(bitPattern: $0) })
+      [Double]
+        .TursoFloat64BytesRepresentation(queryOutput: doubleBits.map { Double(bitPattern: $0) })
         .queryBinding,
       .blob(doubleBytes)
     )
-    expectNoDifference(try [Float](vectorBytes: floatBytes).map(\.bitPattern), floatBits)
-    expectNoDifference(try [Double](vectorBytes: doubleBytes).map(\.bitPattern), doubleBits)
+    expectNoDifference(
+      try [Float].TursoFloat32BytesRepresentation(vectorBytes: floatBytes).queryOutput
+        .map(\.bitPattern),
+      floatBits
+    )
+    expectNoDifference(
+      try [Double].TursoFloat64BytesRepresentation(vectorBytes: doubleBytes).queryOutput
+        .map(\.bitPattern),
+      doubleBits
+    )
     // The same float32 payload also accepts Turso's optional format tag.
     var floatDecoder = BlobQueryDecoder(bytes: floatBytes + [1])
     var doubleDecoder = BlobQueryDecoder(bytes: doubleBytes)
     expectNoDifference(
-      try floatDecoder.decode([Float].VectorBytesRepresentation.self)?.map(\.bitPattern),
+      try floatDecoder.decode([Float].TursoFloat32BytesRepresentation.self)?.map(\.bitPattern),
       floatBits
     )
     expectNoDifference(
-      try doubleDecoder.decode([Double].VectorBytesRepresentation.self)?.map(\.bitPattern),
+      try doubleDecoder.decode([Double].TursoFloat64BytesRepresentation.self)?.map(\.bitPattern),
       doubleBits
     )
   }
@@ -301,15 +296,15 @@ struct `Vector Representation tests` {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
     #expect(throws: VectorDecodingError.self) {
       var decoder = BlobQueryDecoder(bytes: [0, 0])
-      _ = try [Float].VectorBytesRepresentation(decoder: &decoder)
+      _ = try [Float].TursoFloat32BytesRepresentation(decoder: &decoder)
     }
     #expect(throws: VectorDecodingError.self) {
       var decoder = BlobQueryDecoder(bytes: [0, 0, 128, 63, 2])
-      _ = try [Float].VectorBytesRepresentation(decoder: &decoder)
+      _ = try [Float].TursoFloat32BytesRepresentation(decoder: &decoder)
     }
     #expect(throws: VectorDecodingError.self) {
       var decoder = BlobQueryDecoder(bytes: [0, 0, 0, 0, 0, 0, 240, 63])
-      _ = try [Double].VectorBytesRepresentation(decoder: &decoder)
+      _ = try [Double].TursoFloat64BytesRepresentation(decoder: &decoder)
     }
   }
 
@@ -431,23 +426,43 @@ struct `Vector Representation tests` {
 
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Decodes Tagged Float32 Into Fixed And Inline Values`() throws {
+      // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs#L34
+      let fixture: [UInt8] = [0, 0, 128, 63, 1]
+      let fixed = try EmbeddingVector<1>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
+      let inline = try InlineArray<1, Float>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
+      expectNoDifference(fixed.queryOutput, EmbeddingVector<1>([1]))
+      expectNoDifference(inline.queryOutput[0], 1)
+      // Float32 is emitted without the optional tag, compatible with direct shared binding.
+      expectNoDifference(fixed.queryBinding, .blob([0, 0, 128, 63]))
+      expectNoDifference(inline.queryBinding, fixed.queryBinding)
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
+        _ = try EmbeddingVector<2>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
+      }
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
+        _ = try InlineArray<2, Float>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
+      }
+    }
+
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Decodes Fixed Float64 Bindings And Validates Dimensions`() throws {
       // https://docs.turso.tech/guides/vector-search#vector-types
       var doubleDecoder = BlobQueryDecoder(bytes: [0, 0, 0, 0, 0, 0, 240, 63, 2])
       expectNoDifference(
-        try doubleDecoder.decode(EmbeddingVector64<1>.VectorBytesRepresentation.self),
+        try doubleDecoder.decode(EmbeddingVector64<1>.TursoFloat64BytesRepresentation.self),
         EmbeddingVector64<1>([1])
       )
       let inlineDouble = try [1 of Double]
-        .VectorBytesRepresentation(
+        .TursoFloat64BytesRepresentation(
           vectorBytes: [0, 0, 0, 0, 0, 0, 240, 63, 2]
         )
       expectNoDifference(inlineDouble.queryBinding, .blob([0, 0, 0, 0, 0, 0, 240, 63, 2]))
       #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
-        _ = try EmbeddingVector64<2>.VectorBytesRepresentation(decoder: &doubleDecoder)
+        _ = try EmbeddingVector64<2>.TursoFloat64BytesRepresentation(decoder: &doubleDecoder)
       }
       #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
-        _ = try [2 of Double].VectorBytesRepresentation(vectorBytes: inlineDouble.vectorBytes)
+        _ = try [2 of Double].TursoFloat64BytesRepresentation(vectorBytes: inlineDouble.vectorBytes)
       }
     }
   #endif

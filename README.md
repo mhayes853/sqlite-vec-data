@@ -221,7 +221,7 @@ Convert JSON explicitly with the constructor for the column's format:
 | Helper | Swift result |
 | --- | --- |
 | `TursoVec.vector32` / `vector` | `[Float].VectorBytesRepresentation` |
-| `TursoVec.vector64` | `[Double].VectorBytesRepresentation` |
+| `TursoVec.vector64` | `[Double].TursoFloat64BytesRepresentation` |
 | `TursoVec.vector8` | `Quantized8Vector` |
 | `TursoVec.vector1bit` | `[Bool].TursoBytesRepresentation` |
 | `TursoVec.vector32Sparse` | `SparseFloat32Vector` |
@@ -256,6 +256,11 @@ let dense = sparse.denseValues() // [0, 0, 1.5, 0, 0, 2.5]
 `init(validating:)` preserves encoded components and checks dimensions, without quantizing or
 expanding sparse storage.
 
+Float64 arrays, inline arrays, and `EmbeddingVector64<N>` use `.TursoFloat64BytesRepresentation`
+for Turso's required type tag. Their shared `.VectorBytesRepresentation` stores raw Float64 bytes
+and is not a Turso Float64 binding. `.TursoFloat32BytesRepresentation` emits raw Float32 and also
+accepts tagged Float32 when decoding; direct shared Float32 binding remains supported.
+
 Turso binary columns use `.TursoBytesRepresentation` on `[Bool]` or `BinaryEmbeddingVector<N>`.
 It preserves the exact dimension count, including partial bytes. `distanceHamming` emits
 `vector_distance_cos` and returns a `Double` bit count. Binary L2 is unavailable.
@@ -269,7 +274,7 @@ The Turso target also supplies quantized and sparse values.
 | Value | Database representation |
 | --- | --- |
 | `EmbeddingVector<N>` (Float32) | Direct binding or `.VectorBytesRepresentation` |
-| `EmbeddingVector64<N>` (Float64) | `.VectorBytesRepresentation` for Turso |
+| `EmbeddingVector64<N>` (Float64) | `.TursoFloat64BytesRepresentation` for Turso |
 | `BinaryEmbeddingVector<N>` | `.PackedBitsRepresentation` for sqlite-vec; `.TursoBytesRepresentation` for Turso |
 | `FixedEmbeddingVector<N, Int8>` | `.Int8BytesRepresentation` for sqlite-vec |
 | `InlineQuantized8Vector<N>` | Direct binding for Turso |
@@ -368,7 +373,7 @@ to `sqlite3_vec_init`. Without it, use `registerSQLiteVecAutoExtension()` on non
 - [sqlite-vec query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriessqliteveccore/)
 - [Turso query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/)
 - [Shared vector types](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
-- [Migration guide](Sources/StructuredQueriesVectorCore/Documentation.docc/VectorMigration.md)
+- [Migration guide](Sources/SQLiteVecData/Documentation.docc/VectorMigration.md)
 
 ## Installation
 

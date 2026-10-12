@@ -289,12 +289,11 @@ import StructuredQueriesCore
   }
   // MARK: - Precision Aliases
 
-  /// A fixed-size Float32 embedding vector with direct query binding for sqlite-vec and Turso.
+  /// A fixed-size Float32 embedding vector with direct raw BLOB query binding.
   ///
   /// ```swift
   /// let vector = EmbeddingVector<3>([1, 2, 3])
-  /// let expression = Vec.distanceL2(vector, to: vector)
-  /// // vec_distance_l2(?, ?)
+  /// let bytes = vector.vectorBytes
   /// ```
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public typealias EmbeddingVector<let count: Int> = FixedEmbeddingVector<count, Float>
@@ -304,8 +303,7 @@ import StructuredQueriesCore
   /// ```swift
   /// let vector = EmbeddingVector64<3>([1, 2, 3])
   /// let bytes = EmbeddingVector64<3>.VectorBytesRepresentation(queryOutput: vector)
-  /// let expression = TursoVec.distanceL2(bytes, to: bytes)
-  /// // vector_distance_l2(?, ?)
+  /// let payload = bytes.vectorBytes // 24 raw bytes.
   /// ```
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public typealias EmbeddingVector64<let count: Int> = FixedEmbeddingVector<count, Double>

@@ -123,12 +123,28 @@ struct `TursoVec Query tests` {
   }
 
   @Test
+  func `Compares Turso Float32 Framing With Shared Raw Float32`() {
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
+    let framed: [Float].TursoFloat32BytesRepresentation = [1, 2]
+    let raw: [Float].VectorBytesRepresentation = [3, 4]
+    let prepared = TursoVec.distanceL2(framed, to: raw).queryFragment.prepare { "?\($0)" }
+    expectNoDifference(prepared.sql, "vector_distance_l2(?1, ?2)")
+    expectNoDifference(
+      prepared.bindings,
+      [
+        .blob([0, 0, 128, 63, 0, 0, 0, 64]),
+        .blob([0, 0, 64, 64, 0, 0, 128, 64])
+      ]
+    )
+  }
+
+  @Test
   func `Compares Binary And Quantized Vectors Without JSON Overloads`() throws {
     // https://docs.turso.tech/sql-reference/functions/vector#distance-functions
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/distance_cos.rs#L40
     let bits: [Bool].TursoBytesRepresentation = [true, false]
     let quantized = try Quantized8Vector(quantizing: [1, 2])
-    let doubles: [Double].VectorBytesRepresentation = [1, 2]
+    let doubles: [Double].TursoFloat64BytesRepresentation = [1, 2]
     let query = Formats.select {
       (
         TursoVec.distanceCosine($0.bits, to: bits),
@@ -327,7 +343,7 @@ private struct Document: Hashable, Sendable {
 
 @Table("formats")
 private struct Formats: Hashable, Sendable {
-  @Column(as: [Double].VectorBytesRepresentation.self)
+  @Column(as: [Double].TursoFloat64BytesRepresentation.self)
   var doubles: [Double]
   var quantized: Quantized8Vector
   @Column(as: [Bool].TursoBytesRepresentation.self)

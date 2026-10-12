@@ -100,6 +100,13 @@ let package = Package(
       ]
     ),
     .testTarget(
+      name: "StructuredQueriesVectorCoreTests",
+      dependencies: [
+        "StructuredQueriesVectorCore",
+        .product(name: "StructuredQueriesTestSupport", package: "swift-structured-queries")
+      ]
+    ),
+    .testTarget(
       name: "StructuredQueriesTursoVecCoreTests",
       dependencies: [
         "StructuredQueriesTursoVecCore",
