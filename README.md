@@ -226,6 +226,19 @@ Convert JSON explicitly with the constructor for the column's format:
 | `TursoVec.vector1bit` | `[Bool].TursoBytesRepresentation` |
 | `TursoVec.vector32Sparse` | `SparseFloat32Vector` |
 
+Constructors accept JSON string expressions or vectors with a `TursoVectorEncoding`.
+Shared Float32 works directly; raw Double, Float16, SQLiteVec Int8, and packed bits are rejected.
+Use `.TursoFloat64BytesRepresentation` for Double and `.TursoBytesRepresentation` for binary values.
+`extract` requires a compatible vector.
+
+```swift
+let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
+let precise = TursoVec.vector64(vector)
+// vector64(?)
+let json = TursoVec.extract(precise)
+// vector_extract(vector64(?))
+```
+
 Distance helpers cover cosine, L2, negative dot product, and Jaccard with matching formats.
 `concat` joins two dense Float32 or Float64 vectors; `slice` accepts those formats and sparse
 Float32. Use `as:` to select a matching fixed-size result.

@@ -129,6 +129,27 @@ let expression = TursoVec.distanceL2(binding, to: binding)
 Raw and Turso Float64 have separate `Encoding` identities. Passing an untagged Float64 payload to
 Turso would identify it as Float32, so Float64 query helpers require the explicit Turso strategy.
 
+### Constrain Turso constructor inputs
+
+Turso constructors accept `QueryExpression<String>` for JSON or vector expressions whose
+`Encoding` conforms to `TursoVectorEncoding`. `extract` accepts only the latter. Replace raw
+Double or packed-bit inputs with their Turso strategies; raw Float16 and SQLiteVec Int8 blobs
+are unsupported. Shared Float32 inputs continue to work directly.
+
+Generic helpers that forward vectors to constructors or extraction need the encoding constraint:
+
+```swift
+func vectorJSON<V: VectorBytesRepresentable & QueryBindable>(
+  _ vector: some QueryExpression<V>
+) -> some QueryExpression<String> where V.Encoding: TursoVectorEncoding {
+  TursoVec.extract(vector) // vector_extract(?)
+}
+```
+
+The protocol lives in `StructuredQueriesTursoVecCore`. A custom representation using an existing
+compatible canonical encoding needs no additional conformance. Ordinary `@Column(as:)` declarations
+remain database-independent; these constraints apply to the Turso helpers.
+
 ### Update custom vector conformances
 
 `Encoding` identifies the byte layout independently of dimensions. Use the existing canonical

@@ -96,6 +96,30 @@ use smaller values for closer matches. Swift requires matching encodings; the da
 matching dimensions. Numeric Jaccard is weighted; binary Jaccard compares true-bit sets.
 Binary L2 is unavailable.
 
+### Compatible constructor inputs
+
+Constructors accept JSON string expressions or vectors whose `Encoding` conforms to
+``TursoVectorEncoding``. The protocol belongs to this target; shared Float32, Turso Float64,
+binary, quantized, and sparse encodings conform. Fixed-size and custom representations inherit
+compatibility through their canonical encoding. `extract` requires a compatible vector.
+
+```swift
+let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
+let precise = TursoVec.vector64(vector)
+// vector64(?)
+let json = TursoVec.extract(precise)
+// vector_extract(vector64(?))
+```
+
+Raw Double, Float16, SQLiteVec Int8, and packed-bit strategies cannot be passed to these helpers.
+Use `.TursoFloat64BytesRepresentation` for Double and `.TursoBytesRepresentation` for binary values.
+Generic forwarding helpers need `where V.Encoding: TursoVectorEncoding`. Operation-specific encoding
+constraints still apply.
+
+Ordinary `@Column(as:)` declarations are database-independent and can store arbitrary BLOBs;
+these checks apply when using the Turso helpers. The database validates JSON contents, dimensions,
+and value-dependent conversion restrictions.
+
 ### Floating-point BLOB strategies
 
 Shared `.VectorBytesRepresentation` strategies contain raw little-endian scalar payloads.

@@ -31,27 +31,43 @@ struct `TursoVec Query tests` {
   }
 
   @Test
-  func `Creates Each Supported Turso Format`() {
+  func `Creates And Extracts Supported Turso Formats`() {
     // https://docs.turso.tech/guides/vector-search#vector-types
+    // https://docs.turso.tech/sql-reference/functions/vector#vector-extract
+    // BLOB conversions: https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/convert.rs
     let json = "[0, 1, 0, 2]"
+    let vector: [Float].VectorBytesRepresentation = [0, 1, 0, 2]
     let expressions = [
       TursoVec.vector(json).queryFragment,
       TursoVec.vector32(json).queryFragment,
       TursoVec.vector64(json).queryFragment,
       TursoVec.vector8(json).queryFragment,
       TursoVec.vector1bit(json).queryFragment,
-      TursoVec.vector32Sparse(json).queryFragment
+      TursoVec.vector32Sparse(json).queryFragment,
+      TursoVec.vector(vector).queryFragment,
+      TursoVec.vector32(vector).queryFragment,
+      TursoVec.vector64(vector).queryFragment,
+      TursoVec.vector8(vector).queryFragment,
+      TursoVec.vector1bit(vector).queryFragment,
+      TursoVec.vector32Sparse(vector).queryFragment,
+      TursoVec.extract(vector).queryFragment
     ]
     expectNoDifference(
       expressions.map { $0.prepare { "?\($0)" }.sql },
       [
         "vector(?1)", "vector32(?1)", "vector64(?1)", "vector8(?1)", "vector1bit(?1)",
-        "vector32_sparse(?1)"
+        "vector32_sparse(?1)",
+        "vector(?1)", "vector32(?1)", "vector64(?1)", "vector8(?1)", "vector1bit(?1)",
+        "vector32_sparse(?1)", "vector_extract(?1)"
       ]
     )
     expectNoDifference(
       expressions.map { $0.prepare { "?\($0)" }.bindings },
-      Array(repeating: [QueryBinding.text(json)], count: expressions.count)
+      Array(repeating: [QueryBinding.text(json)], count: 6)
+        + Array(
+          repeating: [QueryBinding.blob([0, 0, 0, 0, 0, 0, 128, 63, 0, 0, 0, 0, 0, 0, 0, 64])],
+          count: 7
+        )
     )
   }
 

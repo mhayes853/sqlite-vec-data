@@ -35,19 +35,19 @@ public enum TursoVec {
     Self.distanceCosine(expression, to: vector)
   }
 
-  /// Converts JSON or a supported vector blob to a 32-bit floating-point vector with `vector32`.
+  /// Converts JSON to a 32-bit floating-point vector with `vector32`.
   ///
   /// ```swift
   /// let expression = TursoVec.vector32("[1,2,3]")
   /// // vector32(?)
   /// ```
   public static func vector32(
-    _ expression: some QueryExpression
+    _ expression: some QueryExpression<String>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
     Self.vector32(expression, as: [Float].VectorBytesRepresentation.self)
   }
 
-  /// Converts a vector with `vector32`, decoding into the requested matching representation.
+  /// Converts JSON with `vector32`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
   ///
   /// ```swift
@@ -55,25 +55,60 @@ public enum TursoVec {
   /// // vector32(?)
   /// ```
   public static func vector32<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression,
+    _ expression: some QueryExpression<String>,
     as result: T.Type
   ) -> some QueryExpression<T> where T.Encoding == [Float].VectorBytesRepresentation {
     SQLQueryExpression("vector32(\(expression))")
   }
 
-  /// Converts JSON or a supported vector blob to a 64-bit floating-point vector with `vector64`.
+  /// Converts a supported vector BLOB to a 32-bit floating-point vector with `vector32`.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector32(source)
+  /// // vector32(vector32(?))
+  /// ```
+  public static func vector32<V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding: TursoVectorEncoding {
+    Self.vector32(expression, as: [Float].VectorBytesRepresentation.self)
+  }
+
+  /// Converts a supported vector BLOB, decoding into the requested matching representation.
+  /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector32(source, as: EmbeddingVector<3>.self)
+  /// // vector32(vector32(?))
+  /// ```
+  public static func vector32<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding: TursoVectorEncoding, T.Encoding == [Float].VectorBytesRepresentation {
+    SQLQueryExpression("vector32(\(expression))")
+  }
+
+  /// Converts JSON to a 64-bit floating-point vector with `vector64`.
   ///
   /// ```swift
   /// let expression = TursoVec.vector64("[1,2,3]")
   /// // vector64(?)
   /// ```
   public static func vector64(
-    _ expression: some QueryExpression
+    _ expression: some QueryExpression<String>
   ) -> some QueryExpression<[Double].TursoFloat64BytesRepresentation> {
     Self.vector64(expression, as: [Double].TursoFloat64BytesRepresentation.self)
   }
 
-  /// Converts a vector with `vector64`, decoding into the requested matching representation.
+  /// Converts JSON with `vector64`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
   ///
   /// ```swift
@@ -84,25 +119,60 @@ public enum TursoVec {
   /// // vector64(?)
   /// ```
   public static func vector64<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression,
+    _ expression: some QueryExpression<String>,
     as result: T.Type
   ) -> some QueryExpression<T> where T.Encoding == [Double].TursoFloat64BytesRepresentation {
     SQLQueryExpression("vector64(\(expression))")
   }
 
-  /// Converts JSON or a supported vector blob to a quantized float8 vector with `vector8`.
+  /// Converts a supported vector BLOB to a 64-bit floating-point vector with `vector64`.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector64(source)
+  /// // vector64(vector32(?))
+  /// ```
+  public static func vector64<V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Double].TursoFloat64BytesRepresentation>
+  where V.Encoding: TursoVectorEncoding {
+    Self.vector64(expression, as: [Double].TursoFloat64BytesRepresentation.self)
+  }
+
+  /// Converts a supported vector BLOB, decoding into the requested matching representation.
+  /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector64(source, as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self)
+  /// // vector64(vector32(?))
+  /// ```
+  public static func vector64<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding: TursoVectorEncoding, T.Encoding == [Double].TursoFloat64BytesRepresentation {
+    SQLQueryExpression("vector64(\(expression))")
+  }
+
+  /// Converts JSON to a quantized float8 vector with `vector8`.
   ///
   /// ```swift
   /// let expression = TursoVec.vector8("[1,2,3]")
   /// // vector8(?)
   /// ```
   public static func vector8(
-    _ expression: some QueryExpression
+    _ expression: some QueryExpression<String>
   ) -> some QueryExpression<Quantized8Vector> {
     Self.vector8(expression, as: Quantized8Vector.self)
   }
 
-  /// Converts a vector with `vector8`, decoding into the requested matching representation.
+  /// Converts JSON with `vector8`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
   ///
   /// ```swift
@@ -110,25 +180,59 @@ public enum TursoVec {
   /// // vector8(?)
   /// ```
   public static func vector8<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression,
+    _ expression: some QueryExpression<String>,
     as result: T.Type
   ) -> some QueryExpression<T> where T.Encoding == Quantized8Vector {
     SQLQueryExpression("vector8(\(expression))")
   }
 
-  /// Converts JSON or a supported vector blob to a binary vector with `vector1bit`.
+  /// Converts a supported vector BLOB to a quantized vector with `vector8`.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector8(source)
+  /// // vector8(vector32(?))
+  /// ```
+  public static func vector8<V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<Quantized8Vector> where V.Encoding: TursoVectorEncoding {
+    Self.vector8(expression, as: Quantized8Vector.self)
+  }
+
+  /// Converts a supported vector BLOB, decoding into the requested matching representation.
+  /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector8(source, as: InlineQuantized8Vector<3>.self)
+  /// // vector8(vector32(?))
+  /// ```
+  public static func vector8<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding: TursoVectorEncoding, T.Encoding == Quantized8Vector {
+    SQLQueryExpression("vector8(\(expression))")
+  }
+
+  /// Converts JSON to a binary vector with `vector1bit`.
   ///
   /// ```swift
   /// let expression = TursoVec.vector1bit("[1,2,3]")
   /// // vector1bit(?)
   /// ```
   public static func vector1bit(
-    _ expression: some QueryExpression
+    _ expression: some QueryExpression<String>
   ) -> some QueryExpression<[Bool].TursoBytesRepresentation> {
     Self.vector1bit(expression, as: [Bool].TursoBytesRepresentation.self)
   }
 
-  /// Converts a vector with `vector1bit`, decoding into the requested matching representation.
+  /// Converts JSON with `vector1bit`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
   ///
   /// ```swift
@@ -139,25 +243,59 @@ public enum TursoVec {
   /// // vector1bit(?)
   /// ```
   public static func vector1bit<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression,
+    _ expression: some QueryExpression<String>,
     as result: T.Type
   ) -> some QueryExpression<T> where T.Encoding == [Bool].TursoBytesRepresentation {
     SQLQueryExpression("vector1bit(\(expression))")
   }
 
-  /// Converts JSON or a supported vector blob to a sparse float32 vector with `vector32_sparse`.
+  /// Converts a supported vector BLOB to a binary vector with `vector1bit`.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector1bit(source)
+  /// // vector1bit(vector32(?))
+  /// ```
+  public static func vector1bit<V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Bool].TursoBytesRepresentation> where V.Encoding: TursoVectorEncoding {
+    Self.vector1bit(expression, as: [Bool].TursoBytesRepresentation.self)
+  }
+
+  /// Converts a supported vector BLOB, decoding into the requested matching representation.
+  /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector1bit(source, as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+  /// // vector1bit(vector32(?))
+  /// ```
+  public static func vector1bit<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding: TursoVectorEncoding, T.Encoding == [Bool].TursoBytesRepresentation {
+    SQLQueryExpression("vector1bit(\(expression))")
+  }
+
+  /// Converts JSON to a sparse float32 vector with `vector32_sparse`.
   ///
   /// ```swift
   /// let expression = TursoVec.vector32Sparse("[1,2,3]")
   /// // vector32_sparse(?)
   /// ```
   public static func vector32Sparse(
-    _ expression: some QueryExpression
+    _ expression: some QueryExpression<String>
   ) -> some QueryExpression<SparseFloat32Vector> {
     Self.vector32Sparse(expression, as: SparseFloat32Vector.self)
   }
 
-  /// Converts a vector with `vector32_sparse`, decoding into the requested matching representation.
+  /// Converts JSON with `vector32_sparse`, decoding into the requested matching representation.
   /// Fixed-size representations validate the decoded number of dimensions.
   ///
   /// ```swift
@@ -165,21 +303,70 @@ public enum TursoVec {
   /// // vector32_sparse(?)
   /// ```
   public static func vector32Sparse<T: VectorBytesRepresentable & QueryBindable>(
-    _ expression: some QueryExpression,
+    _ expression: some QueryExpression<String>,
     as result: T.Type
   ) -> some QueryExpression<T> where T.Encoding == SparseFloat32Vector {
     SQLQueryExpression("vector32_sparse(\(expression))")
   }
 
-  /// Converts JSON or a supported vector blob to float32 using the `vector` alias.
+  /// Converts a supported vector BLOB to a sparse Float32 vector with `vector32_sparse`.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector32Sparse(source)
+  /// // vector32_sparse(vector32(?))
+  /// ```
+  public static func vector32Sparse<V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<SparseFloat32Vector> where V.Encoding: TursoVectorEncoding {
+    Self.vector32Sparse(expression, as: SparseFloat32Vector.self)
+  }
+
+  /// Converts a supported vector BLOB, decoding into the requested matching representation.
+  /// Fixed-size representations validate the decoded number of dimensions.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector32("[1, 2, 3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.vector32Sparse(source, as: SizedSparseFloat32Vector<3>.self)
+  /// // vector32_sparse(vector32(?))
+  /// ```
+  public static func vector32Sparse<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where V.Encoding: TursoVectorEncoding, T.Encoding == SparseFloat32Vector {
+    SQLQueryExpression("vector32_sparse(\(expression))")
+  }
+
+  /// Converts JSON to float32 using the `vector` alias.
   ///
   /// ```swift
   /// let expression = TursoVec.vector("[1,2,3]")
   /// // vector(?)
   /// ```
   public static func vector(
-    _ expression: some QueryExpression
+    _ expression: some QueryExpression<String>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+    SQLQueryExpression("vector(\(expression))")
+  }
+
+  /// Converts a supported vector BLOB to Float32 using the `vector` alias.
+  ///
+  /// ```swift
+  /// let source = TursoVec.vector64("[1, 2, 3]")
+  /// // vector64(?)
+  /// let expression = TursoVec.vector(source)
+  /// // vector(vector64(?))
+  /// ```
+  public static func vector<V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
+  where V.Encoding: TursoVectorEncoding {
     SQLQueryExpression("vector(\(expression))")
   }
 
@@ -189,9 +376,9 @@ public enum TursoVec {
   /// let expression = TursoVec.extract(TursoVec.vector32("[1,2,3]"))
   /// // vector_extract(vector32(?))
   /// ```
-  public static func extract(
-    _ expression: some QueryExpression
-  ) -> some QueryExpression<String> {
+  public static func extract<V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<String> where V.Encoding: TursoVectorEncoding {
     SQLQueryExpression("vector_extract(\(expression))")
   }
 
