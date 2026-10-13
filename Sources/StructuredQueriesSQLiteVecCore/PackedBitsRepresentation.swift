@@ -1,7 +1,8 @@
 import StructuredQueriesCore
+import StructuredQueriesVectorCore
 
 extension Array where Element == Bool {
-  /// Packed bits without metadata. Binding requires dimensions divisible by eight.
+  /// SQLiteVec binary BLOB storage without metadata. Dimensions must be divisible by eight.
   ///
   /// ```swift
   /// @Table
@@ -71,7 +72,7 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
 #if swift(>=6.2)
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension BinaryEmbeddingVector {
-    /// Packed bits without metadata. Binding requires dimensions divisible by eight.
+    /// SQLiteVec binary BLOB storage without metadata. Dimensions must be divisible by eight.
     ///
     /// ```swift
     /// @Table

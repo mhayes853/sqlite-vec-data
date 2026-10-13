@@ -194,6 +194,11 @@ metadata. Keep Int8 arithmetic results in range to avoid overflow.
 
 ### Binary vectors
 
+This target supplies `.PackedBitsRepresentation` on `[Bool]` and `BinaryEmbeddingVector<N>`.
+Both use raw packed bytes, least significant bit first, with no dimension or format metadata.
+Dimensions must be divisible by eight. The shared binary value and its `packedBytes` support
+partial bytes independently of this strategy.
+
 `[Bool].PackedBitsRepresentation` stores bits without metadata. Dimensions and slice boundaries
 must be divisible by eight:
 

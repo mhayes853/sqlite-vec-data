@@ -124,6 +124,9 @@ quantization expression when inserting; query helpers attach the required subtyp
 
 ### Binary vectors
 
+`StructuredQueriesSQLiteVecCore` supplies `.PackedBitsRepresentation` on `[Bool]` and
+`BinaryEmbeddingVector<N>` for raw binary BLOBs with dimensions divisible by eight.
+
 ```swift
 // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
 @Table("BinaryEmbeddings")
@@ -282,7 +285,8 @@ It preserves the exact dimension count, including partial bytes. `distanceHammin
 
 Both query modules export `StructuredQueriesVectorCore`. Array strategies work with `@Column(as:)`;
 fixed-size values provide mutable collections, hashing, Codable, and dimension-checked decoding.
-The Turso target also supplies quantized and sparse values.
+The SQLiteVec target supplies `.PackedBitsRepresentation` and `.Int8BytesRepresentation`;
+the Turso target supplies its binary strategy plus quantized and sparse values.
 
 | Value | Database representation |
 | --- | --- |
@@ -298,6 +302,7 @@ Fixed-size types require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or
 ```swift
 let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
 let binary = BinaryEmbeddingVector<8>(quantizing: dense)
+let packedBytes = binary.packedBytes // Raw bits without database metadata.
 let distance = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: false))
 
 let bytes = [Float(1), 2, 3].vectorBytes

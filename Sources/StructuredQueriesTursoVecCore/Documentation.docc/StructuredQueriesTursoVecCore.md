@@ -225,8 +225,9 @@ Binary cosine returns Hamming distance; `distanceHamming` names that operation e
 returns `Double` (SQL REAL). Local `BinaryEmbeddingVector.hammingDistance(to:)` returns `Int`.
 Extraction and dot distance interpret true as +1 and false as -1; Jaccard compares true-bit sets.
 
-The representation adds padding and format metadata to the shared packed value. SQLiteVec's
-`.PackedBitsRepresentation` has a different layout and cannot replace it.
+The representation adds padding and format metadata to the shared packed value. `packedBytes`
+exposes only the raw payload; bind `.TursoBytesRepresentation` to supply the complete Turso BLOB.
+`.PackedBitsRepresentation` belongs to `StructuredQueriesSQLiteVecCore` and has a different layout.
 
 ### Concatenate and slice
 

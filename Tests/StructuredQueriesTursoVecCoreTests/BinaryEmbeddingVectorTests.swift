@@ -1,5 +1,6 @@
 import CustomDump
 import Foundation
+import StructuredQueriesSQLiteVecCore
 import StructuredQueriesTursoVecCore
 import Testing
 

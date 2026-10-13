@@ -34,6 +34,11 @@ Float32 APIs. You do not need to add another product solely to keep using `Embed
 `[Float].VectorBytesRepresentation`. Existing qualified names such as
 `StructuredQueriesSQLiteVecCore.EmbeddingVector` remain available through the re-export.
 
+`.PackedBitsRepresentation` on `[Bool]` and `BinaryEmbeddingVector<N>` is supplied by
+`StructuredQueriesSQLiteVecCore`. Import that module or `SQLiteVecData` to use the strategy.
+Its public spelling, byte format, and dimension checks are unchanged; stored blobs need no rewrite. Core-only and Turso-only imports do not expose it. `BinaryEmbeddingVector` and
+`packedBytes` remain in the shared core, including support for partial bytes.
+
 Add `StructuredQueriesVectorCore` when using shared vector values without either database binding.
 Add `StructuredQueriesTursoVecCore` for the Rust-based Turso Database engine. Its APIs do not target
 libSQL's DiskANN or `vector_top_k` functionality.

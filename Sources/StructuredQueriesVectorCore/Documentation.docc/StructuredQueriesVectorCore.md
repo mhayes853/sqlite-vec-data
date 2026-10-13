@@ -5,7 +5,7 @@ Shared vector values, byte representations, and codecs for StructuredQueries.
 ## Overview
 
 Use byte strategies with `@Column(as:)`, or fixed-size values for dimension-checked decoding.
-The shared codecs serialize scalar bit patterns and packed logical bits without database framing.
+The shared codecs serialize scalar bit patterns; binary values expose raw packed storage.
 Database integration targets supply their own formats and query functions.
 
 ### Array representations
@@ -30,7 +30,6 @@ let vector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
 | `[Float].VectorBytesRepresentation` | Raw little-endian Float32 |
 | `[Double].VectorBytesRepresentation` | Raw little-endian Float64 |
 | `[Float16].VectorBytesRepresentation` | Raw little-endian binary16 |
-| `[Bool].PackedBitsRepresentation` | Packed bits without metadata |
 
 Serialization support does not imply support for vector queries in a database.
 
@@ -43,7 +42,7 @@ collection, hashing, and Codable scalar arrays:
 | --- | --- | --- |
 | `EmbeddingVector<N>` | `Float` | Direct raw binding or `.VectorBytesRepresentation` |
 | `EmbeddingVector64<N>` | `Double` | `.VectorBytesRepresentation` |
-| `FixedEmbeddingVector<N, Int8>` | `Int8` | `.Int8BytesRepresentation` from the sqlite-vec target |
+| `FixedEmbeddingVector<N, Int8>` | `Int8` | Strategy supplied by a database integration |
 | `BinaryEmbeddingVector<N>` | `Bool` | Explicit binary strategy |
 
 Fixed-size types require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
@@ -68,6 +67,9 @@ and `init(packedBytes:)` checks the byte count and clears unused high bits.
 let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
 var binary = BinaryEmbeddingVector<8>(quantizing: dense)
 binary[2] = true
+let bytes = binary.packedBytes
+let partial = BinaryEmbeddingVector<9>(repeating: true)
+let restored = try BinaryEmbeddingVector<9>(packedBytes: partial.packedBytes)
 let trueBits = binary.nonzeroBitCount
 let distance = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: false))
 ```
@@ -75,9 +77,9 @@ let distance = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: fa
 Sign quantization tests `value > 0`: zeros, negatives, and NaNs become false. It discards magnitudes.
 Local Hamming distance counts differing bits and returns `Int`.
 
-`.PackedBitsRepresentation` uses least significant bit first and requires dimensions divisible
-by eight. Fixed-size strategies bind and decode packed bytes directly. Database integrations can
-supply formats that record partial-byte lengths.
+Bit zero occupies the least significant bit of the first byte. Logical dimensions need not be
+divisible by eight; the value tracks the count and clears unused trailing bits. Raw `packedBytes`
+are storage payloads. Database integration targets supply binary binding and decoding strategies.
 
 ### Serialize vector bytes
 
