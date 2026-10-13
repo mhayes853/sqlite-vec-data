@@ -14,6 +14,7 @@ import StructuredQueriesVectorCore
 public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
   public typealias QueryOutput = Self
   public typealias Scalar = Float
+  public typealias Dimensions = Void
   public typealias Encoding = SparseFloat32Vector
   public typealias VectorBytesRepresentation = Self
 

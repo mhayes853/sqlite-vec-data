@@ -15,6 +15,7 @@ extension Array where Element == Bool {
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
   {
     public typealias Scalar = Bool
+    public typealias Dimensions = Void
     public typealias Encoding = [Bool].PackedBitsRepresentation
     public typealias VectorBytesRepresentation = Self
     /// The logical vector value bound to or decoded from a query.

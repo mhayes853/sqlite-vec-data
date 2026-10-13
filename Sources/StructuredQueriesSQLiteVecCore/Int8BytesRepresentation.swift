@@ -18,6 +18,7 @@ extension Array where Element == Int8 {
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
   {
     public typealias Scalar = Int8
+    public typealias Dimensions = Void
     public typealias Encoding = Self
     public typealias VectorBytesRepresentation = Self
     /// The logical vector value bound to or decoded from a query.

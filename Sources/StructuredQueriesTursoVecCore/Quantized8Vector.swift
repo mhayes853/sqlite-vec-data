@@ -14,6 +14,7 @@ import StructuredQueriesVectorCore
 public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
   public typealias QueryOutput = Self
   public typealias Scalar = Float
+  public typealias Dimensions = Void
   public typealias Encoding = Quantized8Vector
   public typealias VectorBytesRepresentation = Self
 

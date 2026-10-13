@@ -23,10 +23,25 @@ public protocol VectorBytesRepresentable {
   associatedtype Dimensions = Void
   /// The canonical representation identifying the byte layout, independent of dimensions.
   /// For example, both dense float32 arrays and inline vectors use
-  /// `[Float].VectorBytesRepresentation`.
-  associatedtype Encoding: QueryBindable
-  /// The query representation for this value, preserving any fixed-dimension constraint.
-  associatedtype VectorBytesRepresentation: QueryBindable
+  /// `[Float].VectorBytesRepresentation`. Its logical scalar must match this value's scalar;
+  /// its dimensions are independent of this value's dimensions.
+  associatedtype Encoding: VectorBytesRepresentable & QueryBindable
+  where Encoding.Scalar == Scalar
+  /// The query representation for this value, preserving its scalar, byte layout, and dimensions.
+  ///
+  /// ```swift
+  /// func representation<V: VectorBytesRepresentable>(
+  ///   _ vector: V
+  /// ) throws -> V.VectorBytesRepresentation {
+  ///   try V.VectorBytesRepresentation(vectorBytes: vector.vectorBytes)
+  /// }
+  /// let binding = try representation(EmbeddingVector<3>([1, 2, 3]))
+  /// ```
+  associatedtype VectorBytesRepresentation: VectorBytesRepresentable & QueryBindable
+  where
+    VectorBytesRepresentation.Scalar == Scalar,
+    VectorBytesRepresentation.Encoding == Encoding,
+    VectorBytesRepresentation.Dimensions == Dimensions
 
   /// The serialized vector, including any metadata required by its encoding.
   ///

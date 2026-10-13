@@ -109,9 +109,25 @@ representation independent of dimensions. For example, `EmbeddingVector<3>` and
 `[Float].VectorBytesRepresentation` share an encoding. Its `VectorBytesRepresentation` associated
 type selects the wrapper for a particular value, including fixed dimensions.
 
+Both associated representations must conform to `VectorBytesRepresentable` and `QueryBindable`.
+Their scalars must match the value's scalar, and the query representation must preserve its
+`Encoding` and `Dimensions`. Generic code can construct that representation without extra constraints:
+
+```swift
+func representation<V: VectorBytesRepresentable>(
+  _ vector: V
+) throws -> V.VectorBytesRepresentation {
+  try V.VectorBytesRepresentation(vectorBytes: vector.vectorBytes)
+}
+let binding = try representation(EmbeddingVector<3>([1, 2, 3]))
+```
+
 The `Dimensions` associated type defaults to `Void` for runtime-sized values. Fixed representations
 use ``VectorDimensions`` with the same count across scalar types and strategies. Query integrations
 use that identity to reject unequal known dimensions while allowing variable-size operands.
+Self-representing runtime-sized conformers declare `typealias Dimensions = Void` explicitly;
+Swift cannot infer the default through the recursive representation constraint. The canonical
+encoding's dimensions remain independent of the value's count.
 
 ```swift
 func sameDimensions<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(

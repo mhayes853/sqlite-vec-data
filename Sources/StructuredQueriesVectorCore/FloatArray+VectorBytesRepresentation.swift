@@ -18,6 +18,7 @@ extension Array where Element: VectorScalar {
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
   {
     public typealias Scalar = Element
+    public typealias Dimensions = Void
     public typealias Encoding = [Element].VectorBytesRepresentation
     public typealias VectorBytesRepresentation = Self
     /// The logical vector value bound to or decoded from a query.

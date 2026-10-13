@@ -166,6 +166,7 @@ Here is a directly query-bindable custom Float32 representation using the shared
 ```swift
 struct CustomVector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
   typealias Scalar = Float
+  typealias Dimensions = Void
   typealias Encoding = [Float].VectorBytesRepresentation
   typealias VectorBytesRepresentation = Self
 
@@ -186,6 +187,12 @@ struct CustomVector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable
 The protocol supplies BLOB binding and query decoding defaults for query-bindable conformers.
 A fixed-size custom type must validate its own dimension count during byte decoding. Declaring a
 Float32 `Encoding` promises Float32-compatible bytes; it does not convert another layout.
+
+`Encoding` and `VectorBytesRepresentation` must now conform to `VectorBytesRepresentable` and
+`QueryBindable`, with matching `Scalar` types. The query representation must also preserve the
+value's `Encoding` and `Dimensions`. Custom conformances with inconsistent metadata no longer
+compile. Self-representing runtime-sized types declare `Dimensions = Void` explicitly to resolve
+the recursive constraint. Canonical encodings remain independent of fixed dimensions.
 
 Custom `VectorScalar` conformers additionally supply an unsigned fixed-width integer `BitPattern`,
 `bitPattern`, and `init(bitPattern:)`. The generic codec preserves those bits in little-endian order.
