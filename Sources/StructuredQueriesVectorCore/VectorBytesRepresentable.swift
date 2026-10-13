@@ -28,14 +28,21 @@ public protocol VectorBytesRepresentable {
   associatedtype Encoding: VectorBytesRepresentable & QueryBindable
   where Encoding.Scalar == Scalar
   /// The query representation for this value, preserving its scalar, byte layout, and dimensions.
+  /// Use it with `@Column(as:)` to store and bind logical vector values as BLOBs.
   ///
   /// ```swift
-  /// func representation<V: VectorBytesRepresentable>(
-  ///   _ vector: V
-  /// ) throws -> V.VectorBytesRepresentation {
-  ///   try V.VectorBytesRepresentation(vectorBytes: vector.vectorBytes)
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
   /// }
-  /// let binding = try representation(EmbeddingVector<3>([1, 2, 3]))
+  ///
+  /// let embedding: [Float] = [0.1, 0.2, 0.3]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, embedding)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
   /// ```
   associatedtype VectorBytesRepresentation: VectorBytesRepresentable & QueryBindable
   where

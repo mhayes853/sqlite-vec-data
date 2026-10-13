@@ -111,15 +111,15 @@ type selects the wrapper for a particular value, including fixed dimensions.
 
 Both associated representations must conform to `VectorBytesRepresentable` and `QueryBindable`.
 Their scalars must match the value's scalar, and the query representation must preserve its
-`Encoding` and `Dimensions`. Generic code can construct that representation without extra constraints:
+`Encoding` and `Dimensions`. The `Document` column strategy above wraps logical values as BLOBs
+when inserting:
 
 ```swift
-func representation<V: VectorBytesRepresentable>(
-  _ vector: V
-) throws -> V.VectorBytesRepresentation {
-  try V.VectorBytesRepresentation(vectorBytes: vector.vectorBytes)
+let embedding: [Float] = [0.1, 0.2, 0.3]
+let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  (1, embedding)
 }
-let binding = try representation(EmbeddingVector<3>([1, 2, 3]))
+// INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
 ```
 
 The `Dimensions` associated type defaults to `Void` for runtime-sized values. Fixed representations
