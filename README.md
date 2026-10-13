@@ -145,6 +145,7 @@ The required `init(queryOutput:)`, array literals, and `queryOutput` mutation pr
 ```swift
 let components = [true, false, true, false, false, false, false, true]
 let binding = try [Bool].PackedBitsRepresentation(validating: components)
+let payload = binding.vectorBytes // [0x85]: eight logical components in one byte.
 ```
 
 ```swift
@@ -287,6 +288,10 @@ let sized = try SizedSparseFloat32Vector<4>(validating: sparseComponents)
 let decoded = compressed.decodedValues() // [0, 128, 255]
 let sparse = try SparseFloat32Vector(compressing: [0, 0, 1.5, 0, 0, 2.5])
 let dense = sparse.denseValues() // [0, 0, 1.5, 0, 0, 2.5]
+let insert = CompressedDocument.insert { ($0.id, $0.embedding) } values: {
+  (1, compressed)
+}
+// INSERT INTO "compressed_documents" ("id", "embedding") VALUES (?, ?)
 ```
 
 `init(validating:)` preserves encoded components and checks dimensions, without quantizing or
@@ -322,11 +327,13 @@ Fixed-size types require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or
 ```swift
 let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
 let binary = BinaryEmbeddingVector<8>(quantizing: dense)
-let packedBytes = binary.packedBytes // Raw bits without database metadata.
-let distance = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: false))
+let packedBytes = binary.packedBytes // [0xa9]: eight signs stored in one byte.
+let candidate = try BinaryEmbeddingVector<8>(packedBytes: [0x85])
+let distance = binary.hammingDistance(to: candidate) // 3 differing bits.
 
-let bytes = [Float(1), 2, 3].vectorBytes
-let restored = try EmbeddingVector<3>(vectorBytes: bytes)
+// Decode a cached Float32 payload with fixed-dimension validation.
+let cachedBytes: [UInt8] = [0, 0, 0x80, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0]
+let restored = try EmbeddingVector<3>(vectorBytes: cachedBytes) // [1, 0, 0]
 ```
 
 Float32 bytes are shared by both engines on little-endian platforms. Float16 representations
@@ -353,7 +360,7 @@ struct `Vector tests` {
   }
 
   @Test
-  func `Searches Vectors`() throws {
+  func `Creates A Vector Table`() throws {
     try self.database.write { db in
       try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
     }

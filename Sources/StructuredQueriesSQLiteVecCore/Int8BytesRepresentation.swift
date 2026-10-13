@@ -8,11 +8,18 @@ extension Array where Element == Int8 {
   /// and differs from Turso's `Quantized8Vector`.
   ///
   /// ```swift
-  /// @Table
+  /// @Table("documents")
   /// struct Document {
+  ///   var id: Int
   ///   @Column(as: [Int8].Int8BytesRepresentation.self)
   ///   var embedding: [Int8]
   /// }
+  ///
+  /// let components: [Int8] = [1, -2, 3]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, components)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
   /// ```
   public struct Int8BytesRepresentation:
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -24,15 +31,27 @@ extension Array where Element == Int8 {
     /// The logical vector value bound to or decoded from a query.
     ///
     /// ```swift
-    /// let vector = [Int8].Int8BytesRepresentation(queryOutput: [1, -2, 3])
-    /// let queryOutput = vector.queryOutput
+    /// let storedBytes: [UInt8] = [1, 0xfe, 3]
+    /// let decoded = try [Int8].Int8BytesRepresentation(vectorBytes: storedBytes)
+    /// let components = Array(decoded.queryOutput) // [1, -2, 3]
     /// ```
     public var queryOutput: [Int8]
 
     /// Wraps the logical vector value for blob storage and query binding.
     ///
     /// ```swift
+    /// @Table("documents")
+    /// struct Document {
+    ///   var id: Int
+    ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+    ///   var embedding: [Int8]
+    /// }
+    ///
     /// let vector = [Int8].Int8BytesRepresentation(queryOutput: [1, -2, 3])
+    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+    ///   (1, vector)
+    /// }
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
     /// ```
     public init(queryOutput: [Int8]) {
       self.queryOutput = queryOutput
@@ -43,14 +62,16 @@ extension Array where Element == Int8 {
     /// ```swift
     /// let vector = [Int8].Int8BytesRepresentation(queryOutput: [1, -2, 3])
     /// let vectorBytes = vector.vectorBytes
+    /// // [0x01, 0xfe, 0x03]: signed codes serialized without metadata.
     /// ```
     public var vectorBytes: [UInt8] { self.queryOutput.map(UInt8.init(bitPattern:)) }
 
     /// Decodes a vector blob, validating its encoding and dimensions.
     ///
     /// ```swift
-    /// let vector = [Int8].Int8BytesRepresentation(queryOutput: [1, -2, 3])
-    /// let restored = try [Int8].Int8BytesRepresentation(vectorBytes: vector.vectorBytes)
+    /// let storedBytes: [UInt8] = [1, 0xfe, 3]
+    /// let decoded = try [Int8].Int8BytesRepresentation(vectorBytes: storedBytes)
+    /// let components = Array(decoded.queryOutput) // [1, -2, 3]
     /// ```
     public init(vectorBytes: [UInt8]) throws {
       self.init(queryOutput: vectorBytes.map(Int8.init(bitPattern:)))
@@ -62,7 +83,18 @@ extension Array.Int8BytesRepresentation: ExpressibleByArrayLiteral {
   /// Creates a vector representation from an array literal.
   ///
   /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  /// }
+  ///
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, vector)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
   /// ```
   public init(arrayLiteral elements: Int8...) {
     self.init(queryOutput: elements)
@@ -75,11 +107,18 @@ extension Array.Int8BytesRepresentation: ExpressibleByArrayLiteral {
     /// Raw signed bytes for SQLiteVec Int8 columns, validating fixed dimensions when decoding.
     ///
     /// ```swift
-    /// @Table
+    /// @Table("documents")
     /// struct Document {
+    ///   var id: Int
     ///   @Column(as: FixedEmbeddingVector<3, Int8>.Int8BytesRepresentation.self)
     ///   var embedding: FixedEmbeddingVector<3, Int8>
     /// }
+    ///
+    /// let components: FixedEmbeddingVector<3, Int8> = FixedEmbeddingVector<3, Int8>([1, -2, 3])
+    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+    ///   (1, components)
+    /// }
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
     /// ```
     public struct Int8BytesRepresentation:
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -91,17 +130,28 @@ extension Array.Int8BytesRepresentation: ExpressibleByArrayLiteral {
       /// The logical vector value bound to or decoded from a query.
       ///
       /// ```swift
-      /// let vector = FixedEmbeddingVector<3, Int8>
-      ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<3, Int8>([1, -2, 3]))
-      /// let queryOutput = vector.queryOutput
+      /// let storedBytes: [UInt8] = [1, 0xfe, 3]
+      /// let decoded = try FixedEmbeddingVector<3, Int8>.Int8BytesRepresentation(vectorBytes: storedBytes)
+      /// let components = Array(decoded.queryOutput) // [1, -2, 3]
       /// ```
       public var queryOutput: FixedEmbeddingVector<count, Int8>
 
       /// Wraps the logical vector value for blob storage and query binding.
       ///
       /// ```swift
+      /// @Table("documents")
+      /// struct Document {
+      ///   var id: Int
+      ///   @Column(as: FixedEmbeddingVector<3, Int8>.Int8BytesRepresentation.self)
+      ///   var embedding: FixedEmbeddingVector<3, Int8>
+      /// }
+      ///
       /// let vector = FixedEmbeddingVector<3, Int8>
       ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<3, Int8>([1, -2, 3]))
+      /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+      ///   (1, vector)
+      /// }
+      /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
       /// ```
       public init(queryOutput: FixedEmbeddingVector<count, Int8>) {
         self.queryOutput = queryOutput
@@ -113,16 +163,16 @@ extension Array.Int8BytesRepresentation: ExpressibleByArrayLiteral {
       /// let vector = FixedEmbeddingVector<3, Int8>
       ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<3, Int8>([1, -2, 3]))
       /// let vectorBytes = vector.vectorBytes
+      /// // [0x01, 0xfe, 0x03]: signed codes serialized without metadata.
       /// ```
       public var vectorBytes: [UInt8] { self.queryOutput.map(UInt8.init(bitPattern:)) }
 
       /// Decodes a vector blob, validating its encoding and dimensions.
       ///
       /// ```swift
-      /// let vector = FixedEmbeddingVector<3, Int8>
-      ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<3, Int8>([1, -2, 3]))
-      /// let restored = try FixedEmbeddingVector<3, Int8>
-      ///   .Int8BytesRepresentation(vectorBytes: vector.vectorBytes)
+      /// let storedBytes: [UInt8] = [1, 0xfe, 3]
+      /// let decoded = try FixedEmbeddingVector<3, Int8>.Int8BytesRepresentation(vectorBytes: storedBytes)
+      /// let components = Array(decoded.queryOutput) // [1, -2, 3]
       /// ```
       public init(vectorBytes: [UInt8]) throws {
         try self.init(

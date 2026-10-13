@@ -11,7 +11,7 @@ import StructuredQueriesVectorCore
 /// func vectorJSON<V: VectorBytesRepresentable & QueryBindable>(
 ///   _ vector: some QueryExpression<V>
 /// ) -> some QueryExpression<String> where V.Encoding: TursoVectorEncoding {
-///   TursoVec.extract(vector) // vector_extract(?)
+///   TursoVec.extract(vector)
 /// }
 /// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
 /// let expression = vectorJSON(vector)

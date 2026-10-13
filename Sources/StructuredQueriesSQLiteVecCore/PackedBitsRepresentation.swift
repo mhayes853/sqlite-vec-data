@@ -5,11 +5,18 @@ extension Array where Element == Bool {
   /// SQLiteVec binary BLOB storage without metadata. Dimensions must be divisible by eight.
   ///
   /// ```swift
-  /// @Table
+  /// @Table("documents")
   /// struct Document {
+  ///   var id: Int
   ///   @Column(as: [Bool].PackedBitsRepresentation.self)
   ///   var embedding: [Bool]
   /// }
+  ///
+  /// let components: [Bool] = [true, false, true, false, false, false, false, true]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, components)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
   /// ```
   public struct PackedBitsRepresentation:
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -22,9 +29,9 @@ extension Array where Element == Bool {
     /// Assignments require a dimension count divisible by eight.
     ///
     /// ```swift
-    /// let vector = [Bool]
-    ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
-    /// let queryOutput = vector.queryOutput
+    /// let storedBytes: [UInt8] = [0x85]
+    /// let decoded = try [Bool].PackedBitsRepresentation(vectorBytes: storedBytes)
+    /// let components = Array(decoded.queryOutput) // [true, false, true, false, false, false, false, true]
     /// ```
     public var queryOutput: [Bool] {
       get { self.elements }
@@ -43,8 +50,19 @@ extension Array where Element == Bool {
     /// Use `init(validating:)` for a recoverable validation error.
     ///
     /// ```swift
+    /// @Table("documents")
+    /// struct Document {
+    ///   var id: Int
+    ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+    ///   var embedding: [Bool]
+    /// }
+    ///
     /// let vector = [Bool]
     ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
+    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+    ///   (1, vector)
+    /// }
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
     /// ```
     public init(queryOutput: [Bool]) {
       precondition(
@@ -57,7 +75,9 @@ extension Array where Element == Bool {
     /// Validates dynamic binary components before wrapping them for SQLiteVec.
     ///
     /// ```swift
-    /// let bits = try [Bool].PackedBitsRepresentation(validating: [Bool](repeating: true, count: 16))
+    /// let components = [Bool](repeating: true, count: 16)
+    /// let bits = try [Bool].PackedBitsRepresentation(validating: components)
+    /// let payload = bits.vectorBytes // [0xff, 0xff]; partial bytes throw instead of trapping.
     /// ```
     public init(validating elements: [Bool]) throws {
       guard elements.count.isMultiple(of: 8) else {
@@ -69,21 +89,33 @@ extension Array where Element == Bool {
     /// A binary component count that cannot be represented as complete bytes.
     ///
     /// ```swift
-    /// let error = [Bool].PackedBitsRepresentation.InvalidDimensionsError(dimensions: 9)
+    /// do {
+    ///   _ = try [Bool].PackedBitsRepresentation(validating: [Bool](repeating: true, count: 9))
+    /// } catch let error as [Bool].PackedBitsRepresentation.InvalidDimensionsError {
+    ///   print("Received \(error.dimensions) bits; SQLiteVec requires complete bytes.")
+    /// }
     /// ```
     public struct InvalidDimensionsError: Error, Hashable, Sendable {
       /// The rejected logical dimension count.
       ///
       /// ```swift
-      /// let error = [Bool].PackedBitsRepresentation.InvalidDimensionsError(dimensions: 9)
-      /// let dimensions = error.dimensions
+      /// do {
+      ///   _ = try [Bool].PackedBitsRepresentation(validating: [Bool](repeating: true, count: 9))
+      /// } catch let error as [Bool].PackedBitsRepresentation.InvalidDimensionsError {
+      ///   print("Received \(error.dimensions) bits; SQLiteVec requires complete bytes.")
+      /// }
       /// ```
       public let dimensions: Int
 
       /// Records a component count that is not divisible by eight.
       ///
       /// ```swift
-      /// let error = [Bool].PackedBitsRepresentation.InvalidDimensionsError(dimensions: 9)
+      /// func validateAlignment(_ components: [Bool]) throws {
+      ///   guard components.count.isMultiple(of: 8) else {
+      ///     throw [Bool].PackedBitsRepresentation.InvalidDimensionsError(dimensions: components.count)
+      ///   }
+      /// }
+      /// try validateAlignment([Bool](repeating: false, count: 16))
       /// ```
       public init(dimensions: Int) {
         self.dimensions = dimensions
@@ -96,15 +128,16 @@ extension Array where Element == Bool {
     /// let vector = [Bool]
     ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
     /// let vectorBytes = vector.vectorBytes
+    /// // [0x85]: eight logical bits in one byte.
     /// ```
     public var vectorBytes: [UInt8] { encodePackedBitsVector(self.queryOutput) }
 
     /// Decodes a vector blob, validating its encoding and dimensions.
     ///
     /// ```swift
-    /// let vector = [Bool]
-    ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
-    /// let restored = try [Bool].PackedBitsRepresentation(vectorBytes: vector.vectorBytes)
+    /// let storedBytes: [UInt8] = [0x85]
+    /// let decoded = try [Bool].PackedBitsRepresentation(vectorBytes: storedBytes)
+    /// let components = Array(decoded.queryOutput) // [true, false, true, false, false, false, false, true]
     /// ```
     public init(vectorBytes: [UInt8]) throws {
       self.init(queryOutput: decodePackedBitsVector(vectorBytes))
@@ -116,7 +149,18 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
   /// Creates a vector representation from an array literal.
   ///
   /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+  ///   var embedding: [Bool]
+  /// }
+  ///
   /// let vector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, vector)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
   /// ```
   public init(arrayLiteral elements: Bool...) {
     self.init(queryOutput: elements)
@@ -129,11 +173,18 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
     /// SQLiteVec binary BLOB storage without metadata. Dimensions must be divisible by eight.
     ///
     /// ```swift
-    /// @Table
+    /// @Table("documents")
     /// struct Document {
+    ///   var id: Int
     ///   @Column(as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
     ///   var embedding: BinaryEmbeddingVector<8>
     /// }
+    ///
+    /// let components: BinaryEmbeddingVector<8> = BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
+    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+    ///   (1, components)
+    /// }
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
     /// ```
     public struct PackedBitsRepresentation:
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -145,11 +196,9 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       /// The logical vector value bound to or decoded from a query.
       ///
       /// ```swift
-      /// let vector = BinaryEmbeddingVector<8>
-      ///   .PackedBitsRepresentation(
-      ///     queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
-      ///   )
-      /// let queryOutput = vector.queryOutput
+      /// let storedBytes: [UInt8] = [0x85]
+      /// let decoded = try BinaryEmbeddingVector<8>.PackedBitsRepresentation(vectorBytes: storedBytes)
+      /// let components = Array(decoded.queryOutput) // [true, false, true, false, false, false, false, true]
       /// ```
       public var queryOutput: BinaryEmbeddingVector<count>
 
@@ -157,10 +206,21 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       /// Use `init(validating:)` for a recoverable validation error.
       ///
       /// ```swift
+      /// @Table("documents")
+      /// struct Document {
+      ///   var id: Int
+      ///   @Column(as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+      ///   var embedding: BinaryEmbeddingVector<8>
+      /// }
+      ///
       /// let vector = BinaryEmbeddingVector<8>
       ///   .PackedBitsRepresentation(
       ///     queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
       ///   )
+      /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+      ///   (1, vector)
+      /// }
+      /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
       /// ```
       public init(queryOutput: BinaryEmbeddingVector<count>) {
         precondition(
@@ -175,6 +235,7 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       /// ```swift
       /// let vector = BinaryEmbeddingVector<16>(repeating: true)
       /// let binding = try BinaryEmbeddingVector<16>.PackedBitsRepresentation(validating: vector)
+      /// let payload = binding.vectorBytes // [0xff, 0xff]
       /// ```
       public init(validating vector: BinaryEmbeddingVector<count>) throws {
         guard BinaryEmbeddingVector<count>.count.isMultiple(of: 8) else {
@@ -192,18 +253,16 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       ///     queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
       ///   )
       /// let vectorBytes = vector.vectorBytes
+      /// // [0x85]: eight logical bits in one byte.
       /// ```
       public var vectorBytes: [UInt8] { self.queryOutput.packedBytes }
 
       /// Decodes a vector blob, validating its encoding and dimensions.
       ///
       /// ```swift
-      /// let vector = BinaryEmbeddingVector<8>
-      ///   .PackedBitsRepresentation(
-      ///     queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
-      ///   )
-      /// let restored = try BinaryEmbeddingVector<8>
-      ///   .PackedBitsRepresentation(vectorBytes: vector.vectorBytes)
+      /// let storedBytes: [UInt8] = [0x85]
+      /// let decoded = try BinaryEmbeddingVector<8>.PackedBitsRepresentation(vectorBytes: storedBytes)
+      /// let components = Array(decoded.queryOutput) // [true, false, true, false, false, false, false, true]
       /// ```
       public init(vectorBytes: [UInt8]) throws {
         let (dimensions, overflow) = vectorBytes.count.multipliedReportingOverflow(by: 8)

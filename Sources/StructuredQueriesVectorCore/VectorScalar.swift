@@ -4,9 +4,10 @@
 /// bit patterns and does not add metadata or imply support for database vector operations.
 ///
 /// ```swift
-/// let bytes = Float.encodeVector([1, 2, 3])
-/// let values = try Float.decodeVector(bytes)
-/// // [1, 2, 3]
+/// let values: [Float] = [1, -0.0]
+/// let bytes = Float.encodeVector(values)
+/// let restored = try Float.decodeVector(bytes)
+/// let bits = restored.map(\.bitPattern) // [0x3f800000, 0x80000000], preserving signed zero.
 /// ```
 public protocol VectorScalar: BinaryFloatingPoint, Codable, Sendable {
   /// The unsigned integer containing this scalar's complete bit pattern.
@@ -15,14 +16,16 @@ public protocol VectorScalar: BinaryFloatingPoint, Codable, Sendable {
   /// This scalar's complete bit pattern, including its sign and any NaN payload.
   ///
   /// ```swift
-  /// let bits = Float(1).bitPattern  // 0x3f800000.
+  /// let scalar = Float(bitPattern: 0x7fc0_1234)
+  /// let bits = scalar.bitPattern // 0x7fc01234: retains the NaN payload.
   /// ```
   var bitPattern: BitPattern { get }
 
   /// Creates a scalar without changing its bit pattern.
   ///
   /// ```swift
-  /// let scalar = Float(bitPattern: 0x3f80_0000)  // 1.
+  /// let scalar = Float(bitPattern: 0x8000_0000)
+  /// let isNegativeZero = scalar == 0 && scalar.sign == .minus // true
   /// ```
   init(bitPattern: BitPattern)
 }
@@ -31,7 +34,8 @@ extension VectorScalar {
   /// Encodes complete scalar bit patterns in little-endian order.
   ///
   /// ```swift
-  /// let bytes = Float16.encodeVector([1, 2, 3])
+  /// let bytes = Float16.encodeVector([1, -0.0])
+  /// // [0x00, 0x3c, 0x00, 0x80]: two little-endian binary16 components.
   /// ```
   public static func encodeVector(_ values: [Self]) -> [UInt8] {
     let size = (Self.BitPattern.bitWidth + 7) / 8
@@ -44,8 +48,9 @@ extension VectorScalar {
   /// Decodes raw little-endian components, requiring a complete bit pattern for each value.
   ///
   /// ```swift
-  /// let bytes = Float16.encodeVector([1, 2, 3])
-  /// let values = try Float16.decodeVector(bytes)
+  /// let cachedBytes: [UInt8] = [0x00, 0x3c, 0x00, 0x80]
+  /// let values = try Float16.decodeVector(cachedBytes)
+  /// let bits = values.map(\.bitPattern) // [0x3c00, 0x8000]
   /// ```
   public static func decodeVector(_ bytes: [UInt8]) throws -> [Self] {
     let size = (Self.BitPattern.bitWidth + 7) / 8

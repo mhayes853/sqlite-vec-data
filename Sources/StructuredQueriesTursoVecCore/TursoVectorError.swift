@@ -39,7 +39,12 @@ public struct TursoVectorError: Error, Hashable, Sendable, CustomStringConvertib
   /// Creates a validation error with a stable code and diagnostic reason.
   ///
   /// ```swift
-  /// let error = TursoVectorError(code: .invalidQuantization, reason: "Scale must be nonnegative.")
+  /// func requireFinite(_ components: [Float]) throws {
+  ///   guard components.allSatisfy(\.isFinite) else {
+  ///     throw TursoVectorError(code: .invalidQuantization, reason: "Components must be finite.")
+  ///   }
+  /// }
+  /// try requireFinite([0.1, 0.2, 0.3])
   /// ```
   public init(code: Code, reason: String) {
     self.code = code
@@ -57,23 +62,26 @@ public struct TursoVectorError: Error, Hashable, Sendable, CustomStringConvertib
   /// An extensible error code. Unknown raw values are preserved rather than rejected.
   ///
   /// ```swift
-  /// let code = TursoVectorError.Code(rawValue: "invalidQuantization")
-  /// print(code.rawValue)
+  /// let code = TursoVectorError.Code(rawValue: "futureVectorFormat")
+  /// let error = TursoVectorError(code: code, reason: "Unsupported format in imported data.")
+  /// print(error.code.rawValue) // futureVectorFormat: unknown codes are preserved.
   /// ```
   public struct Code: RawRepresentable, Hashable, Sendable {
     /// The stable string identifying this error category.
     ///
     /// ```swift
-    /// let code = TursoVectorError.Code(rawValue: "invalidQuantization")
-    /// print(code.rawValue)
+    /// let code = TursoVectorError.Code(rawValue: "futureVectorFormat")
+    /// let error = TursoVectorError(code: code, reason: "Unsupported format in imported data.")
+    /// print(error.code.rawValue) // futureVectorFormat: unknown codes are preserved.
     /// ```
     public let rawValue: String
 
     /// Creates a code, preserving unknown raw values.
     ///
     /// ```swift
-    /// let code = TursoVectorError.Code(rawValue: "invalidQuantization")
-    /// print(code.rawValue)
+    /// let code = TursoVectorError.Code(rawValue: "futureVectorFormat")
+    /// let error = TursoVectorError(code: code, reason: "Unsupported format in imported data.")
+    /// print(error.code.rawValue) // futureVectorFormat: unknown codes are preserved.
     /// ```
     public init(rawValue: String) {
       self.rawValue = rawValue

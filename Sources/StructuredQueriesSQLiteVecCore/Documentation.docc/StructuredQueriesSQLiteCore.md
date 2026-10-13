@@ -128,8 +128,6 @@ let joined = Embedding
 // JOIN "vec_each"
 // ON ?
 // WHERE ("vec_each"."vector" = "Embeddings"."embedding")
-// JOIN "vec_each"
-// ON ?
 
 let withNegativeElements = Embedding
   .where {
@@ -141,7 +139,6 @@ let withNegativeElements = Embedding
 // SELECT "Embeddings"."label"
 // FROM "Embeddings"
 // WHERE (EXISTS (SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each" WHERE
-//   ("vec_each"."vector" = "Embeddings"."embedding") AND (("vec_each"."value") < (?))))
 //   ("vec_each"."vector" = "Embeddings"."embedding") AND (("vec_each"."value") < (?))))
 ```
 

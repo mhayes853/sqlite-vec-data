@@ -88,6 +88,7 @@ extension FixedEmbeddingVector where Scalar == Float {
     self.reduce(0) { $0 + $1 * $1 }
   }
 }
+let squaredNorm = EmbeddingVector<3>([1, 2, 3]).squaredNorm() // 14
 ```
 
 Likewise, Float32-specific extensions on the array representation should constrain `Element`:
@@ -98,6 +99,8 @@ extension Array.VectorBytesRepresentation where Element == Float {
     self.queryOutput.reduce(0) { $0 + $1 * $1 }
   }
 }
+let embedding: [Float].VectorBytesRepresentation = [1, 2, 3]
+let squaredNorm = embedding.squaredNorm // 14
 ```
 
 `EmbeddingVector<N>.VectorBytesRepresentation` is now a distinct wrapper. Update code that relied
@@ -127,7 +130,8 @@ Float32 binding and decoding of untagged Float32 remain supported.
 ```swift
 let values = EmbeddingVector64<3>([1, 2, 3])
 let binding = EmbeddingVector64<3>.TursoFloat64BytesRepresentation(queryOutput: values)
-let expression = TursoVec.distanceL2(binding, to: binding)
+let candidate: [Double].TursoFloat64BytesRepresentation = [3, 2, 1]
+let distance = TursoVec.distanceL2(binding, to: candidate)
 // vector_distance_l2(?, ?)
 ```
 
@@ -147,8 +151,11 @@ Generic helpers that forward vectors to constructors or extraction need the enco
 func vectorJSON<V: VectorBytesRepresentable & QueryBindable>(
   _ vector: some QueryExpression<V>
 ) -> some QueryExpression<String> where V.Encoding: TursoVectorEncoding {
-  TursoVec.extract(vector) // vector_extract(?)
+  TursoVec.extract(vector)
 }
+let embedding: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+let json = vectorJSON(embedding)
+// vector_extract(?)
 ```
 
 The protocol lives in `StructuredQueriesTursoVecCore`. A custom representation using an existing
@@ -182,6 +189,10 @@ struct CustomVector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     try self.init(queryOutput: [Float](vectorBytes: vectorBytes))
   }
 }
+let embedding = CustomVector(queryOutput: [0.1, 0.2, 0.3])
+let queryVector: [Float].VectorBytesRepresentation = [0.2, 0.4, 0.6]
+let distance = Vec.distanceL2(embedding, to: queryVector)
+// vec_distance_l2(?, ?)
 ```
 
 The protocol supplies BLOB binding and query decoding defaults for query-bindable conformers.
@@ -210,6 +221,7 @@ alignment at construction; mutating an array strategy's `queryOutput` checks it 
 
 ```swift
 let bits = try [Bool].PackedBitsRepresentation(validating: [Bool](repeating: true, count: 16))
+let payload = bits.vectorBytes // [0xff, 0xff]; partial bytes throw instead of trapping.
 ```
 
 `VectorBytesRepresentable.Dimensions` defaults to `Void`, preserving runtime-sized custom types.
@@ -225,8 +237,10 @@ func distance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
 where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
   L.Dimensions == R.Dimensions
 {
-  Vec.distanceL2(left, to: right) // vec_distance_l2(?, ?)
+  Vec.distanceL2(left, to: right)
 }
+let expression = distance(EmbeddingVector<3>([1, 0, 0]), to: EmbeddingVector<3>([0, 1, 0]))
+// vec_distance_l2(?, ?)
 ```
 
 A helper accepting a runtime-sized left or right operand can constrain that operand's `Dimensions`
@@ -244,8 +258,10 @@ function. Add the operation's supported encoding constraint:
 func float32Length<V: VectorBytesRepresentable>(
   _ vector: some QueryExpression<V>
 ) -> some QueryExpression<Int> where V.Encoding == [Float].VectorBytesRepresentation {
-  Vec.length(vector) // vec_length(?)
+  Vec.length(vector)
 }
+let dimensions = float32Length(EmbeddingVector<3>([0.1, 0.2, 0.3]))
+// vec_length(?)
 ```
 
 Float32 and signed Int8 support L1, L2, cosine distance, addition, and subtraction. Normalization

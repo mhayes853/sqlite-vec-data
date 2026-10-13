@@ -8,11 +8,18 @@ extension Array where Element: VectorScalar {
   /// Each component uses its complete little-endian bit pattern, without format metadata.
   ///
   /// ```swift
-  /// @Table
+  /// @Table("documents")
   /// struct Document {
+  ///   var id: Int
   ///   @Column(as: [Float].VectorBytesRepresentation.self)
   ///   var embedding: [Float]
   /// }
+  ///
+  /// let components: [Float] = [0.1, 0.2, 0.3]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, components)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
   /// ```
   public struct VectorBytesRepresentation:
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -24,15 +31,27 @@ extension Array where Element: VectorScalar {
     /// The logical vector value bound to or decoded from a query.
     ///
     /// ```swift
-    /// let vector = [Float].VectorBytesRepresentation(queryOutput: [1, 2, 3])
-    /// let queryOutput = vector.queryOutput
+    /// let storedBytes: [UInt8] = Float.encodeVector([1, 0, 0])
+    /// let decoded = try [Float].VectorBytesRepresentation(vectorBytes: storedBytes)
+    /// let components = Array(decoded.queryOutput) // [1, 0, 0]
     /// ```
     public var queryOutput: [Element]
 
     /// Wraps the logical vector value for blob storage and query binding.
     ///
     /// ```swift
+    /// @Table("documents")
+    /// struct Document {
+    ///   var id: Int
+    ///   @Column(as: [Float].VectorBytesRepresentation.self)
+    ///   var embedding: [Float]
+    /// }
+    ///
     /// let vector = [Float].VectorBytesRepresentation(queryOutput: [1, 2, 3])
+    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+    ///   (1, vector)
+    /// }
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
     /// ```
     public init(queryOutput: [Element]) {
       self.queryOutput = queryOutput
@@ -43,14 +62,16 @@ extension Array where Element: VectorScalar {
     /// ```swift
     /// let vector = [Float].VectorBytesRepresentation(queryOutput: [1, 2, 3])
     /// let vectorBytes = vector.vectorBytes
+    /// // 12 raw bytes for three Float32 components.
     /// ```
     public var vectorBytes: [UInt8] { self.queryOutput.vectorBytes }
 
     /// Decodes a vector blob, validating its encoding and dimensions.
     ///
     /// ```swift
-    /// let vector = [Float].VectorBytesRepresentation(queryOutput: [1, 2, 3])
-    /// let restored = try [Float].VectorBytesRepresentation(vectorBytes: vector.vectorBytes)
+    /// let storedBytes: [UInt8] = Float.encodeVector([1, 0, 0])
+    /// let decoded = try [Float].VectorBytesRepresentation(vectorBytes: storedBytes)
+    /// let components = Array(decoded.queryOutput) // [1, 0, 0]
     /// ```
     public init(vectorBytes: [UInt8]) throws {
       try self.init(queryOutput: [Element](vectorBytes: vectorBytes))
@@ -62,7 +83,18 @@ extension Array.VectorBytesRepresentation: ExpressibleByArrayLiteral {
   /// Creates a vector representation from an array literal.
   ///
   /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  ///
   /// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, vector)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
   /// ```
   public init(arrayLiteral elements: Element...) {
     self.init(queryOutput: elements)
@@ -77,11 +109,18 @@ extension Array.VectorBytesRepresentation: ExpressibleByArrayLiteral {
     /// The scalar's default blob representation with fixed-dimension validation.
     ///
     /// ```swift
-    /// @Table
+    /// @Table("documents")
     /// struct Document {
+    ///   var id: Int
     ///   @Column(as: InlineArray<3, Float>.VectorBytesRepresentation.self)
     ///   var embedding: InlineArray<3, Float>
     /// }
+    ///
+    /// let components: InlineArray<3, Float> = [0.1, 0.2, 0.3]
+    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+    ///   (1, components)
+    /// }
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
     /// ```
     public struct VectorBytesRepresentation:
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -93,17 +132,28 @@ extension Array.VectorBytesRepresentation: ExpressibleByArrayLiteral {
       /// The logical vector value bound to or decoded from a query.
       ///
       /// ```swift
-      /// let components: InlineArray<3, Float> = [1, 2, 3]
-      /// let vector = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: components)
-      /// let queryOutput = vector.queryOutput
+      /// let storedBytes: [UInt8] = Float.encodeVector([1, 0, 0])
+      /// let decoded = try InlineArray<3, Float>.VectorBytesRepresentation(vectorBytes: storedBytes)
+      /// let components = (0..<3).map { decoded.queryOutput[$0] } // [1, 0, 0]
       /// ```
       public var queryOutput: InlineArray<count, Element>
 
       /// Wraps the logical vector value for blob storage and query binding.
       ///
       /// ```swift
+      /// @Table("documents")
+      /// struct Document {
+      ///   var id: Int
+      ///   @Column(as: InlineArray<3, Float>.VectorBytesRepresentation.self)
+      ///   var embedding: InlineArray<3, Float>
+      /// }
+      ///
       /// let components: InlineArray<3, Float> = [1, 2, 3]
       /// let vector = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: components)
+      /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+      ///   (1, vector)
+      /// }
+      /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
       /// ```
       public init(queryOutput: InlineArray<count, Element>) {
         self.queryOutput = queryOutput
@@ -115,15 +165,16 @@ extension Array.VectorBytesRepresentation: ExpressibleByArrayLiteral {
       /// let components: InlineArray<3, Float> = [1, 2, 3]
       /// let vector = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: components)
       /// let vectorBytes = vector.vectorBytes
+      /// // 12 raw bytes for three Float32 components.
       /// ```
       public var vectorBytes: [UInt8] { self.queryOutput.vectorBytes }
 
       /// Decodes a vector blob, validating its encoding and dimensions.
       ///
       /// ```swift
-      /// let components: InlineArray<3, Float> = [1, 2, 3]
-      /// let vector = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: components)
-      /// let restored = try InlineArray<3, Float>.VectorBytesRepresentation(vectorBytes: vector.vectorBytes)
+      /// let storedBytes: [UInt8] = Float.encodeVector([1, 0, 0])
+      /// let decoded = try InlineArray<3, Float>.VectorBytesRepresentation(vectorBytes: storedBytes)
+      /// let components = (0..<3).map { decoded.queryOutput[$0] } // [1, 0, 0]
       /// ```
       public init(vectorBytes: [UInt8]) throws {
         try self.init(queryOutput: InlineArray<count, Element>(vectorBytes: vectorBytes))
@@ -132,9 +183,9 @@ extension Array.VectorBytesRepresentation: ExpressibleByArrayLiteral {
       /// Compares the vector components for equality.
       ///
       /// ```swift
-      /// let components: InlineArray<3, Float> = [1, 2, 3]
-      /// let vector = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: components)
-      /// let equal = vector == vector
+      /// let left = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: [-0.0, 1, 2])
+      /// let right = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: [0.0, 1, 2])
+      /// let equal = left == right // true: signed zeros compare equally.
       /// ```
       public static func == (lhs: Self, rhs: Self) -> Bool {
         (0..<InlineArray<count, Element>.count)
@@ -146,7 +197,8 @@ extension Array.VectorBytesRepresentation: ExpressibleByArrayLiteral {
       /// ```swift
       /// let components: InlineArray<3, Float> = [1, 2, 3]
       /// let vector = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: components)
-      /// let vectors = Set([vector])
+      /// let duplicate = InlineArray<3, Float>.VectorBytesRepresentation(queryOutput: [1, 2, 3])
+      /// let uniqueCount = Set([vector, duplicate]).count // 1
       /// ```
       public func hash(into hasher: inout Hasher) {
         hasher.combine(InlineArray<count, Element>.count)

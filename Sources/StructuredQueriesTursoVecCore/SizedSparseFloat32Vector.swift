@@ -9,8 +9,8 @@ import StructuredQueriesVectorCore
   /// Equality and hashing compare stored component bit patterns.
   ///
   /// ```swift
-  /// let vector = try SizedSparseFloat32Vector<3>(compressing: EmbeddingVector<3>([0, 2, 0]))
-  /// let dense = vector.denseValues()
+  /// let vector = try SizedSparseFloat32Vector<6>(compressing: EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5]))
+  /// let dense = vector.denseValues() // [0, 0, 1.5, 0, 0, 2.5]; omitted components become zero.
   /// ```
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public struct SizedSparseFloat32Vector<let count: Int>:
@@ -27,29 +27,31 @@ import StructuredQueriesVectorCore
     /// The number of logical vector components.
     ///
     /// ```swift
-    /// let vector = try SizedSparseFloat32Vector<3>(compressing: EmbeddingVector<3>([0, 2, 0]))
-    /// let dimensions = vector.dimensions
+    /// let vector = try SizedSparseFloat32Vector<6>(indices: [2, 5], values: [1.5, 2.5])
+    /// let logicalCount = vector.dimensions // 6
+    /// let storedCount = vector.values.count // 2: the other four components are omitted.
     /// ```
     public var dimensions: Int { Self.count }
     /// The ascending, zero-based positions of the stored sparse components.
     ///
     /// ```swift
-    /// let vector = try SizedSparseFloat32Vector<3>(compressing: EmbeddingVector<3>([0, 2, 0]))
-    /// let indices = vector.indices
+    /// let vector = try SizedSparseFloat32Vector<6>(indices: [2, 5], values: [1.5, 2.5])
+    /// let nonzeroEntries = Array(zip(vector.indices, vector.values)) // [(2, 1.5), (5, 2.5)]
     /// ```
     public var indices: [UInt32] { self.vector.indices }
     /// The stored sparse values, in the same order as `indices`.
     ///
     /// ```swift
-    /// let vector = try SizedSparseFloat32Vector<3>(compressing: EmbeddingVector<3>([0, 2, 0]))
-    /// let values = vector.values
+    /// let vector = try SizedSparseFloat32Vector<6>(indices: [2, 5], values: [1.5, 2.5])
+    /// let nonzeroEntries = Array(zip(vector.indices, vector.values)) // [(2, 1.5), (5, 2.5)]
     /// ```
     public var values: [Float] { self.vector.values }
 
     /// Drops zero components while preserving the logical dimension count.
     ///
     /// ```swift
-    /// let vector = try SizedSparseFloat32Vector<3>(compressing: EmbeddingVector<3>([0, 2, 0]))
+    /// let vector = try SizedSparseFloat32Vector<6>(compressing: EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5]))
+    /// let dense = vector.denseValues() // [0, 0, 1.5, 0, 0, 2.5]; omitted components become zero.
     /// ```
     public init(compressing values: EmbeddingVector<count>) throws {
       try self.init(validating: SparseFloat32Vector(compressing: Array(values)))
@@ -58,8 +60,8 @@ import StructuredQueriesVectorCore
     /// Creates a sparse vector from ascending indices and matching values.
     ///
     /// ```swift
-    /// let vector = try SizedSparseFloat32Vector<3>(indices: [1], values: [2])
-    /// let dense = vector.denseValues()  // [0, 2, 0].
+    /// let vector = try SizedSparseFloat32Vector<6>(indices: [2, 5], values: [1.5, 2.5])
+    /// let dense = vector.denseValues() // [0, 0, 1.5, 0, 0, 2.5]; omitted components become zero.
     /// ```
     public init(indices: [UInt32], values: [Float]) throws {
       try self.init(
@@ -70,8 +72,8 @@ import StructuredQueriesVectorCore
     /// Allocates an inline dense vector, filling omitted dimensions with positive zero.
     ///
     /// ```swift
-    /// let vector = try SizedSparseFloat32Vector<3>(compressing: EmbeddingVector<3>([0, 2, 0]))
-    /// let values = vector.denseValues()
+    /// let vector = try SizedSparseFloat32Vector<6>(indices: [2, 5], values: [1.5, 2.5])
+    /// let dense = vector.denseValues() // [0, 0, 1.5, 0, 0, 2.5]; omitted components become zero.
     /// ```
     public func denseValues() -> EmbeddingVector<count> {
       var values = EmbeddingVector<count>(repeating: 0)
@@ -84,16 +86,18 @@ import StructuredQueriesVectorCore
     /// The serialized blob, including any metadata required by this encoding.
     ///
     /// ```swift
-    /// let vector = try SizedSparseFloat32Vector<3>(compressing: EmbeddingVector<3>([0, 2, 0]))
-    /// let vectorBytes = vector.vectorBytes
+    /// let vector = try SizedSparseFloat32Vector<6>(indices: [2, 5], values: [1.5, 2.5])
+    /// let byteCount = vector.vectorBytes.count // 21: two entries plus dimensions and the type byte.
     /// ```
     public var vectorBytes: [UInt8] { self.vector.vectorBytes }
 
     /// Decodes a vector blob, validating its encoding and dimensions.
     ///
     /// ```swift
-    /// let vector = try SizedSparseFloat32Vector<3>(compressing: EmbeddingVector<3>([0, 2, 0]))
-    /// let restored = try SizedSparseFloat32Vector<3>(vectorBytes: vector.vectorBytes)
+    /// // Values, UInt32 indices, UInt32 logical dimensions, and sparse type byte.
+    /// let storedBytes = Float.encodeVector([1.5, 2.5]) + [2, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 9]
+    /// let vector = try SizedSparseFloat32Vector<6>(vectorBytes: storedBytes)
+    /// let entries = Array(zip(vector.indices, vector.values)) // [(2, 1.5), (5, 2.5)]
     /// ```
     public init(vectorBytes: [UInt8]) throws {
       try self.init(validating: SparseFloat32Vector(vectorBytes: vectorBytes))
@@ -103,9 +107,10 @@ import StructuredQueriesVectorCore
     /// Throws `VectorDecodingError.dimensionMismatch` when the dimension counts differ.
     ///
     /// ```swift
-    /// let dynamic = try SparseFloat32Vector(compressing: [0, 2, 0])
-    /// let sized = try SizedSparseFloat32Vector<3>(validating: dynamic)
-    /// // Encoded components are preserved without quantizing or compressing again.
+    /// let supplied = try SparseFloat32Vector(dimensions: 6, indices: [2, 5], values: [1.5, 2.5])
+    /// let sized = try SizedSparseFloat32Vector<6>(validating: supplied)
+    /// let storedCount = sized.values.count // 2: conversion preserves the sparse entries.
+    /// // A different logical dimension count throws VectorDecodingError.dimensionMismatch.
     /// ```
     public init(validating vector: SparseFloat32Vector) throws {
       guard vector.dimensions == Self.count else {

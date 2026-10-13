@@ -10,8 +10,8 @@ import StructuredQueriesCore
   /// using Swift's scalar equality: signed zeros are equal, and NaNs are unequal.
   ///
   /// ```swift
-  /// let vector = EmbeddingVector<3>([1, 2, 3])
-  /// let components = Array(vector)
+  /// let embedding = EmbeddingVector<3>([0.1, 0.2, 0.3])
+  /// let components = Array(embedding) // Pass to an API that accepts a scalar array.
   /// ```
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public struct FixedEmbeddingVector<let count: Int, Scalar: Hashable & Codable & Sendable>:
@@ -20,8 +20,9 @@ import StructuredQueriesCore
     /// The underlying fixed-size storage for the vector.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let array = vector.array
+    /// var embedding = EmbeddingVector<3>([1, 2, 3])
+    /// embedding.array[1] = 0
+    /// let components = Array(embedding) // [1, 0, 3]
     /// ```
     public var array: [count of Scalar]
 
@@ -30,7 +31,9 @@ import StructuredQueriesCore
     /// - Parameter array: The vector elements.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
+    /// let components: InlineArray<3, Float> = [0.1, 0.2, 0.3]
+    /// let embedding = EmbeddingVector<3>(components)
+    /// let dimensions: Int = embedding.count // 3
     /// ```
     public init(_ array: [count of Scalar]) {
       self.array = array
@@ -42,7 +45,9 @@ import StructuredQueriesCore
     /// - Throws: Rethrows any error thrown by `body`.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3> { index in Float(index) }
+    /// let components: [Float] = [1, -2, 3]
+    /// let embedding = EmbeddingVector<3> { components[$0] / 3 }
+    /// let scaled = Array(embedding) // [1/3, -2/3, 1]
     /// ```
     public init<E: Error>(_ body: (Int) throws(E) -> Scalar) throws(E) {
       try self.init([count of Scalar](body))
@@ -56,7 +61,8 @@ import StructuredQueriesCore
     /// - Throws: Rethrows any error thrown by `next`.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>(first: 1) { $0 + 1 }
+    /// let weights = EmbeddingVector<4>(first: 1) { $0 / 2 }
+    /// let components = Array(weights) // [1, 0.5, 0.25, 0.125]
     /// ```
     public init<E: Error>(first: Scalar, next: (Scalar) throws(E) -> Scalar) throws(E) {
       try self.init([count of Scalar](first: first, next: next))
@@ -68,11 +74,11 @@ import StructuredQueriesCore
     /// - Throws: Rethrows any error thrown by `initializer`.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>(initializingWith: { span in
-    ///   span.append(1)
-    ///   span.append(2)
-    ///   span.append(3)
+    /// let components: [Float] = [0.1, 0.2, 0.3]
+    /// let embedding = EmbeddingVector<3>(initializingWith: { span in
+    ///   for component in components { span.append(component) }
     /// })
+    /// let dimensions: Int = embedding.count // 3
     /// ```
     public init<E: Error>(
       initializingWith initializer: (inout OutputSpan<Scalar>) throws(E) -> Void
@@ -85,7 +91,9 @@ import StructuredQueriesCore
     /// - Parameter value: The value to repeat.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>(repeating: 0)
+    /// var embedding = EmbeddingVector<3>(repeating: 0)
+    /// embedding[1] = 1
+    /// let components = Array(embedding) // [0, 1, 0]
     /// ```
     public init(repeating value: Scalar) {
       self.init([count of Scalar](repeating: value))
@@ -99,8 +107,9 @@ import StructuredQueriesCore
     /// Compares the vector components for equality.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let equal = vector == vector
+    /// let left = EmbeddingVector<3>([-0.0, 1, 2])
+    /// let right = EmbeddingVector<3>([0.0, 1, 2])
+    /// let equal = left == right // true: floating-point equality treats signed zeros equally.
     /// ```
     public static func == (lhs: Self, rhs: Self) -> Bool {
       (0..<Self.count).allSatisfy { lhs.array[$0] == rhs.array[$0] }
@@ -114,8 +123,9 @@ import StructuredQueriesCore
     /// Hashes the vector components.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let vectors = Set([vector])
+    /// let embeddings = [EmbeddingVector<3>([1, 0, 0]), EmbeddingVector<3>([1, 0, 0])]
+    /// let unique = Set(embeddings)
+    /// let uniqueCount = unique.count // 1
     /// ```
     public func hash(into hasher: inout Hasher) {
       hasher.combine(Self.count)
@@ -134,8 +144,9 @@ import StructuredQueriesCore
     /// ```swift
     /// import Foundation
     ///
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let json = try JSONEncoder().encode(vector)
+    /// let embedding = EmbeddingVector<3>([1, 0, 0])
+    /// let json = try JSONEncoder().encode(embedding)
+    /// let payload = String(decoding: json, as: UTF8.self) // "[1,0,0]"
     /// ```
     public func encode(to encoder: any Encoder) throws {
       var container = encoder.unkeyedContainer()
@@ -154,9 +165,9 @@ import StructuredQueriesCore
     /// ```swift
     /// import Foundation
     ///
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let json = try JSONEncoder().encode(vector)
-    /// let restored = try JSONDecoder().decode(EmbeddingVector<3>.self, from: json)
+    /// let payload = Data("[1,0,0]".utf8)
+    /// let embedding = try JSONDecoder().decode(EmbeddingVector<3>.self, from: payload)
+    /// let components = Array(embedding) // [1, 0, 0]; a different component count throws.
     /// ```
     public init(from decoder: any Decoder) throws {
       var container = try decoder.unkeyedContainer()
@@ -194,8 +205,8 @@ import StructuredQueriesCore
     /// A description of the vector and its logical components.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let description = vector.description
+    /// let embedding = EmbeddingVector<3>([1, 0, 0])
+    /// print(embedding.description) // EmbeddingVector<3>([1.0, 0.0, 0.0])
     /// ```
     public var description: String {
       let name =
@@ -213,8 +224,8 @@ import StructuredQueriesCore
     /// A description of the vector and its logical components.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let debugDescription = vector.debugDescription
+    /// let embedding = EmbeddingVector64<3>([1, 0, 0])
+    /// print(embedding.debugDescription) // EmbeddingVector64<3>([1.0, 0.0, 0.0])
     /// ```
     public var debugDescription: String {
       self.description
@@ -228,11 +239,12 @@ import StructuredQueriesCore
     public typealias Element = Scalar
     public typealias Index = Int
 
-    /// A vector query representation.
+    /// A logical component, accessed or updated by index.
     ///
     /// ```swift
-    /// var vector = EmbeddingVector<3>([1, 2, 3])
-    /// vector[0] = 4
+    /// var embedding = EmbeddingVector<3>([1, 2, 3])
+    /// embedding[0] = 0
+    /// let components = Array(embedding) // [0, 2, 3]
     /// ```
     public subscript(position: Index) -> Element {
       _read {
@@ -246,8 +258,9 @@ import StructuredQueriesCore
     /// The index of the first logical component.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let startIndex = vector.startIndex
+    /// var embedding = EmbeddingVector<3>([1, 2, 3])
+    /// embedding[embedding.startIndex] = 0
+    /// let components = Array(embedding) // [0, 2, 3]
     /// ```
     public var startIndex: Int {
       self.array.startIndex
@@ -256,8 +269,8 @@ import StructuredQueriesCore
     /// The index one past the last logical component.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let endIndex = vector.endIndex
+    /// let embedding = EmbeddingVector<3>([1, 2, 3])
+    /// let lastComponent = embedding[embedding.index(before: embedding.endIndex)] // 3
     /// ```
     public var endIndex: Int {
       self.array.endIndex
@@ -266,8 +279,8 @@ import StructuredQueriesCore
     /// Returns the following logical index.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let index = vector.index(after: vector.startIndex)
+    /// let embedding = EmbeddingVector<3>([1, 2, 3])
+    /// let secondComponent = embedding[embedding.index(after: embedding.startIndex)] // 2
     /// ```
     public func index(after i: Int) -> Int {
       self.array.index(after: i)
@@ -292,8 +305,8 @@ import StructuredQueriesCore
   /// A fixed-size Float32 embedding vector with direct raw BLOB query binding.
   ///
   /// ```swift
-  /// let vector = EmbeddingVector<3>([1, 2, 3])
-  /// let bytes = vector.vectorBytes
+  /// let embedding = EmbeddingVector<3>([1, 2, 3])
+  /// let lastComponent = embedding[embedding.index(before: embedding.endIndex)] // 3
   /// ```
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public typealias EmbeddingVector<let count: Int> = FixedEmbeddingVector<count, Float>
@@ -314,7 +327,9 @@ import StructuredQueriesCore
     /// Throws `VectorDecodingError.dimensionMismatch` when the counts differ.
     ///
     /// ```swift
-    /// let vector = try EmbeddingVector<3>(validating: [1, 2, 3])
+    /// let components: [Float] = [0.1, 0.2, 0.3]
+    /// let embedding = try EmbeddingVector<3>(validating: components)
+    /// // An array with a different count throws VectorDecodingError.dimensionMismatch.
     /// ```
     public init(validating vectorElements: [Scalar]) throws {
       guard vectorElements.count == Self.count else {
@@ -335,16 +350,18 @@ import StructuredQueriesCore
     /// The serialized blob, including any metadata required by this encoding.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let vectorBytes = vector.vectorBytes
+    /// let embedding = EmbeddingVector<1536>(repeating: 0)
+    /// let payload = embedding.vectorBytes
+    /// let byteCount = payload.count // 6144 bytes: 1536 Float32 components.
     /// ```
     public var vectorBytes: [UInt8] { Scalar.encodeVector(Array(self)) }
 
     /// Decodes a vector blob, validating its encoding and dimensions.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([1, 2, 3])
-    /// let restored = try EmbeddingVector<3>(vectorBytes: vector.vectorBytes)
+    /// let cachedBytes: [UInt8] = [0, 0, 0x80, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0]
+    /// let embedding = try EmbeddingVector<3>(vectorBytes: cachedBytes)
+    /// let components = Array(embedding) // [1, 0, 0]; a different component count throws.
     /// ```
     public init(vectorBytes: [UInt8]) throws {
       try self.init(validating: Scalar.decodeVector(vectorBytes))
@@ -353,11 +370,18 @@ import StructuredQueriesCore
     /// The scalar's default blob representation with fixed-dimension validation.
     ///
     /// ```swift
-    /// @Table
+    /// @Table("documents")
     /// struct Document {
+    ///   var id: Int
     ///   @Column(as: EmbeddingVector64<3>.VectorBytesRepresentation.self)
     ///   var embedding: EmbeddingVector64<3>
     /// }
+    ///
+    /// let components: EmbeddingVector64<3> = EmbeddingVector64<3>([0.1, 0.2, 0.3])
+    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+    ///   (1, components)
+    /// }
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
     /// ```
     public struct VectorBytesRepresentation:
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -369,17 +393,28 @@ import StructuredQueriesCore
       /// The logical vector value bound to or decoded from a query.
       ///
       /// ```swift
-      /// let vector = EmbeddingVector64<3>
-      ///   .VectorBytesRepresentation(queryOutput: EmbeddingVector64<3>([1, 2, 3]))
-      /// let queryOutput = vector.queryOutput
+      /// let storedBytes: [UInt8] = Double.encodeVector([1, 0, 0])
+      /// let decoded = try EmbeddingVector64<3>.VectorBytesRepresentation(vectorBytes: storedBytes)
+      /// let components = Array(decoded.queryOutput) // [1, 0, 0]
       /// ```
       public var queryOutput: FixedEmbeddingVector<count, Element>
 
       /// Wraps the logical vector value for blob storage and query binding.
       ///
       /// ```swift
+      /// @Table("documents")
+      /// struct Document {
+      ///   var id: Int
+      ///   @Column(as: EmbeddingVector64<3>.VectorBytesRepresentation.self)
+      ///   var embedding: EmbeddingVector64<3>
+      /// }
+      ///
       /// let vector = EmbeddingVector64<3>
       ///   .VectorBytesRepresentation(queryOutput: EmbeddingVector64<3>([1, 2, 3]))
+      /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+      ///   (1, vector)
+      /// }
+      /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
       /// ```
       public init(queryOutput: FixedEmbeddingVector<count, Element>) {
         self.queryOutput = queryOutput
@@ -391,15 +426,16 @@ import StructuredQueriesCore
       /// let vector = EmbeddingVector64<3>
       ///   .VectorBytesRepresentation(queryOutput: EmbeddingVector64<3>([1, 2, 3]))
       /// let vectorBytes = vector.vectorBytes
+      /// // 24 raw bytes for three Float64 components.
       /// ```
       public var vectorBytes: [UInt8] { self.queryOutput.vectorBytes }
 
       /// Decodes a vector blob, validating its encoding and dimensions.
       ///
       /// ```swift
-      /// let vector = EmbeddingVector64<3>
-      ///   .VectorBytesRepresentation(queryOutput: EmbeddingVector64<3>([1, 2, 3]))
-      /// let restored = try EmbeddingVector64<3>.VectorBytesRepresentation(vectorBytes: vector.vectorBytes)
+      /// let storedBytes: [UInt8] = Double.encodeVector([1, 0, 0])
+      /// let decoded = try EmbeddingVector64<3>.VectorBytesRepresentation(vectorBytes: storedBytes)
+      /// let components = Array(decoded.queryOutput) // [1, 0, 0]
       /// ```
       public init(vectorBytes: [UInt8]) throws {
         try self.init(queryOutput: FixedEmbeddingVector<count, Element>(vectorBytes: vectorBytes))

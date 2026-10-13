@@ -6,8 +6,9 @@ import StructuredQueriesVectorCore
     /// Applies Turso's unsigned affine quantization while retaining inline code storage.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([0, 1, 0])
-    /// let encoded = try vector.quantized8()
+    /// let embedding = EmbeddingVector<3>([0, 127.5, 255])
+    /// let quantized = try embedding.quantized8()
+    /// let reconstructed = quantized.decodedValues() // [0, 128, 255]: quantization is lossy.
     /// ```
     public func quantized8() throws -> InlineQuantized8Vector<count> {
       try InlineQuantized8Vector<count>(quantizing: self)
@@ -16,8 +17,9 @@ import StructuredQueriesVectorCore
     /// Compresses exact zeros while retaining the logical dimension count.
     ///
     /// ```swift
-    /// let vector = EmbeddingVector<3>([0, 1, 0])
-    /// let encoded = try vector.sparseFloat32()
+    /// let embedding = EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5])
+    /// let sparse = try embedding.sparseFloat32()
+    /// let entries = Array(zip(sparse.indices, sparse.values)) // [(2, 1.5), (5, 2.5)]
     /// ```
     public func sparseFloat32() throws -> SizedSparseFloat32Vector<count> {
       try SizedSparseFloat32Vector<count>(compressing: self)

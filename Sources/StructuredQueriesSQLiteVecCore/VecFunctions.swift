@@ -8,9 +8,17 @@ import StructuredQueriesCore
 /// bound blobs correctly.
 ///
 /// ```swift
-/// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
-/// let expression = Vec.length(vector)
-/// // vec_length(?)
+/// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+/// @Table("Embeddings")
+/// struct Embedding: Vec0 {
+///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+///   var embedding: EmbeddingVector<8>
+///   var label: String
+/// }
+///
+/// let dimensions = Embedding.select { ($0.label, Vec.length($0.embedding)) }
+/// // SELECT "Embeddings"."label", vec_length("Embeddings"."embedding")
+/// // FROM "Embeddings"
 /// ```
 public enum Vec {
   /// Matches a query vector expression against a vec0 float32 column.
@@ -19,14 +27,24 @@ public enum Vec {
   /// limit or `k` constraint. The query vector can be a bound value or a computed expression.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-  /// let query =
-  ///   Embedding
-  ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<8>(repeating: 0.25)
+  /// let neighbors = Embedding
+  ///   .where { Vec.match($0.embedding, to: queryVector) }
+  ///   .order { $0.distance }
   ///   .limit(5)
-  /// // SELECT "Embeddings"."embedding", "Embeddings"."label"
+  ///   .select { ($0.label, $0.distance) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."distance"
   /// // FROM "Embeddings"
-  /// // WHERE (("Embeddings"."embedding" MATCH vec_normalize(?)))
+  /// // WHERE (("Embeddings"."embedding" MATCH ?))
+  /// // ORDER BY "Embeddings"."distance"
   /// // LIMIT ?
   /// ```
   public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
@@ -43,14 +61,24 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-  /// let query =
-  ///   Embedding
-  ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<8>(repeating: 0.25)
+  /// let neighbors = Embedding
+  ///   .where { Vec.match($0.embedding, to: queryVector) }
+  ///   .order { $0.distance }
   ///   .limit(5)
-  /// // SELECT "Embeddings"."embedding", "Embeddings"."label"
+  ///   .select { ($0.label, $0.distance) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."distance"
   /// // FROM "Embeddings"
-  /// // WHERE (("Embeddings"."embedding" MATCH vec_normalize(?)))
+  /// // WHERE (("Embeddings"."embedding" MATCH ?))
+  /// // ORDER BY "Embeddings"."distance"
   /// // LIMIT ?
   /// ```
   @_disfavoredOverload
@@ -68,14 +96,24 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-  /// let query =
-  ///   Embedding
-  ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [Float](repeating: 0.25, count: 8))
+  /// let neighbors = Embedding
+  ///   .where { Vec.match($0.embedding, to: queryVector) }
+  ///   .order { $0.distance }
   ///   .limit(5)
-  /// // SELECT "Embeddings"."embedding", "Embeddings"."label"
+  ///   .select { ($0.label, $0.distance) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."distance"
   /// // FROM "Embeddings"
-  /// // WHERE (("Embeddings"."embedding" MATCH vec_normalize(?)))
+  /// // WHERE (("Embeddings"."embedding" MATCH ?))
+  /// // ORDER BY "Embeddings"."distance"
   /// // LIMIT ?
   /// ```
   @_disfavoredOverload
@@ -96,18 +134,24 @@ public enum Vec {
   /// value or a computed expression, and `vec_bit` attaches SQLiteVec's required subtype.
   ///
   /// ```swift
-  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16]);
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
   /// @Table("Embeddings")
   /// struct Embedding: Vec0 {
-  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
-  ///   var embedding: [Bool]
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
   /// }
   ///
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
-  /// // SELECT "Embeddings"."embedding"
+  /// let queryVector = BinaryEmbeddingVector<16>.PackedBitsRepresentation(queryOutput: BinaryEmbeddingVector<16>(repeating: false))
+  /// let neighbors = Embedding
+  ///   .where { Vec.match($0.embedding, to: queryVector) }
+  ///   .order { $0.distance }
+  ///   .limit(5)
+  ///   .select { ($0.label, $0.distance) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."distance"
   /// // FROM "Embeddings"
   /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // ORDER BY "Embeddings"."distance"
   /// // LIMIT ?
   /// ```
   public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
@@ -124,18 +168,24 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16]);
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
   /// @Table("Embeddings")
   /// struct Embedding: Vec0 {
   ///   @Column(as: [Bool].PackedBitsRepresentation.self)
   ///   var embedding: [Bool]
+  ///   var label: String
   /// }
   ///
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
-  /// // SELECT "Embeddings"."embedding"
+  /// let queryVector = BinaryEmbeddingVector<16>.PackedBitsRepresentation(queryOutput: BinaryEmbeddingVector<16>(repeating: false))
+  /// let neighbors = Embedding
+  ///   .where { Vec.match($0.embedding, to: queryVector) }
+  ///   .order { $0.distance }
+  ///   .limit(5)
+  ///   .select { ($0.label, $0.distance) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."distance"
   /// // FROM "Embeddings"
   /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // ORDER BY "Embeddings"."distance"
   /// // LIMIT ?
   /// ```
   @_disfavoredOverload
@@ -153,18 +203,24 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16]);
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
   /// @Table("Embeddings")
   /// struct Embedding: Vec0 {
-  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
-  ///   var embedding: [Bool]
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
   /// }
   ///
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
-  /// // SELECT "Embeddings"."embedding"
+  /// let queryVector = [Bool].PackedBitsRepresentation(queryOutput: [Bool](repeating: false, count: 16))
+  /// let neighbors = Embedding
+  ///   .where { Vec.match($0.embedding, to: queryVector) }
+  ///   .order { $0.distance }
+  ///   .limit(5)
+  ///   .select { ($0.label, $0.distance) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."distance"
   /// // FROM "Embeddings"
   /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // ORDER BY "Embeddings"."distance"
   /// // LIMIT ?
   /// ```
   @_disfavoredOverload
@@ -183,7 +239,15 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_distance_l2` function.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.distanceL2($0.embedding, to: queryVector)
   /// }
@@ -212,7 +276,15 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.distanceL2($0.embedding, to: queryVector)
   /// }
@@ -237,7 +309,15 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [Float](repeating: 0.25, count: 3))
   /// let query = Embedding.select {
   ///   Vec.distanceL2($0.embedding, to: queryVector)
   /// }
@@ -263,7 +343,15 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_distance_l1` function.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.distanceL1($0.embedding, to: queryVector)
   /// }
@@ -292,7 +380,15 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.distanceL1($0.embedding, to: queryVector)
   /// }
@@ -317,7 +413,15 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [Float](repeating: 0.25, count: 3))
   /// let query = Embedding.select {
   ///   Vec.distanceL1($0.embedding, to: queryVector)
   /// }
@@ -343,7 +447,15 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_distance_cosine` function.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.distanceCosine($0.embedding, to: queryVector)
   /// }
@@ -372,7 +484,15 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.distanceCosine($0.embedding, to: queryVector)
   /// }
@@ -397,7 +517,15 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [Float](repeating: 0.25, count: 3))
   /// let query = Embedding.select {
   ///   Vec.distanceCosine($0.embedding, to: queryVector)
   /// }
@@ -423,9 +551,15 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_distance_hamming` function.
   ///
   /// ```swift
-  /// let queryVector: [Bool].PackedBitsRepresentation = [
-  ///   true, false, true, false, false, false, false, true
-  /// ]
+  /// // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
+  /// @Table("BinaryEmbeddings")
+  /// struct BinaryEmbedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = BinaryEmbeddingVector<8>.PackedBitsRepresentation(queryOutput: BinaryEmbeddingVector<8>(repeating: false))
   /// let query = BinaryEmbedding.select {
   ///   Vec.distanceHamming($0.embedding, to: queryVector)
   /// }
@@ -454,9 +588,15 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Bool].PackedBitsRepresentation = [
-  ///   true, false, true, false, false, false, false, true
-  /// ]
+  /// // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
+  /// @Table("BinaryEmbeddings")
+  /// struct BinaryEmbedding: Vec0 {
+  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+  ///   var embedding: [Bool]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = BinaryEmbeddingVector<8>.PackedBitsRepresentation(queryOutput: BinaryEmbeddingVector<8>(repeating: false))
   /// let query = BinaryEmbedding.select {
   ///   Vec.distanceHamming($0.embedding, to: queryVector)
   /// }
@@ -481,9 +621,15 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Bool].PackedBitsRepresentation = [
-  ///   true, false, true, false, false, false, false, true
-  /// ]
+  /// // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
+  /// @Table("BinaryEmbeddings")
+  /// struct BinaryEmbedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Bool].PackedBitsRepresentation(queryOutput: [Bool](repeating: false, count: 8))
   /// let query = BinaryEmbedding.select {
   ///   Vec.distanceHamming($0.embedding, to: queryVector)
   /// }
@@ -509,6 +655,14 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_length` function.
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
   /// let query = Embedding.select {
   ///   Vec.length($0.embedding)
   /// }
@@ -528,6 +682,14 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_type` function.
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
   /// let query = Embedding.select {
   ///   Vec.type($0.embedding)
   /// }
@@ -547,6 +709,14 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_to_json` function.
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
   /// let query = Embedding.select {
   ///   Vec.toJSON($0.embedding)
   /// }
@@ -566,7 +736,15 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_add` function.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.add($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
   /// }
@@ -599,7 +777,15 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.add($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
   /// }
@@ -627,7 +813,15 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [Float](repeating: 0.25, count: 3))
   /// let query = Embedding.select {
   ///   Vec.add($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
   /// }
@@ -656,7 +850,15 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_add` function.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.add($0.embedding, queryVector)
   /// }
@@ -682,7 +884,15 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.add($0.embedding, queryVector)
   /// }
@@ -704,7 +914,15 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [Float](repeating: 0.25, count: 3))
   /// let query = Embedding.select {
   ///   Vec.add($0.embedding, queryVector)
   /// }
@@ -727,7 +945,15 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_sub` function.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.sub($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
   /// }
@@ -760,7 +986,15 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.sub($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
   /// }
@@ -788,7 +1022,15 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [Float](repeating: 0.25, count: 3))
   /// let query = Embedding.select {
   ///   Vec.sub($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
   /// }
@@ -817,7 +1059,15 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_sub` function.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.sub($0.embedding, queryVector)
   /// }
@@ -843,7 +1093,15 @@ public enum Vec {
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>(repeating: 0.25)
   /// let query = Embedding.select {
   ///   Vec.sub($0.embedding, queryVector)
   /// }
@@ -865,7 +1123,15 @@ public enum Vec {
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
   ///
   /// ```swift
-  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [Float](repeating: 0.25, count: 3))
   /// let query = Embedding.select {
   ///   Vec.sub($0.embedding, queryVector)
   /// }
@@ -888,10 +1154,18 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_slice` function.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.slice($0.embedding, start: 0, end: 3, as: [Float].VectorBytesRepresentation.self)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
   /// }
-  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  ///
+  /// let query = Embedding.select {
+  ///   Vec.slice($0.embedding, start: 0, end: 2, as: EmbeddingVector<2>.self)
+  /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 2)
   /// // FROM "Embeddings"
   /// ```
   ///
@@ -920,10 +1194,18 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_slice` function.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.slice($0.embedding, start: 0, end: 3)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
   /// }
-  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  ///
+  /// let query = Embedding.select {
+  ///   Vec.slice($0.embedding, start: 0, end: 2)
+  /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 2)
   /// // FROM "Embeddings"
   /// ```
   ///
@@ -950,10 +1232,18 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_slice` function.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.slice($0.embedding, range: 0..<3, as: [Float].VectorBytesRepresentation.self)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
   /// }
-  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  ///
+  /// let query = Embedding.select {
+  ///   Vec.slice($0.embedding, range: 0..<2, as: EmbeddingVector<2>.self)
+  /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 2)
   /// // FROM "Embeddings"
   /// ```
   ///
@@ -980,10 +1270,18 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_slice` function.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.slice($0.embedding, range: 0..<3)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
   /// }
-  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  ///
+  /// let query = Embedding.select {
+  ///   Vec.slice($0.embedding, range: 0..<2)
+  /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 2)
   /// // FROM "Embeddings"
   /// ```
   ///
@@ -1003,10 +1301,18 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_slice` function.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.slice($0.embedding, range: 0...2, as: [Float].VectorBytesRepresentation.self)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
   /// }
-  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  ///
+  /// let query = Embedding.select {
+  ///   Vec.slice($0.embedding, range: 0...1, as: EmbeddingVector<2>.self)
+  /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 2)
   /// // FROM "Embeddings"
   /// ```
   ///
@@ -1033,10 +1339,18 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_slice` function.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.slice($0.embedding, range: 0...2)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
   /// }
-  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  ///
+  /// let query = Embedding.select {
+  ///   Vec.slice($0.embedding, range: 0...1)
+  /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 2)
   /// // FROM "Embeddings"
   /// ```
   ///
@@ -1056,10 +1370,18 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_slice` function.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.slice($0.embedding, start: 0, length: 3, as: [Float].VectorBytesRepresentation.self)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
   /// }
-  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  ///
+  /// let query = Embedding.select {
+  ///   Vec.slice($0.embedding, start: 0, length: 2, as: EmbeddingVector<2>.self)
+  /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 2)
   /// // FROM "Embeddings"
   /// ```
   ///
@@ -1088,10 +1410,18 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_slice` function.
   ///
   /// ```swift
-  /// let query = Embedding.select {
-  ///   Vec.slice($0.embedding, start: 0, length: 3)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
   /// }
-  /// // SELECT vec_slice("Embeddings"."embedding", 0, 3)
+  ///
+  /// let query = Embedding.select {
+  ///   Vec.slice($0.embedding, start: 0, length: 2)
+  /// }
+  /// // SELECT vec_slice("Embeddings"."embedding", 0, 2)
   /// // FROM "Embeddings"
   /// ```
   ///
@@ -1113,6 +1443,14 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_normalize` function.
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
   /// let query = Embedding.select {
   ///   Vec.normalize($0.embedding, as: [Float].VectorBytesRepresentation.self)
   /// }
@@ -1141,6 +1479,14 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_normalize` function.
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
   /// let query = Embedding.select {
   ///   Vec.normalize($0.embedding)
   /// }
@@ -1163,6 +1509,14 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_f32` function.
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
   /// let query = Embedding.select {
   ///   Vec.f32($0.embedding, as: [Float].VectorBytesRepresentation.self)
   /// }
@@ -1188,6 +1542,14 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_f32` function.
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<3>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
   /// let query = Embedding.select {
   ///   Vec.f32($0.embedding)
   /// }
@@ -1207,8 +1569,18 @@ public enum Vec {
   /// Parses a JSON array of numbers as a Float32 vector.
   ///
   /// ```swift
-  /// let expression = Vec.f32("[1, 2, 3]")
-  /// // vec_f32(?)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
+  /// let insert = Embedding.insert { ($0.embedding, $0.label) } values: {
+  ///   (Vec.f32("[0.1, 0.2, 0.3]"), "Introduction to databases")
+  /// }
+  /// // INSERT INTO "Embeddings" ("embedding", "label") VALUES (vec_f32(?), ?)
   /// ```
   public static func f32(
     _ json: some QueryExpression<String>
@@ -1219,8 +1591,17 @@ public enum Vec {
   /// Parses JSON as Float32, validating the requested dimensions when decoding.
   ///
   /// ```swift
-  /// let expression = Vec.f32("[1, 2, 3]", as: EmbeddingVector<3>.self)
-  /// // vec_f32(?)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   var embedding: EmbeddingVector<3>
+  ///   var label: String
+  /// }
+  ///
+  /// let insert = Embedding.insert { ($0.embedding, $0.label) } values: {
+  ///   (Vec.f32("[0.1, 0.2, 0.3]", as: EmbeddingVector<3>.self), "Introduction to databases")
+  /// }
+  /// // INSERT INTO "Embeddings" ("embedding", "label") VALUES (vec_f32(?), ?)
   /// ```
   public static func f32<T: VectorBytesRepresentable & QueryBindable>(
     _ json: some QueryExpression<String>,
@@ -1234,11 +1615,19 @@ public enum Vec {
   /// Use `quantizeBinary` to quantize numeric components by sign instead.
   ///
   /// ```swift
-  /// let query = Embedding.select {
+  /// // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
+  /// @Table("BinaryEmbeddings")
+  /// struct BinaryEmbedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = BinaryEmbedding.select {
   ///   Vec.bit($0.embedding, as: [Bool].PackedBitsRepresentation.self)
   /// }
-  /// // SELECT vec_bit("Embeddings"."embedding")
-  /// // FROM "Embeddings"
+  /// // SELECT vec_bit("BinaryEmbeddings"."embedding")
+  /// // FROM "BinaryEmbeddings"
   /// ```
   ///
   /// - Parameters:
@@ -1260,11 +1649,19 @@ public enum Vec {
   /// Use `quantizeBinary` to quantize numeric components by sign instead.
   ///
   /// ```swift
-  /// let query = Embedding.select {
+  /// // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
+  /// @Table("BinaryEmbeddings")
+  /// struct BinaryEmbedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = BinaryEmbedding.select {
   ///   Vec.bit($0.embedding)
   /// }
-  /// // SELECT vec_bit("Embeddings"."embedding")
-  /// // FROM "Embeddings"
+  /// // SELECT vec_bit("BinaryEmbeddings"."embedding")
+  /// // FROM "BinaryEmbeddings"
   /// ```
   ///
   /// - Parameter expression: The vector expression to convert.
@@ -1287,12 +1684,22 @@ public enum Vec {
   ///   - result: A signed Int8 result representation, optionally validating fixed dimensions.
   ///
   /// ```swift
-  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
-  /// let expression = Vec.quantizeInt8(
-  ///   vector,
-  ///   as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
-  /// )
-  /// // vec_quantize_int8(?, 'unit')
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.quantizeInt8(
+  ///     $0.embedding,
+  ///     as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
+  ///   ))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_quantize_int8("Embeddings"."embedding", 'unit')
+  /// // FROM "Embeddings"
   /// ```
   public static func quantizeInt8<
     V: VectorBytesRepresentable,
@@ -1310,6 +1717,14 @@ public enum Vec {
   /// Quantizes Float32 components in [-1, 1] to signed Int8 codes, clamping out-of-range values.
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
   /// let query = Embedding.select { $0.embedding.quantizeInt8() }
   /// // SELECT vec_quantize_int8("Embeddings"."embedding", 'unit')
   /// // FROM "Embeddings"
@@ -1327,11 +1742,21 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_quantize_binary` function. Dimensions must be divisible by eight.
   ///
   /// ```swift
-  /// let vector: [Float].VectorBytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
-  /// let expression = Vec.quantizeBinary(
-  ///   vector, as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
-  /// )
-  /// // vec_quantize_binary(?)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.quantizeBinary(
+  ///     $0.embedding, as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  ///   ))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_quantize_binary("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameters:
@@ -1355,9 +1780,19 @@ public enum Vec {
   /// This calls sqlite-vec's `vec_quantize_binary` function. Dimensions must be divisible by eight.
   ///
   /// ```swift
-  /// let vector: [Float].VectorBytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
-  /// let expression = Vec.quantizeBinary(vector)
-  /// // vec_quantize_binary(?)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.quantizeBinary($0.embedding))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_quantize_binary("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   ///
   /// - Parameter expression: The vector expression to quantize.
@@ -1374,9 +1809,19 @@ public enum Vec {
   /// Returns the dimension count of a packed-bit vector.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.length(vector)
-  /// // vec_length(vec_bit(?))
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.length($0.embedding))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_length(vec_bit("Embeddings"."embedding"))
+  /// // FROM "Embeddings"
   /// ```
   public static func length<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
@@ -1387,9 +1832,19 @@ public enum Vec {
   /// Returns the SQLiteVec type of a packed-bit vector.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.type(vector)
-  /// // vec_type(vec_bit(?))
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.type($0.embedding))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_type(vec_bit("Embeddings"."embedding"))
+  /// // FROM "Embeddings"
   /// ```
   public static func type<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
@@ -1400,9 +1855,19 @@ public enum Vec {
   /// Returns the JSON elements of a packed-bit vector.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.toJSON(vector)
-  /// // vec_to_json(vec_bit(?))
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.toJSON($0.embedding))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_to_json(vec_bit("Embeddings"."embedding"))
+  /// // FROM "Embeddings"
   /// ```
   public static func toJSON<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
@@ -1413,14 +1878,24 @@ public enum Vec {
   /// Slices packed bits. The start and end indices must be divisible by eight.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.slice(
-  ///   vector,
-  ///   start: 0,
-  ///   end: 8,
-  ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
-  /// )
-  /// // vec_slice(vec_bit(?), 0, 8)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.slice(
+  ///     $0.embedding,
+  ///     start: 0,
+  ///     end: 8,
+  ///     as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  ///   ))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_slice(vec_bit("Embeddings"."embedding"), 0, 8)
+  /// // FROM "Embeddings"
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -1439,9 +1914,19 @@ public enum Vec {
   /// Slices packed bits. The start and end indices must be divisible by eight.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.slice(vector, start: 0, end: 8)
-  /// // vec_slice(vec_bit(?), 0, 8)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.slice($0.embedding, start: 0, end: 8))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_slice(vec_bit("Embeddings"."embedding"), 0, 8)
+  /// // FROM "Embeddings"
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -1460,13 +1945,23 @@ public enum Vec {
   /// Slices packed bits. The start and end indices must be divisible by eight.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.slice(
-  ///   vector,
-  ///   range: 0..<8,
-  ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
-  /// )
-  /// // vec_slice(vec_bit(?), 0, 8)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.slice(
+  ///     $0.embedding,
+  ///     range: 0..<8,
+  ///     as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  ///   ))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_slice(vec_bit("Embeddings"."embedding"), 0, 8)
+  /// // FROM "Embeddings"
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -1484,9 +1979,19 @@ public enum Vec {
   /// Slices packed bits. The start and end indices must be divisible by eight.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.slice(vector, range: 0..<8)
-  /// // vec_slice(vec_bit(?), 0, 8)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.slice($0.embedding, range: 0..<8))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_slice(vec_bit("Embeddings"."embedding"), 0, 8)
+  /// // FROM "Embeddings"
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -1499,13 +2004,23 @@ public enum Vec {
   /// Slices packed bits. The start and end indices must be divisible by eight.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.slice(
-  ///   vector,
-  ///   range: 0...7,
-  ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
-  /// )
-  /// // vec_slice(vec_bit(?), 0, 8)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.slice(
+  ///     $0.embedding,
+  ///     range: 0...7,
+  ///     as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  ///   ))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_slice(vec_bit("Embeddings"."embedding"), 0, 8)
+  /// // FROM "Embeddings"
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -1523,9 +2038,19 @@ public enum Vec {
   /// Slices packed bits. The start and end indices must be divisible by eight.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.slice(vector, range: 0...7)
-  /// // vec_slice(vec_bit(?), 0, 8)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.slice($0.embedding, range: 0...7))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_slice(vec_bit("Embeddings"."embedding"), 0, 8)
+  /// // FROM "Embeddings"
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -1538,14 +2063,24 @@ public enum Vec {
   /// Slices packed bits. The start and end indices must be divisible by eight.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.slice(
-  ///   vector,
-  ///   start: 0,
-  ///   length: 8,
-  ///   as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
-  /// )
-  /// // vec_slice(vec_bit(?), 0, 8)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.slice(
+  ///     $0.embedding,
+  ///     start: 0,
+  ///     length: 8,
+  ///     as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self
+  ///   ))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_slice(vec_bit("Embeddings"."embedding"), 0, 8)
+  /// // FROM "Embeddings"
   /// ```
   public static func slice<
     V: VectorBytesRepresentable,
@@ -1564,9 +2099,19 @@ public enum Vec {
   /// Slices packed bits. The start and end indices must be divisible by eight.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.slice(vector, start: 0, length: 8)
-  /// // vec_slice(vec_bit(?), 0, 8)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.slice($0.embedding, start: 0, length: 8))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_slice(vec_bit("Embeddings"."embedding"), 0, 8)
+  /// // FROM "Embeddings"
   /// ```
   public static func slice<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
@@ -1580,9 +2125,19 @@ public enum Vec {
   /// Marks a packed-bit blob with SQLiteVec's binary subtype.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.bit(vector, as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
-  /// // vec_bit(?)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.bit($0.embedding, as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_bit("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   public static func bit<V: VectorBytesRepresentable, T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
@@ -1596,9 +2151,19 @@ public enum Vec {
   /// Marks a packed-bit blob with SQLiteVec's binary subtype.
   ///
   /// ```swift
-  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
-  /// let expression = Vec.bit(vector)
-  /// // vec_bit(?)
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: BinaryEmbeddingVector<16>.PackedBitsRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<16>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.bit($0.embedding))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_bit("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   public static func bit<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>

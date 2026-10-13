@@ -18,6 +18,14 @@ public typealias VecEach = VecEachOf<Float>
 /// packed-bit vectors yield `VecEachOf<Bool>`.
 ///
 /// ```swift
+/// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+/// @Table("Embeddings")
+/// struct Embedding: Vec0 {
+///   @Column(as: [Float].VectorBytesRepresentation.self)
+///   var embedding: [Float]
+///   var label: String
+/// }
+///
 /// let query =
 ///   Embedding
 ///   .join(Embedding.columns.embedding.vecEach()) { _, _ in true }
@@ -74,18 +82,20 @@ where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOu
   /// The zero-based index of the current vector element.
   ///
   /// ```swift
-  /// func positions(_ rows: [VecEach]) -> [Int] {
-  ///   rows.map(\.rowid)
+  /// func negativePositions(in rows: [VecEach]) -> [Int] {
+  ///   rows.filter { $0.value < 0 }.map(\.rowid)
   /// }
+  /// // Use with fetched vec_each rows to locate negative components.
   /// ```
   public let rowid: Int
 
   /// The current vector element.
   ///
   /// ```swift
-  /// func components(_ rows: [VecEach]) -> [Float] {
-  ///   rows.map(\.value)
+  /// func orderedComponents(in rows: [VecEach]) -> [Float] {
+  ///   rows.sorted { $0.rowid < $1.rowid }.map(\.value)
   /// }
+  /// // Reconstruct the scalar array from fetched rows, independent of their order.
   /// ```
   public let value: Value
 
@@ -102,11 +112,11 @@ where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOu
     /// Selects the zero-based component positions.
     ///
     /// ```swift
-    /// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
-    /// let query = Vec.each(vector).select { $0.rowid }
+    /// let vector: [Float].VectorBytesRepresentation = [1, -2, 3]
+    /// let query = Vec.each(vector).where { $0.value.lt(Float(0)) }.select { $0.rowid }
     /// // SELECT "vec_each"."rowid"
     /// // FROM "vec_each"
-    /// // WHERE ("vec_each"."vector" = ?)
+    /// // WHERE ("vec_each"."vector" = ?) AND (("vec_each"."value") < (?))
     /// ```
     public var rowid: GeneratedColumn<VecEachOf<Value>, Int> {
       GeneratedColumn("rowid", keyPath: \VecEachOf<Value>.rowid)
@@ -116,11 +126,12 @@ where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOu
     /// Selects the logical vector components.
     ///
     /// ```swift
-    /// let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
-    /// let query = Vec.each(vector).select { $0.value }
+    /// let vector: [Float].VectorBytesRepresentation = [1, -2, 3]
+    /// let query = Vec.each(vector).order { $0.rowid }.select { $0.value }
     /// // SELECT "vec_each"."value"
     /// // FROM "vec_each"
     /// // WHERE ("vec_each"."vector" = ?)
+    /// // ORDER BY "vec_each"."rowid"
     /// ```
     public var value: GeneratedColumn<VecEachOf<Value>, Value> {
       GeneratedColumn("value", keyPath: \VecEachOf<Value>.value)
@@ -185,6 +196,14 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Float].Vecto
   /// ordered, aggregated, and selected from like any other select statement:
   ///
   /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  ///   var label: String
+  /// }
+  ///
   /// let query =
   ///   Embedding
   ///   .where {

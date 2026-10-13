@@ -166,6 +166,10 @@ let compressed = try Quantized8Vector(quantizing: [0, 127.5, 255])
 // codes: [0, 128, 255], scale: 1, shift: 0
 let values = compressed.decodedValues() // [0, 128, 255]
 let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+let insert = CompressedDocument.insert { ($0.id, $0.embedding) } values: {
+  (1, compressed)
+}
+// INSERT INTO "compressed_documents" ("id", "embedding") VALUES (?, ?)
 ```
 
 `init(quantizing:)` applies min/max quantization once. `init(codes:scale:shift:)` accepts encoded
@@ -283,7 +287,8 @@ let doubles = TursoVec.vector64("[1, 2, 3, 4]", as: EmbeddingVector64<4>.TursoFl
 let sliced = TursoVec.slice(TursoVec.vector32("[1, 2, 3, 4]"), from: 1, to: 3, as: EmbeddingVector<2>.self)
 // vector_slice(vector32(?), ?, ?)
 
-let restored = try Quantized8Vector(vectorBytes: quantized.vectorBytes)
+let suppliedValues = inline.decodedValues() // [21, 41]: scale and shift are preserved.
+let sparseEntries = Array(zip(sized.indices, sized.values)) // [(1, 2), (3, 5)]
 ```
 
 `as:` selects a matching result representation; its dimensions are validated when decoding.

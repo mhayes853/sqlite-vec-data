@@ -81,7 +81,7 @@ struct `Vector tests` {
   }
 
   @Test
-  func `Searches Vectors`() throws {
+  func `Creates A Vector Table`() throws {
     try self.database.write { db in
       try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
     }

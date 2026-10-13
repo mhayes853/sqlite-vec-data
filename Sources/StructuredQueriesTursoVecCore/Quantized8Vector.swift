@@ -8,8 +8,8 @@ import StructuredQueriesVectorCore
 /// Equality and hashing compare codes and the bit patterns of scale and shift.
 ///
 /// ```swift
-/// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-/// let dense = vector.decodedValues()
+/// let vector = try Quantized8Vector(quantizing: [0, 127.5, 255])
+/// let reconstructed = vector.decodedValues() // [0, 128, 255]: the middle component loses 0.5.
 /// ```
 public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
   public typealias QueryOutput = Self
@@ -21,37 +21,39 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   /// The unsigned byte codes used by affine quantization.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let codes = vector.codes
+  /// let vector = try Quantized8Vector(codes: [10, 20, 30], scale: 2, shift: 1)
+  /// let reconstructed = vector.codes.map { Float($0) * vector.scale + vector.shift } // [21, 41, 61]
   /// ```
   public let codes: [UInt8]
   /// The multiplier applied to every code when reconstructing components.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let scale = vector.scale
+  /// let vector = try Quantized8Vector(codes: [10, 20, 30], scale: 2, shift: 1)
+  /// let reconstructed = vector.codes.map { Float($0) * vector.scale + vector.shift } // [21, 41, 61]
   /// ```
   public let scale: Float
   /// The offset added after multiplying each code by `scale`.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let shift = vector.shift
+  /// let vector = try Quantized8Vector(codes: [10, 20, 30], scale: 2, shift: 1)
+  /// let reconstructed = vector.codes.map { Float($0) * vector.scale + vector.shift } // [21, 41, 61]
   /// ```
   public let shift: Float
 
   /// The number of logical vector components.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let dimensions = vector.dimensions
+  /// let vector = try Quantized8Vector(quantizing: [0, 127.5, 255])
+  /// let dimensions = vector.dimensions // 3 logical components
+  /// let payloadBytes = vector.vectorBytes.count // 15 bytes, including padding and quantization parameters.
   /// ```
   public var dimensions: Int { self.codes.count }
 
   /// Quantizes finite values using Turso's min/max scale, shift, and rounding rule.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
+  /// let vector = try Quantized8Vector(quantizing: [0, 127.5, 255])
+  /// let reconstructed = vector.decodedValues() // [0, 128, 255]: quantization is lossy.
   /// ```
   public init(quantizing values: [Float]) throws {
     guard values.allSatisfy(\.isFinite) else {
@@ -79,8 +81,8 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   /// Creates a vector from already quantized components without changing them.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(codes: [0, 128, 255], scale: 0.01, shift: -1)
-  /// let dense = vector.decodedValues()  // Float(code) * scale + shift.
+  /// let vector = try Quantized8Vector(codes: [10, 20, 30], scale: 2, shift: 1)
+  /// let reconstructed = vector.decodedValues() // [21, 41, 61]; the supplied codes are preserved.
   /// ```
   public init(codes: [UInt8], scale: Float, shift: Float) throws {
     guard scale.isFinite, scale >= 0, shift.isFinite,
@@ -100,8 +102,8 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   /// Reconstructs dense float32 values from the stored codes and parameters.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let values = vector.decodedValues()
+  /// let vector = try Quantized8Vector(codes: [10, 20, 30], scale: 2, shift: 1)
+  /// let reconstructed = vector.decodedValues() // [21, 41, 61]; allocates a dense Float array.
   /// ```
   public func decodedValues() -> [Float] {
     self.codes.map { Float($0) * self.scale + self.shift }
@@ -110,8 +112,9 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   /// The serialized blob, including any metadata required by this encoding.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let vectorBytes = vector.vectorBytes
+  /// let vector = try Quantized8Vector(quantizing: [0, 127.5, 255])
+  /// let payload = vector.vectorBytes
+  /// let formatTag = payload.last // 4: Turso's affine UInt8 format, including scale and shift.
   /// ```
   public var vectorBytes: [UInt8] {
     encodeQuantized8Vector(codes: self.codes, scale: self.scale, shift: self.shift)
@@ -120,8 +123,9 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   /// Compares the vector components for equality.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let equal = vector == vector
+  /// let left = try Quantized8Vector(codes: [0, 0, 0], scale: 1, shift: -0.0)
+  /// let right = try Quantized8Vector(codes: [0, 0, 0], scale: 1, shift: 0.0)
+  /// let equal = left == right // false: encoded parameter bit patterns differ.
   /// ```
   public static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.codes == rhs.codes && lhs.scale.bitPattern == rhs.scale.bitPattern
@@ -131,8 +135,9 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   /// Hashes the vector components.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let vectors = Set([vector])
+  /// let generated = try Quantized8Vector(quantizing: [0, 128, 255])
+  /// let supplied = try Quantized8Vector(codes: [0, 128, 255], scale: 1, shift: 0)
+  /// let uniqueCount = Set([generated, supplied]).count // 1: identical encoded components.
   /// ```
   public func hash(into hasher: inout Hasher) {
     hasher.combine(self.codes)
@@ -143,8 +148,10 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   /// Decodes a quantized blob, validating its metadata and parameters.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let restored = try Quantized8Vector(vectorBytes: vector.vectorBytes)
+  /// // Three codes padded to four bytes, Float32 scale and shift, then format metadata.
+  /// let storedBytes: [UInt8] = [10, 20, 30, 0] + Float.encodeVector([2, 1]) + [0, 1, 4]
+  /// let vector = try Quantized8Vector(vectorBytes: storedBytes)
+  /// let reconstructed = vector.decodedValues() // [21, 41, 61]
   /// ```
   public init(vectorBytes bytes: [UInt8]) throws {
     guard bytes.count >= 11, bytes.count % 4 == 3, bytes.last == 4 else {

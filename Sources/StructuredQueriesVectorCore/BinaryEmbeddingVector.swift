@@ -5,8 +5,9 @@
   /// bits are always zero. Database encodings are selected through explicit representations.
   ///
   /// ```swift
-  /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-  /// let components = Array(vector)
+  /// let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
+  /// let embedding = BinaryEmbeddingVector<8>(quantizing: dense)
+  /// let payload = embedding.packedBytes // [0xa9]: eight signs in one byte.
   /// ```
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public struct BinaryEmbeddingVector<let count: Int>:
@@ -22,37 +23,39 @@
     /// Raw packed bits, without database format metadata.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let packedBytes = vector.packedBytes
+    /// let embedding = BinaryEmbeddingVector<9>(repeating: true)
+    /// let payload = embedding.packedBytes // [0xff, 0x01]: unused high bits are cleared.
     /// ```
     public var packedBytes: [UInt8] { self.storage }
     /// The number of logical vector components.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let dimensions = vector.dimensions
+    /// let embedding = BinaryEmbeddingVector<1536>(repeating: false)
+    /// let dimensions = embedding.dimensions // 1536 logical bits
+    /// let byteCount = embedding.packedBytes.count // 192 storage bytes
     /// ```
     public var dimensions: Int { Self.count }
     /// The index of the first logical component.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let startIndex = vector.startIndex
+    /// var embedding = BinaryEmbeddingVector<3>([true, false, true])
+    /// embedding[embedding.startIndex] = false
+    /// let payload = embedding.packedBytes // [0x04]
     /// ```
     public var startIndex: Int { 0 }
     /// The index one past the last logical component.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let endIndex = vector.endIndex
+    /// let embedding = BinaryEmbeddingVector<3>([true, false, true])
+    /// let lastBit = embedding[embedding.index(before: embedding.endIndex)] // true
     /// ```
     public var endIndex: Int { Self.count }
 
     /// The number of true components.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let nonzeroBitCount = vector.nonzeroBitCount
+    /// let embedding = BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
+    /// let activeFraction = Float(embedding.nonzeroBitCount) / Float(embedding.dimensions) // 0.375
     /// ```
     public var nonzeroBitCount: Int {
       self.storage.reduce(0) { $0 + $1.nonzeroBitCount }
@@ -61,7 +64,9 @@
     /// Packs the logical components of an inline array.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
+    /// let components: InlineArray<3, Bool> = [true, false, true]
+    /// let embedding = BinaryEmbeddingVector<3>(components)
+    /// let payload = embedding.packedBytes // [0x05]
     /// ```
     public init(_ values: [count of Bool]) {
       self.init { values[$0] }
@@ -70,7 +75,9 @@
     /// Creates a vector by repeating a logical component.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>(repeating: false)
+    /// var embedding = BinaryEmbeddingVector<8>(repeating: false)
+    /// embedding[7] = true
+    /// let payload = embedding.packedBytes // [0x80]
     /// ```
     public init(repeating value: Bool) {
       precondition(Self.count >= 0, "Binary vector dimensions must be nonnegative")
@@ -81,7 +88,9 @@
     /// Creates a vector by generating its logical components.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3> { index in index.isMultiple(of: 2) }
+    /// let activations: [Float] = [-0.8, 0, 0.6]
+    /// let embedding = BinaryEmbeddingVector<3> { activations[$0] > 0 }
+    /// let components = Array(embedding) // [false, false, true]
     /// ```
     public init<E: Error>(_ body: (Int) throws(E) -> Bool) throws(E) {
       self.init(repeating: false)
@@ -98,7 +107,8 @@
     /// Any error thrown by `next` is propagated immediately.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>(first: true) { !$0 }
+    /// let mask = BinaryEmbeddingVector<8>(first: true) { !$0 }
+    /// let payload = mask.packedBytes // [0x55]: alternating active bits.
     /// ```
     public init<E: Error>(first: Bool, next: (Bool) throws(E) -> Bool) throws(E) {
       self.init(repeating: false)
@@ -113,11 +123,11 @@
     /// Initializes the fixed-size logical components through an output span.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>(initializingWith: { span in
-    ///   span.append(true)
-    ///   span.append(false)
-    ///   span.append(true)
+    /// let components = [true, false, true]
+    /// let embedding = BinaryEmbeddingVector<3>(initializingWith: { span in
+    ///   for component in components { span.append(component) }
     /// })
+    /// let payload = embedding.packedBytes // [0x05]
     /// ```
     public init<E: Error>(
       initializingWith initializer: (inout OutputSpan<Bool>) throws(E) -> Void
@@ -128,7 +138,9 @@
     /// Validates the logical element count before packing an array.
     ///
     /// ```swift
-    /// let vector = try BinaryEmbeddingVector<3>(validating: [true, false, true])
+    /// let components = [true, false, true]
+    /// let embedding = try BinaryEmbeddingVector<3>(validating: components)
+    /// // A different component count throws VectorDecodingError.dimensionMismatch.
     /// ```
     public init(validating values: [Bool]) throws {
       guard values.count == Self.count else {
@@ -166,11 +178,13 @@
       self.init { values[$0] > 0 }
     }
 
-    /// A vector query representation.
+    /// A logical component, accessed or updated by index.
     ///
     /// ```swift
-    /// var vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// vector[0] = false
+    /// var embedding = BinaryEmbeddingVector<8>(repeating: false)
+    /// embedding[0] = true
+    /// embedding[7] = true
+    /// let payload = embedding.packedBytes // [0x81]
     /// ```
     public subscript(position: Int) -> Bool {
       get {
@@ -191,23 +205,24 @@
     /// Returns the following logical index.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let index = vector.index(after: vector.startIndex)
+    /// let embedding = BinaryEmbeddingVector<3>([true, false, true])
+    /// let secondBit = embedding[embedding.index(after: embedding.startIndex)] // false
     /// ```
     public func index(after index: Int) -> Int { index + 1 }
     /// Returns the preceding logical index.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let index = vector.index(before: vector.endIndex)
+    /// let embedding = BinaryEmbeddingVector<3>([true, false, true])
+    /// let lastBit = embedding[embedding.index(before: embedding.endIndex)] // true
     /// ```
     public func index(before index: Int) -> Int { index - 1 }
 
     /// Counts differing logical bits without unpacking either vector.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let distance = vector.hammingDistance(to: BinaryEmbeddingVector<3>(repeating: false))  // 2.
+    /// let query = BinaryEmbeddingVector<3>([true, false, true])
+    /// let candidate = BinaryEmbeddingVector<3>([true, true, false])
+    /// let isNear = query.hammingDistance(to: candidate) <= 1 // false: two bits differ.
     /// ```
     @inlinable
     public func hammingDistance(to other: Self) -> Int {
@@ -219,8 +234,9 @@
     /// ```swift
     /// import Foundation
     ///
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let json = try JSONEncoder().encode(vector)
+    /// let embedding = BinaryEmbeddingVector<3>([true, false, true])
+    /// let json = try JSONEncoder().encode(embedding)
+    /// let payload = String(decoding: json, as: UTF8.self) // "[true,false,true]"
     /// ```
     public func encode(to encoder: any Encoder) throws {
       var container = encoder.unkeyedContainer()
@@ -234,9 +250,9 @@
     /// ```swift
     /// import Foundation
     ///
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let json = try JSONEncoder().encode(vector)
-    /// let restored = try JSONDecoder().decode(BinaryEmbeddingVector<3>.self, from: json)
+    /// let payload = Data("[true,false,true]".utf8)
+    /// let embedding = try JSONDecoder().decode(BinaryEmbeddingVector<3>.self, from: payload)
+    /// let packed = embedding.packedBytes // [0x05]; a different component count throws.
     /// ```
     public init(from decoder: any Decoder) throws {
       let values = try [Bool](from: decoder)
@@ -254,15 +270,15 @@
     /// A description of the vector and its logical components.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let description = vector.description
+    /// let embedding = BinaryEmbeddingVector<3>([true, false, true])
+    /// print(embedding.description) // BinaryEmbeddingVector<3>([true, false, true])
     /// ```
     public var description: String { "BinaryEmbeddingVector<\(Self.count)>(\(Array(self)))" }
     /// A description of the vector and its logical components.
     ///
     /// ```swift
-    /// let vector = BinaryEmbeddingVector<3>([true, false, true])
-    /// let debugDescription = vector.debugDescription
+    /// let embedding = BinaryEmbeddingVector<3>([true, false, true])
+    /// print(embedding.debugDescription) // BinaryEmbeddingVector<3>([true, false, true])
     /// ```
     public var debugDescription: String { self.description }
 

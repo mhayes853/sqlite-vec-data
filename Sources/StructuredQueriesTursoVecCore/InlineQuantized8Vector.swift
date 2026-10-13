@@ -9,8 +9,8 @@ import StructuredQueriesVectorCore
   /// Equality and hashing compare codes and parameter bit patterns.
   ///
   /// ```swift
-  /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-  /// let dense = vector.decodedValues()
+  /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0, 127.5, 255]))
+  /// let reconstructed = vector.decodedValues() // [0, 128, 255]: the middle component loses 0.5.
   /// ```
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public struct InlineQuantized8Vector<let count: Int>:
@@ -25,37 +25,39 @@ import StructuredQueriesVectorCore
     /// The unsigned byte codes used by affine quantization.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let codes = vector.codes
+    /// let vector = try InlineQuantized8Vector<3>(codes: [10, 20, 30], scale: 2, shift: 1)
+    /// let reconstructed = (0..<3).map { Float(vector.codes[$0]) * vector.scale + vector.shift } // [21, 41, 61]
     /// ```
     public let codes: [count of UInt8]
     /// The multiplier applied to every code when reconstructing components.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let scale = vector.scale
+    /// let vector = try InlineQuantized8Vector<3>(codes: [10, 20, 30], scale: 2, shift: 1)
+    /// let reconstructed = (0..<3).map { Float(vector.codes[$0]) * vector.scale + vector.shift } // [21, 41, 61]
     /// ```
     public let scale: Float
     /// The offset added after multiplying each code by `scale`.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let shift = vector.shift
+    /// let vector = try InlineQuantized8Vector<3>(codes: [10, 20, 30], scale: 2, shift: 1)
+    /// let reconstructed = (0..<3).map { Float(vector.codes[$0]) * vector.scale + vector.shift } // [21, 41, 61]
     /// ```
     public let shift: Float
 
     /// The number of logical vector components.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let dimensions = vector.dimensions
+    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0, 127.5, 255]))
+    /// let dimensions = vector.dimensions // 3 logical components
+    /// let payloadBytes = vector.vectorBytes.count // 15 bytes, including padding and quantization parameters.
     /// ```
     public var dimensions: Int { Self.count }
 
     /// Quantizes finite components using Turso's min/max affine quantization.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
+    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0, 127.5, 255]))
+    /// let reconstructed = vector.decodedValues() // [0, 128, 255]: quantization is lossy.
     /// ```
     public init(quantizing values: EmbeddingVector<count>) throws {
       try self.init(validating: Quantized8Vector(quantizing: Array(values)))
@@ -64,8 +66,8 @@ import StructuredQueriesVectorCore
     /// Preserves existing unsigned codes and validates their affine parameters.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(codes: [0, 128, 255], scale: 0.01, shift: -1)
-    /// let dense = vector.decodedValues()  // Float(code) * scale + shift.
+    /// let vector = try InlineQuantized8Vector<3>(codes: [10, 20, 30], scale: 2, shift: 1)
+    /// let reconstructed = vector.decodedValues() // [21, 41, 61]; the supplied codes are preserved.
     /// ```
     public init(codes: [count of UInt8], scale: Float, shift: Float) throws {
       try self.init(
@@ -80,8 +82,8 @@ import StructuredQueriesVectorCore
     /// Decodes components, validating byte length and encoding metadata.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let values = vector.decodedValues()
+    /// let vector = try InlineQuantized8Vector<3>(codes: [10, 20, 30], scale: 2, shift: 1)
+    /// let reconstructed = vector.decodedValues() // [21, 41, 61]; returns an inline Float32 vector.
     /// ```
     public func decodedValues() -> EmbeddingVector<count> {
       EmbeddingVector<count> { Float(self.codes[$0]) * self.scale + self.shift }
@@ -90,8 +92,9 @@ import StructuredQueriesVectorCore
     /// The serialized blob, including any metadata required by this encoding.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let vectorBytes = vector.vectorBytes
+    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0, 127.5, 255]))
+    /// let payload = vector.vectorBytes
+    /// let formatTag = payload.last // 4: Turso's affine UInt8 format, including scale and shift.
     /// ```
     public var vectorBytes: [UInt8] {
       encodeQuantized8Vector(
@@ -104,8 +107,10 @@ import StructuredQueriesVectorCore
     /// Decodes a vector blob, validating its encoding and dimensions.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let restored = try InlineQuantized8Vector<3>(vectorBytes: vector.vectorBytes)
+    /// // Three codes padded to four bytes, Float32 scale and shift, then format metadata.
+    /// let storedBytes: [UInt8] = [10, 20, 30, 0] + Float.encodeVector([2, 1]) + [0, 1, 4]
+    /// let vector = try InlineQuantized8Vector<3>(vectorBytes: storedBytes)
+    /// let reconstructed = vector.decodedValues() // [21, 41, 61]
     /// ```
     public init(vectorBytes: [UInt8]) throws {
       try self.init(validating: Quantized8Vector(vectorBytes: vectorBytes))
@@ -114,8 +119,9 @@ import StructuredQueriesVectorCore
     /// Compares the vector components for equality.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let equal = vector == vector
+    /// let left = try InlineQuantized8Vector<3>(codes: [0, 0, 0], scale: 1, shift: -0.0)
+    /// let right = try InlineQuantized8Vector<3>(codes: [0, 0, 0], scale: 1, shift: 0.0)
+    /// let equal = left == right // false: encoded parameter bit patterns differ.
     /// ```
     public static func == (lhs: Self, rhs: Self) -> Bool {
       lhs.scale.bitPattern == rhs.scale.bitPattern && lhs.shift.bitPattern == rhs.shift.bitPattern
@@ -125,8 +131,9 @@ import StructuredQueriesVectorCore
     /// Hashes the vector components.
     ///
     /// ```swift
-    /// let vector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    /// let vectors = Set([vector])
+    /// let generated = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0, 128, 255]))
+    /// let supplied = try InlineQuantized8Vector<3>(codes: [0, 128, 255], scale: 1, shift: 0)
+    /// let uniqueCount = Set([generated, supplied]).count // 1: identical encoded components.
     /// ```
     public func hash(into hasher: inout Hasher) {
       hasher.combine(Self.count)
@@ -141,9 +148,10 @@ import StructuredQueriesVectorCore
     /// Throws `VectorDecodingError.dimensionMismatch` when the dimension counts differ.
     ///
     /// ```swift
-    /// let dynamic = try Quantized8Vector(quantizing: [1, 2, 3])
-    /// let sized = try InlineQuantized8Vector<3>(validating: dynamic)
-    /// // Encoded components are preserved without quantizing or compressing again.
+    /// let supplied = try Quantized8Vector(codes: [10, 20, 30], scale: 2, shift: 1)
+    /// let inline = try InlineQuantized8Vector<3>(validating: supplied)
+    /// let reconstructed = inline.decodedValues() // [21, 41, 61]; no requantization.
+    /// // A different code count throws VectorDecodingError.dimensionMismatch.
     /// ```
     public init(validating vector: Quantized8Vector) throws {
       guard vector.dimensions == Self.count else {

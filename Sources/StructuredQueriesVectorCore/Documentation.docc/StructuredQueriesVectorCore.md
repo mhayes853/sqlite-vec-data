@@ -52,6 +52,7 @@ Fixed-size types require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or
 let vector = EmbeddingVector<4>([0.1, 0.2, 0.3, 0.4])
 let doubles = EmbeddingVector64<4>([0.1, 0.2, 0.3, 0.4])
 let binding = EmbeddingVector64<4>.VectorBytesRepresentation(queryOutput: doubles)
+let byteCount = binding.vectorBytes.count // 32 raw bytes for four Float64 components.
 ```
 
 Use `@Column(as:)` for explicit strategies and `init(queryOutput:)` to wrap bindings.
@@ -67,11 +68,13 @@ and `init(packedBytes:)` checks the byte count and clears unused high bits.
 let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
 var binary = BinaryEmbeddingVector<8>(quantizing: dense)
 binary[2] = true
-let bytes = binary.packedBytes
+let bytes = binary.packedBytes // [0xad]
 let partial = BinaryEmbeddingVector<9>(repeating: true)
-let restored = try BinaryEmbeddingVector<9>(packedBytes: partial.packedBytes)
-let trueBits = binary.nonzeroBitCount
-let distance = binary.hammingDistance(to: BinaryEmbeddingVector<8>(repeating: false))
+let restored = try BinaryEmbeddingVector<9>(packedBytes: [0xff, 0xff])
+let normalizedBytes = restored.packedBytes // [0xff, 0x01]: unused high bits cleared.
+let trueBits = binary.nonzeroBitCount // 5
+let candidate = try BinaryEmbeddingVector<8>(packedBytes: [0x85])
+let distance = binary.hammingDistance(to: candidate) // 2 differing bits.
 ```
 
 Sign quantization tests `value > 0`: zeros, negatives, and NaNs become false. It discards magnitudes.
@@ -84,11 +87,12 @@ are storage payloads. Database integration targets supply binary binding and dec
 ### Serialize vector bytes
 
 ```swift
-let values = [Float(1), 2, 3]
-let bytes = values.vectorBytes
-let restored = try [Float](vectorBytes: bytes)
+// A Float32 payload retrieved from a vector cache.
+let bytes: [UInt8] = [0, 0, 0x80, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0]
+let values = try [Float](vectorBytes: bytes) // [1, 0, 0]
 let fixed = try EmbeddingVector<3>(vectorBytes: bytes)
 let validated = try EmbeddingVector<3>(validating: values)
+// A payload or array with a different component count throws.
 ```
 
 `init(vectorBytes:)` validates complete scalar payloads and fixed dimensions.
@@ -130,10 +134,13 @@ Swift cannot infer the default through the recursive representation constraint. 
 encoding's dimensions remain independent of the value's count.
 
 ```swift
-func sameDimensions<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
+func dotProduct<L: Collection & VectorBytesRepresentable, R: Collection & VectorBytesRepresentable>(
   _ left: L, _ right: R
-) where L.Dimensions == R.Dimensions {}
-sameDimensions(EmbeddingVector<3>(repeating: 1), EmbeddingVector<3>(repeating: 2))
+) -> Float where L.Element == Float, R.Element == Float, L.Dimensions == R.Dimensions {
+  precondition(left.count == right.count)
+  return zip(left, right).reduce(0) { $0 + $1.0 * $1.1 }
+}
+let score = dotProduct(EmbeddingVector<3>([1, 0, 0]), EmbeddingVector<3>([0.5, 1, 0])) // 0.5
 ```
 
 Integration targets can adopt this protocol for database-specific encoded values and strategies
