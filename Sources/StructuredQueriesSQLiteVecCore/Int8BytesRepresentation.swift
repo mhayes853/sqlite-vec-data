@@ -84,6 +84,7 @@ extension Array.Int8BytesRepresentation: ExpressibleByArrayLiteral {
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Int8
+      public typealias Dimensions = VectorDimensions<count>
       public typealias Encoding = [Int8].Int8BytesRepresentation
       public typealias VectorBytesRepresentation = Self
       /// The logical vector value bound to or decoded from a query.

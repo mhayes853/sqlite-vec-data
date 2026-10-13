@@ -31,7 +31,56 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == [Bool].TursoBytesRepresentation, R.Encoding == L.Encoding {
+  where
+    L.Encoding == [Bool].TursoBytesRepresentation, R.Encoding == L.Encoding,
+    L.Dimensions == R.Dimensions
+  {
+    Self.distanceCosine(expression, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// // vector1bit(?)
+  /// let expression = TursoVec.distanceHamming(vector, to: TursoVec.vector1bit("[3,2,1]"))
+  /// // vector_distance_cos(vector1bit(?), vector1bit(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceHamming<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == [Bool].TursoBytesRepresentation, R.Encoding == L.Encoding,
+    L.Dimensions == Void
+  {
+    Self.distanceCosine(expression, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector1bit("[1,2,3]")
+  /// // vector1bit(?)
+  /// let expression = TursoVec.distanceHamming(vector, to: TursoVec.vector1bit("[3,2,1]"))
+  /// // vector_distance_cos(vector1bit(?), vector1bit(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceHamming<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == [Bool].TursoBytesRepresentation, R.Encoding == L.Encoding,
+    R.Dimensions == Void
+  {
     Self.distanceCosine(expression, to: vector)
   }
 
@@ -382,8 +431,9 @@ public enum TursoVec {
     SQLQueryExpression("vector_extract(\(expression))")
   }
 
-  /// Returns cosine distance (`1 - cosine similarity`) between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the 32-bit floating-point format.
+  /// Returns cosine distance, including the binary Hamming specialization.
+  /// Both operands must use the same supported Turso encoding.
+  /// The database checks dimensions and value-dependent restrictions.
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
@@ -391,19 +441,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector32("[3,2,1]"))
   /// // vector_distance_cos(vector32(?), vector32(?))
   /// ```
-  public static func distanceCosine<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
-  }
-
-  /// Returns cosine distance (`1 - cosine similarity`) between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the 64-bit floating-point format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
@@ -411,19 +448,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector64("[3,2,1]"))
   /// // vector_distance_cos(vector64(?), vector64(?))
   /// ```
-  public static func distanceCosine<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
-  }
-
-  /// Returns cosine distance (`1 - cosine similarity`) between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the quantized float8 format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector8("[1,2,3]")
@@ -431,18 +455,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector8("[3,2,1]"))
   /// // vector_distance_cos(vector8(?), vector8(?))
   /// ```
-  public static func distanceCosine<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Encoding == Quantized8Vector, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
-  }
-
-  /// Returns Hamming distance (the number of differing bits) with `vector_distance_cos`.
-  /// The database requires equal dimensions. Both operands must use the binary format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector1bit("[1,2,3]")
@@ -450,19 +462,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector1bit("[3,2,1]"))
   /// // vector_distance_cos(vector1bit(?), vector1bit(?))
   /// ```
-  public static func distanceCosine<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Bool].TursoBytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
-  }
-
-  /// Returns cosine distance (`1 - cosine similarity`) between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the sparse float32 format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
@@ -477,7 +476,56 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding {
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    L.Dimensions == R.Dimensions
+  {
+    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_cos(vector32(?), vector32(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceCosine<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    L.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.distanceCosine(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_cos(vector32(?), vector32(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceCosine<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    R.Dimensions == Void
+  {
     SQLQueryExpression("vector_distance_cos(\(expression), \(vector))")
   }
 
@@ -497,7 +545,56 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
+  where
+    L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
+    L.Dimensions == R.Dimensions
+  {
+    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_l2(vector32(?), vector32(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
+    L.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_l2(vector32(?), vector32(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
+    R.Dimensions == Void
+  {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -517,7 +614,56 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
+  where
+    L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding,
+    L.Dimensions == R.Dimensions
+  {
+    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector64("[3,2,1]"))
+  /// // vector_distance_l2(vector64(?), vector64(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding,
+    L.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector64("[1,2,3]")
+  /// // vector64(?)
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector64("[3,2,1]"))
+  /// // vector_distance_l2(vector64(?), vector64(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding,
+    R.Dimensions == Void
+  {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -536,7 +682,57 @@ public enum TursoVec {
   >(
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Encoding == Quantized8Vector, L.Encoding == R.Encoding {
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == Quantized8Vector, L.Encoding == R.Encoding,
+    L.Dimensions == R.Dimensions
+  {
+    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector8("[1,2,3]")
+  /// // vector8(?)
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector8("[3,2,1]"))
+  /// // vector_distance_l2(vector8(?), vector8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == Quantized8Vector, L.Encoding == R.Encoding,
+    L.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector8("[1,2,3]")
+  /// // vector8(?)
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector8("[3,2,1]"))
+  /// // vector_distance_l2(vector8(?), vector8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == Quantized8Vector, L.Encoding == R.Encoding,
+    R.Dimensions == Void
+  {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
@@ -556,12 +752,62 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding {
+  where
+    L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding,
+    L.Dimensions == R.Dimensions
+  {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
-  /// Returns the negative dot product between matching vectors; lower values are closer.
-  /// The database requires equal dimensions. Both operands must use the 32-bit floating-point format.
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse(?)
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
+  /// // vector_distance_l2(vector32_sparse(?), vector32_sparse(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding,
+    L.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32Sparse("[1,2,3]")
+  /// // vector32_sparse(?)
+  /// let expression = TursoVec.distanceL2(vector, to: TursoVec.vector32Sparse("[3,2,1]"))
+  /// // vector_distance_l2(vector32_sparse(?), vector32_sparse(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding,
+    R.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Returns the negative dot product between matching vectors.
+  /// Both operands must use the same supported Turso encoding.
+  /// The database checks dimensions and value-dependent restrictions.
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
@@ -569,19 +815,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector32("[3,2,1]"))
   /// // vector_distance_dot(vector32(?), vector32(?))
   /// ```
-  public static func distanceDot<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
-  }
-
-  /// Returns the negative dot product between matching vectors; lower values are closer.
-  /// The database requires equal dimensions. Both operands must use the 64-bit floating-point format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
@@ -589,19 +822,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector64("[3,2,1]"))
   /// // vector_distance_dot(vector64(?), vector64(?))
   /// ```
-  public static func distanceDot<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
-  }
-
-  /// Returns the negative dot product between matching vectors; lower values are closer.
-  /// The database requires equal dimensions. Both operands must use the quantized float8 format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector8("[1,2,3]")
@@ -609,18 +829,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector8("[3,2,1]"))
   /// // vector_distance_dot(vector8(?), vector8(?))
   /// ```
-  public static func distanceDot<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Encoding == Quantized8Vector, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
-  }
-
-  /// Returns the negative dot product of the binary vectors interpreted as +1/-1.
-  /// The database requires equal dimensions. Both operands must use the binary format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector1bit("[1,2,3]")
@@ -628,19 +836,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector1bit("[3,2,1]"))
   /// // vector_distance_dot(vector1bit(?), vector1bit(?))
   /// ```
-  public static func distanceDot<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Bool].TursoBytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
-  }
-
-  /// Returns the negative dot product between matching vectors; lower values are closer.
-  /// The database requires equal dimensions. Both operands must use the sparse float32 format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
@@ -655,12 +850,62 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding {
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    L.Dimensions == R.Dimensions
+  {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
   }
 
-  /// Returns weighted Jaccard distance between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the 32-bit floating-point format.
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_dot(vector32(?), vector32(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceDot<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    L.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.distanceDot(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_dot(vector32(?), vector32(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceDot<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    R.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
+  }
+
+  /// Returns weighted numeric Jaccard distance or binary set Jaccard distance.
+  /// Both operands must use the same supported Turso encoding.
+  /// The database checks dimensions and value-dependent restrictions.
   ///
   /// ```swift
   /// let vector = TursoVec.vector32("[1,2,3]")
@@ -668,19 +913,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector32("[3,2,1]"))
   /// // vector_distance_jaccard(vector32(?), vector32(?))
   /// ```
-  public static func distanceJaccard<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
-  }
-
-  /// Returns weighted Jaccard distance between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the 64-bit floating-point format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector64("[1,2,3]")
@@ -688,19 +920,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector64("[3,2,1]"))
   /// // vector_distance_jaccard(vector64(?), vector64(?))
   /// ```
-  public static func distanceJaccard<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
-  }
-
-  /// Returns weighted Jaccard distance between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the quantized float8 format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector8("[1,2,3]")
@@ -708,18 +927,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector8("[3,2,1]"))
   /// // vector_distance_jaccard(vector8(?), vector8(?))
   /// ```
-  public static func distanceJaccard<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double> where L.Encoding == Quantized8Vector, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
-  }
-
-  /// Returns binary Jaccard distance (`1 - intersection / union`) over set bits.
-  /// The database requires equal dimensions. Both operands must use the binary format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector1bit("[1,2,3]")
@@ -727,19 +934,6 @@ public enum TursoVec {
   /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector1bit("[3,2,1]"))
   /// // vector_distance_jaccard(vector1bit(?), vector1bit(?))
   /// ```
-  public static func distanceJaccard<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where L.Encoding == [Bool].TursoBytesRepresentation, L.Encoding == R.Encoding {
-    SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
-  }
-
-  /// Returns weighted Jaccard distance between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the sparse float32 format.
   ///
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[1,2,3]")
@@ -754,7 +948,56 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
-  where L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding {
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    L.Dimensions == R.Dimensions
+  {
+    SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_jaccard(vector32(?), vector32(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceJaccard<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    L.Dimensions == Void
+  {
+    SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = TursoVec.vector32("[1,2,3]")
+  /// // vector32(?)
+  /// let expression = TursoVec.distanceJaccard(vector, to: TursoVec.vector32("[3,2,1]"))
+  /// // vector_distance_jaccard(vector32(?), vector32(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceJaccard<
+    L: VectorBytesRepresentable & QueryBindable,
+    R: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<L>,
+    to vector: some QueryExpression<R>
+  ) -> some QueryExpression<Double>
+  where
+    L.Encoding: TursoVectorEncoding, L.Encoding == R.Encoding,
+    R.Dimensions == Void
+  {
     SQLQueryExpression("vector_distance_jaccard(\(expression), \(vector))")
   }
 

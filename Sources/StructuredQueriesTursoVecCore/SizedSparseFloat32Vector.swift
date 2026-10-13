@@ -18,6 +18,7 @@ import StructuredQueriesVectorCore
   {
     public typealias QueryOutput = Self
     public typealias Scalar = Float
+    public typealias Dimensions = VectorDimensions<count>
     public typealias Encoding = SparseFloat32Vector
     public typealias VectorBytesRepresentation = Self
 

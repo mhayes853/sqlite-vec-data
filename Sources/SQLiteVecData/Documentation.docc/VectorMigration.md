@@ -194,6 +194,40 @@ Put database framing in a representation supplied by the database integration ta
 Double already conform. Float16 uses raw binary16 serialization and is not a database vector format. Adding a scalar conformance does not make a new precision supported by
 SQLiteVec or Turso's query helpers.
 
+### Validate packed-bit input and carry fixed dimensions
+
+Use the throwing `init(validating:)` on array or fixed `.PackedBitsRepresentation` strategies
+for user-provided binary data. Partial bytes throw `InvalidDimensionsError`, whose `dimensions`
+property records the count. The required nonthrowing initializer and array literals now check
+alignment at construction; mutating an array strategy's `queryOutput` checks it immediately too.
+
+```swift
+let bits = try [Bool].PackedBitsRepresentation(validating: [Bool](repeating: true, count: 16))
+```
+
+`VectorBytesRepresentable.Dimensions` defaults to `Void`, preserving runtime-sized custom types.
+For a custom fixed representation, declare `typealias Dimensions = VectorDimensions<N>` with its
+logical component count. Distances, arithmetic, and `MATCH` reject unequal known dimensions;
+fixed/variable combinations continue to use database validation. Generic forwarding helpers must
+carry the corresponding dimension constraint:
+
+```swift
+func distance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
+  _ left: some QueryExpression<L>, to right: some QueryExpression<R>
+) -> some QueryExpression<Double>
+where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
+  L.Dimensions == R.Dimensions
+{
+  Vec.distanceL2(left, to: right) // vec_distance_l2(?, ?)
+}
+```
+
+A helper accepting a runtime-sized left or right operand can constrain that operand's `Dimensions`
+to `Void` instead. SQLiteVec normalization and arithmetic now return the dimension-preserving
+representation, so fixed results decode to their fixed logical value. Explicit `as:` counts and
+slice bounds remain runtime checks. `Vec.f32` also accepts JSON string expressions, matching the
+Int8 constructor's typed-result API.
+
 ### Carry encoding constraints in generic SQL helpers
 
 Previously, a generic helper could forward any `VectorBytesRepresentable` to a SQLiteVec

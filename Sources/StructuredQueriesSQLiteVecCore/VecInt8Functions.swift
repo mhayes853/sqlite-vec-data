@@ -89,7 +89,68 @@ extension Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Bool>
-  where V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("(\(expression) MATCH vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  /// }
+  ///
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_int8(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("(\(expression) MATCH vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  /// }
+  ///
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_int8(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("(\(expression) MATCH vec_int8(\(vector)))")
   }
 
@@ -106,7 +167,52 @@ extension Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
-  where V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression(
+      "CAST(vec_distance_l1(vec_int8(\(expression)), vec_int8(\(vector))) AS REAL)"
+    )
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.distanceL1(vector, to: vector)
+  /// // CAST(vec_distance_l1(vec_int8(?), vec_int8(?)) AS REAL)
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL1<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression(
+      "CAST(vec_distance_l1(vec_int8(\(expression)), vec_int8(\(vector))) AS REAL)"
+    )
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.distanceL1(vector, to: vector)
+  /// // CAST(vec_distance_l1(vec_int8(?), vec_int8(?)) AS REAL)
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL1<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression(
       "CAST(vec_distance_l1(vec_int8(\(expression)), vec_int8(\(vector))) AS REAL)"
     )
@@ -124,7 +230,48 @@ extension Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
-  where V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_distance_l2(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.distanceL2(vector, to: vector)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_distance_l2(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.distanceL2(vector, to: vector)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("vec_distance_l2(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
 
@@ -140,7 +287,48 @@ extension Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
-  where V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_distance_cosine(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.distanceCosine(vector, to: vector)
+  /// // vec_distance_cosine(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceCosine<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_distance_cosine(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.distanceCosine(vector, to: vector)
+  /// // vec_distance_cosine(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceCosine<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("vec_distance_cosine(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
 
@@ -204,7 +392,67 @@ extension Vec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding, T.Encoding == V.Encoding
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.add(
+  ///   vector,
+  ///   vector,
+  ///   as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
+  /// )
+  /// // vec_add(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.add(
+  ///   vector,
+  ///   vector,
+  ///   as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
+  /// )
+  /// // vec_add(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    W.Dimensions == Void
   {
     SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
@@ -216,12 +464,53 @@ extension Vec {
   /// let expression = Vec.add(vector, vector)
   /// // vec_add(vec_int8(?), vec_int8(?))
   /// ```
-  public static func add<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+  public static func add<V: VectorBytesRepresentable & QueryBindable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     _ vector: some QueryExpression<W>
-  ) -> some QueryExpression<[Int8].Int8BytesRepresentation>
-  where V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding {
-    Self.add(expression, vector, as: [Int8].Int8BytesRepresentation.self)
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    Self.add(expression, vector, as: V.self)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.add(vector, vector)
+  /// // vec_add(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func add<V: VectorBytesRepresentable, W: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>
+  ) -> some QueryExpression<W>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    Self.add(expression, vector, as: W.self)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.add(vector, vector)
+  /// // vec_add(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func add<V: VectorBytesRepresentable & QueryBindable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
+    Self.add(expression, vector, as: V.self)
   }
 
   /// Subtracts signed Int8 components, returning signed bytes with SQLiteVec's arithmetic semantics.
@@ -245,7 +534,67 @@ extension Vec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding, T.Encoding == V.Encoding
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.sub(
+  ///   vector,
+  ///   vector,
+  ///   as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
+  /// )
+  /// // vec_sub(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.sub(
+  ///   vector,
+  ///   vector,
+  ///   as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
+  /// )
+  /// // vec_sub(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    W.Dimensions == Void
   {
     SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
@@ -257,12 +606,53 @@ extension Vec {
   /// let expression = Vec.sub(vector, vector)
   /// // vec_sub(vec_int8(?), vec_int8(?))
   /// ```
-  public static func sub<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+  public static func sub<V: VectorBytesRepresentable & QueryBindable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     _ vector: some QueryExpression<W>
-  ) -> some QueryExpression<[Int8].Int8BytesRepresentation>
-  where V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding {
-    Self.sub(expression, vector, as: [Int8].Int8BytesRepresentation.self)
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    Self.sub(expression, vector, as: V.self)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.sub(vector, vector)
+  /// // vec_sub(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func sub<V: VectorBytesRepresentable, W: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>
+  ) -> some QueryExpression<W>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    Self.sub(expression, vector, as: W.self)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = Vec.sub(vector, vector)
+  /// // vec_sub(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func sub<V: VectorBytesRepresentable & QueryBindable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
+    Self.sub(expression, vector, as: V.self)
   }
 
   /// Slices signed Int8 components, with an inclusive start and exclusive end.

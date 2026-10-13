@@ -128,6 +128,8 @@ let joined = Embedding
 // JOIN "vec_each"
 // ON ?
 // WHERE ("vec_each"."vector" = "Embeddings"."embedding")
+// JOIN "vec_each"
+// ON ?
 
 let withNegativeElements = Embedding
   .where {
@@ -140,9 +142,27 @@ let withNegativeElements = Embedding
 // FROM "Embeddings"
 // WHERE (EXISTS (SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each" WHERE
 //   ("vec_each"."vector" = "Embeddings"."embedding") AND (("vec_each"."value") < (?))))
+//   ("vec_each"."vector" = "Embeddings"."embedding") AND (("vec_each"."value") < (?))))
 ```
 
 Both helpers supply `vec_each`'s hidden vector constraint, including in correlated subqueries.
+
+### Float32 JSON and fixed dimensions
+
+```swift
+let vector = Vec.f32("[3, 0, 0]", as: EmbeddingVector<3>.self)
+// vec_f32(?)
+let normalized = Vec.normalize(vector)
+// vec_normalize(vec_f32(?))
+let result = Vec.add(normalized, Vec.f32("[0, 2, 0]"))
+// vec_add(vec_normalize(vec_f32(?)), vec_f32(?))
+```
+
+`Vec.f32` accepts JSON string expressions, with an optional matching `as:` strategy.
+Normalization and default arithmetic results retain known dimensions. When one arithmetic operand
+is variable-size, the fixed operand determines the result's dimension type. Distances, arithmetic,
+and `MATCH` require equal fixed counts; variable-size operands are checked by the database.
+`as:` result counts and slice bounds remain runtime decoding constraints.
 
 ### Signed Int8 vectors
 
@@ -198,6 +218,20 @@ This target supplies `.PackedBitsRepresentation` on `[Bool]` and `BinaryEmbeddin
 Both use raw packed bytes, least significant bit first, with no dimension or format metadata.
 Dimensions must be divisible by eight. The shared binary value and its `packedBytes` support
 partial bytes independently of this strategy.
+
+Validate user-provided components before wrapping them:
+
+```swift
+let components = [true, false, true, false, false, false, false, true]
+let bits = try [Bool].PackedBitsRepresentation(validating: components)
+let fixed = try BinaryEmbeddingVector<8>.PackedBitsRepresentation(
+  validating: BinaryEmbeddingVector<8>(packedBytes: bits.vectorBytes)
+)
+```
+
+Both initializers throw `[Bool].PackedBitsRepresentation.InvalidDimensionsError` for counts not
+divisible by eight. Its `dimensions` property identifies the rejected count. The nonthrowing query
+strategy initializer, array literals, and mutation precondition alignment immediately.
 
 `[Bool].PackedBitsRepresentation` stores bits without metadata. Dimensions and slice boundaries
 must be divisible by eight:

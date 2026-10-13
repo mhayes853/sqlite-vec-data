@@ -11,6 +11,16 @@ import StructuredQueriesCore
 public protocol VectorBytesRepresentable {
   /// The vector's numeric or logical scalar type.
   associatedtype Scalar
+  /// The type identifying a known logical component count, independently of the byte format.
+  /// `Void` leaves dimensions to runtime validation. Fixed representations use `VectorDimensions<N>`.
+  ///
+  /// ```swift
+  /// func sameDimensions<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
+  ///   _ left: L, _ right: R
+  /// ) where L.Dimensions == R.Dimensions {}
+  /// sameDimensions(EmbeddingVector<3>(repeating: 1), EmbeddingVector<3>(repeating: 2))
+  /// ```
+  associatedtype Dimensions = Void
   /// The canonical representation identifying the byte layout, independent of dimensions.
   /// For example, both dense float32 arrays and inline vectors use
   /// `[Float].VectorBytesRepresentation`.
@@ -85,6 +95,7 @@ extension Array: VectorBytesRepresentable where Element: VectorScalar {
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension InlineArray: VectorBytesRepresentable where Element: VectorScalar {
     public typealias Scalar = Element
+    public typealias Dimensions = VectorDimensions<count>
     public typealias Encoding = [Element].VectorBytesRepresentation
 
     /// The serialized blob, including any metadata required by this encoding.

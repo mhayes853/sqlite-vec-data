@@ -97,6 +97,19 @@ integer result. `length()` returns an `Int`. Iteration yields `VecEach` (`VecEac
 Float32, and `VecEachOf<Int8>` or `VecEachOf<Bool>` for the integer elements of Int8 and binary
 vectors.
 
+Float32 constructors also accept JSON, with `as:` for a fixed-size result:
+
+```swift
+let fixed = Vec.f32("[1, 2, 3]", as: EmbeddingVector<3>.self)
+// vec_f32(?)
+let normalized = Vec.normalize(fixed)
+// vec_normalize(vec_f32(?))
+```
+
+Normalization and arithmetic retain known dimensions. Distances, arithmetic, and `MATCH` reject
+unequal fixed counts at compile time; variable-size operands remain supported and are checked by
+the database.
+
 ### Signed Int8 vectors
 
 ```swift
@@ -126,6 +139,13 @@ quantization expression when inserting; query helpers attach the required subtyp
 
 `StructuredQueriesSQLiteVecCore` supplies `.PackedBitsRepresentation` on `[Bool]` and
 `BinaryEmbeddingVector<N>` for raw binary BLOBs with dimensions divisible by eight.
+Use `init(validating:)` for dynamic inputs; it throws `InvalidDimensionsError` for partial bytes.
+The required `init(queryOutput:)`, array literals, and `queryOutput` mutation precondition alignment.
+
+```swift
+let components = [true, false, true, false, false, false, false, true]
+let binding = try [Bool].PackedBitsRepresentation(validating: components)
+```
 
 ```swift
 // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
@@ -311,7 +331,8 @@ let restored = try EmbeddingVector<3>(vectorBytes: bytes)
 
 Float32 bytes are shared by both engines on little-endian platforms. Float16 representations
 provide serialization only; neither engine supports binary16 vector queries. Query helpers enforce
-compatible encodings, and fixed-size representations validate decoded dimensions.
+compatible encodings and equal known dimensions. Fixed-size representations also validate decoded
+dimensions.
 
 ## Testing sqlite-vec
 

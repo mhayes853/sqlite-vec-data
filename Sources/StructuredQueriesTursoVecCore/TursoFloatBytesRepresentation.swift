@@ -18,6 +18,7 @@ where
   Representation.Scalar == Float, Representation.Encoding == [Float].VectorBytesRepresentation
 {
   public typealias Scalar = Float
+  public typealias Dimensions = Representation.Dimensions
   public typealias QueryOutput = Representation.QueryOutput
   public typealias Encoding = [Float].VectorBytesRepresentation
   public typealias VectorBytesRepresentation = Self
@@ -109,6 +110,7 @@ where
   Representation.Scalar == Double, Representation.Encoding == [Double].VectorBytesRepresentation
 {
   public typealias Scalar = Double
+  public typealias Dimensions = Representation.Dimensions
   public typealias QueryOutput = Representation.QueryOutput
   public typealias Encoding = StructuredQueriesTursoVecCore.TursoFloat64BytesRepresentation<
     [Double].VectorBytesRepresentation

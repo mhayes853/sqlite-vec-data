@@ -99,7 +99,67 @@ where
   /// ```
   public func match<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
-  ) -> some QueryExpression<Bool> where V.Encoding == Value.Encoding {
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    Value.Dimensions == V.Dimensions
+  {
+    Vec.match(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  ///
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH ?))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    Value.Dimensions == Void
+  {
+    Vec.match(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  ///
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH ?))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    V.Dimensions == Void
+  {
     Vec.match(self, to: vector)
   }
 }
@@ -129,7 +189,67 @@ where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Int8].Int8
   /// ```
   public func match<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
-  ) -> some QueryExpression<Bool> where V.Encoding == Value.Encoding {
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    Value.Dimensions == V.Dimensions
+  {
+    Vec.match(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  /// }
+  ///
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_int8(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    Value.Dimensions == Void
+  {
+    Vec.match(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  /// }
+  ///
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_int8(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    V.Dimensions == Void
+  {
     Vec.match(self, to: vector)
   }
 }
@@ -159,7 +279,67 @@ where Root: Vec0, Value: VectorBytesRepresentable, Value.Encoding == [Bool].Pack
   /// ```
   public func match<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
-  ) -> some QueryExpression<Bool> where V.Encoding == Value.Encoding {
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    Value.Dimensions == V.Dimensions
+  {
+    Vec.match(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+  ///   var embedding: [Bool]
+  /// }
+  ///
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    Value.Dimensions == Void
+  {
+    Vec.match(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+  ///   var embedding: [Bool]
+  /// }
+  ///
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let query = Embedding.where { $0.embedding.match(vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public func match<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == Value.Encoding,
+    V.Dimensions == Void
+  {
     Vec.match(self, to: vector)
   }
 }
@@ -176,10 +356,51 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.distanceL2(to: vector)
+  /// // vec_distance_l2(?, ?)
   /// ```
   public func distanceL2<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.distanceL2(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.distanceL2(to: vector)
+  /// // vec_distance_l2(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func distanceL2<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.distanceL2(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.distanceL2(to: vector)
+  /// // vec_distance_l2(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func distanceL2<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.distanceL2(self, to: vector)
   }
 
@@ -188,10 +409,51 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.distanceL1(to: vector)
+  /// // vec_distance_l1(?, ?)
   /// ```
   public func distanceL1<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.distanceL1(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.distanceL1(to: vector)
+  /// // vec_distance_l1(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func distanceL1<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.distanceL1(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.distanceL1(to: vector)
+  /// // vec_distance_l1(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func distanceL1<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.distanceL1(self, to: vector)
   }
 
@@ -200,10 +462,51 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.distanceCosine(to: vector)
+  /// // vec_distance_cosine(?, ?)
   /// ```
   public func distanceCosine<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.distanceCosine(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.distanceCosine(to: vector)
+  /// // vec_distance_cosine(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func distanceCosine<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.distanceCosine(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.distanceCosine(to: vector)
+  /// // vec_distance_cosine(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func distanceCosine<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.distanceCosine(self, to: vector)
   }
 
@@ -245,10 +548,51 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.add(vector)
+  /// // vec_add(?, ?)
   /// ```
   public func add<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
-  ) -> some QueryExpression<QueryValue> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<QueryValue>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.add(self, vector, as: QueryValue.self)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.add(vector)
+  /// // vec_add(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func add<V: VectorBytesRepresentable & QueryBindable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.add(self, vector, as: V.self)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.add(vector)
+  /// // vec_add(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func add<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<QueryValue>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.add(self, vector, as: QueryValue.self)
   }
 
@@ -257,10 +601,51 @@ where
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
   /// let expression = vector.sub(vector)
+  /// // vec_sub(?, ?)
   /// ```
   public func sub<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
-  ) -> some QueryExpression<QueryValue> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<QueryValue>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.sub(self, vector, as: QueryValue.self)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.sub(vector)
+  /// // vec_sub(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func sub<V: VectorBytesRepresentable & QueryBindable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.sub(self, vector, as: V.self)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Float].VectorBytesRepresentation = [0.1, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7, -0.8]
+  /// let expression = vector.sub(vector)
+  /// // vec_sub(?, ?)
+  /// ```
+  @_disfavoredOverload
+  public func sub<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<QueryValue>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.sub(self, vector, as: QueryValue.self)
   }
 
@@ -490,10 +875,51 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.distanceL2(to: vector)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
   /// ```
   public func distanceL2<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.distanceL2(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.distanceL2(to: vector)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func distanceL2<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.distanceL2(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.distanceL2(to: vector)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func distanceL2<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.distanceL2(self, to: vector)
   }
 
@@ -502,10 +928,51 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.distanceL1(to: vector)
+  /// // CAST(vec_distance_l1(vec_int8(?), vec_int8(?)) AS REAL)
   /// ```
   public func distanceL1<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.distanceL1(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.distanceL1(to: vector)
+  /// // CAST(vec_distance_l1(vec_int8(?), vec_int8(?)) AS REAL)
+  /// ```
+  @_disfavoredOverload
+  public func distanceL1<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.distanceL1(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.distanceL1(to: vector)
+  /// // CAST(vec_distance_l1(vec_int8(?), vec_int8(?)) AS REAL)
+  /// ```
+  @_disfavoredOverload
+  public func distanceL1<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.distanceL1(self, to: vector)
   }
 
@@ -514,10 +981,51 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.distanceCosine(to: vector)
+  /// // vec_distance_cosine(vec_int8(?), vec_int8(?))
   /// ```
   public func distanceCosine<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.distanceCosine(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.distanceCosine(to: vector)
+  /// // vec_distance_cosine(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func distanceCosine<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.distanceCosine(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.distanceCosine(to: vector)
+  /// // vec_distance_cosine(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func distanceCosine<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.distanceCosine(self, to: vector)
   }
 
@@ -559,10 +1067,51 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.add(vector)
+  /// // vec_add(vec_int8(?), vec_int8(?))
   /// ```
   public func add<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
-  ) -> some QueryExpression<QueryValue> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<QueryValue>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.add(self, vector, as: QueryValue.self)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.add(vector)
+  /// // vec_add(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func add<V: VectorBytesRepresentable & QueryBindable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.add(self, vector, as: V.self)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.add(vector)
+  /// // vec_add(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func add<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<QueryValue>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.add(self, vector, as: QueryValue.self)
   }
 
@@ -571,10 +1120,51 @@ where
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
   /// let expression = vector.sub(vector)
+  /// // vec_sub(vec_int8(?), vec_int8(?))
   /// ```
   public func sub<V: VectorBytesRepresentable>(
     _ vector: some QueryExpression<V>
-  ) -> some QueryExpression<QueryValue> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<QueryValue>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.sub(self, vector, as: QueryValue.self)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.sub(vector)
+  /// // vec_sub(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func sub<V: VectorBytesRepresentable & QueryBindable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.sub(self, vector, as: V.self)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
+  /// let expression = vector.sub(vector)
+  /// // vec_sub(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func sub<V: VectorBytesRepresentable>(
+    _ vector: some QueryExpression<V>
+  ) -> some QueryExpression<QueryValue>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.sub(self, vector, as: QueryValue.self)
   }
 
@@ -748,10 +1338,51 @@ where
   /// ```swift
   /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
   /// let expression = vector.distanceHamming(to: vector)
+  /// // vec_distance_hamming(vec_bit(?), vec_bit(?))
   /// ```
   public func distanceHamming<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double> where V.Encoding == QueryValue.Encoding {
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions
+  {
+    Vec.distanceHamming(self, to: vector)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = vector.distanceHamming(to: vector)
+  /// // vec_distance_hamming(vec_bit(?), vec_bit(?))
+  /// ```
+  @_disfavoredOverload
+  public func distanceHamming<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void
+  {
+    Vec.distanceHamming(self, to: vector)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let expression = vector.distanceHamming(to: vector)
+  /// // vec_distance_hamming(vec_bit(?), vec_bit(?))
+  /// ```
+  @_disfavoredOverload
+  public func distanceHamming<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void
+  {
     Vec.distanceHamming(self, to: vector)
   }
 

@@ -18,22 +18,75 @@ extension Array where Element == Bool {
     public typealias Encoding = [Bool].PackedBitsRepresentation
     public typealias VectorBytesRepresentation = Self
     /// The logical vector value bound to or decoded from a query.
+    /// Assignments require a dimension count divisible by eight.
     ///
     /// ```swift
     /// let vector = [Bool]
     ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
     /// let queryOutput = vector.queryOutput
     /// ```
-    public var queryOutput: [Bool]
+    public var queryOutput: [Bool] {
+      get { self.elements }
+      set {
+        precondition(
+          newValue.count.isMultiple(of: 8),
+          "Packed bit vectors require a multiple of 8 dimensions"
+        )
+        self.elements = newValue
+      }
+    }
 
-    /// Wraps the logical vector value for blob storage and query binding.
+    private var elements: [Bool]
+
+    /// Wraps logical components, preconditioning that dimensions are divisible by eight.
+    /// Use `init(validating:)` for a recoverable validation error.
     ///
     /// ```swift
     /// let vector = [Bool]
     ///   .PackedBitsRepresentation(queryOutput: [true, false, true, false, false, false, false, true])
     /// ```
     public init(queryOutput: [Bool]) {
-      self.queryOutput = queryOutput
+      precondition(
+        queryOutput.count.isMultiple(of: 8),
+        "Packed bit vectors require a multiple of 8 dimensions"
+      )
+      self.elements = queryOutput
+    }
+
+    /// Validates dynamic binary components before wrapping them for SQLiteVec.
+    ///
+    /// ```swift
+    /// let bits = try [Bool].PackedBitsRepresentation(validating: [Bool](repeating: true, count: 16))
+    /// ```
+    public init(validating elements: [Bool]) throws {
+      guard elements.count.isMultiple(of: 8) else {
+        throw InvalidDimensionsError(dimensions: elements.count)
+      }
+      self.init(queryOutput: elements)
+    }
+
+    /// A binary component count that cannot be represented as complete bytes.
+    ///
+    /// ```swift
+    /// let error = [Bool].PackedBitsRepresentation.InvalidDimensionsError(dimensions: 9)
+    /// ```
+    public struct InvalidDimensionsError: Error, Hashable, Sendable {
+      /// The rejected logical dimension count.
+      ///
+      /// ```swift
+      /// let error = [Bool].PackedBitsRepresentation.InvalidDimensionsError(dimensions: 9)
+      /// let dimensions = error.dimensions
+      /// ```
+      public let dimensions: Int
+
+      /// Records a component count that is not divisible by eight.
+      ///
+      /// ```swift
+      /// let error = [Bool].PackedBitsRepresentation.InvalidDimensionsError(dimensions: 9)
+      /// ```
+      public init(dimensions: Int) {
+        self.dimensions = dimensions
+      }
     }
 
     /// The serialized blob, including any metadata required by this encoding.
@@ -85,6 +138,7 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Bool
+      public typealias Dimensions = VectorDimensions<count>
       public typealias Encoding = [Bool].PackedBitsRepresentation
       public typealias VectorBytesRepresentation = Self
       /// The logical vector value bound to or decoded from a query.
@@ -98,7 +152,8 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       /// ```
       public var queryOutput: BinaryEmbeddingVector<count>
 
-      /// Wraps the logical vector value for blob storage and query binding.
+      /// Wraps logical components, preconditioning that dimensions are divisible by eight.
+      /// Use `init(validating:)` for a recoverable validation error.
       ///
       /// ```swift
       /// let vector = BinaryEmbeddingVector<8>
@@ -107,7 +162,25 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       ///   )
       /// ```
       public init(queryOutput: BinaryEmbeddingVector<count>) {
+        precondition(
+          BinaryEmbeddingVector<count>.count.isMultiple(of: 8),
+          "Packed bit vectors require a multiple of 8 dimensions"
+        )
         self.queryOutput = queryOutput
+      }
+
+      /// Validates that the fixed logical components occupy complete bytes.
+      ///
+      /// ```swift
+      /// let vector = BinaryEmbeddingVector<16>(repeating: true)
+      /// let binding = try BinaryEmbeddingVector<16>.PackedBitsRepresentation(validating: vector)
+      /// ```
+      public init(validating vector: BinaryEmbeddingVector<count>) throws {
+        guard BinaryEmbeddingVector<count>.count.isMultiple(of: 8) else {
+          throw [Bool].PackedBitsRepresentation
+            .InvalidDimensionsError(dimensions: BinaryEmbeddingVector<count>.count)
+        }
+        self.init(queryOutput: vector)
       }
 
       /// The serialized blob, including any metadata required by this encoding.
@@ -119,13 +192,7 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
       ///   )
       /// let vectorBytes = vector.vectorBytes
       /// ```
-      public var vectorBytes: [UInt8] {
-        precondition(
-          BinaryEmbeddingVector<count>.count.isMultiple(of: 8),
-          "Packed bit vectors require a multiple of 8 dimensions"
-        )
-        return self.queryOutput.packedBytes
-      }
+      public var vectorBytes: [UInt8] { self.queryOutput.packedBytes }
 
       /// Decodes a vector blob, validating its encoding and dimensions.
       ///
@@ -158,10 +225,6 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
 /// Bit zero is the least significant bit of the first byte. Binding requires a dimension count
 /// divisible by eight; the format cannot preserve a partial byte's dimension count.
 private func encodePackedBitsVector(_ elements: [Bool]) -> [UInt8] {
-  precondition(
-    elements.count.isMultiple(of: 8),
-    "Packed bit vectors require a multiple of 8 dimensions"
-  )
   return stride(from: 0, to: elements.count, by: 8)
     .map { offset in
       (0..<8).reduce(UInt8.zero) { $0 | (elements[offset + $1] ? UInt8(1) << $1 : 0) }

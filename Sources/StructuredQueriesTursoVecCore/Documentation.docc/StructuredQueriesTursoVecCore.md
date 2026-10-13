@@ -92,8 +92,8 @@ let distances = Document.select {
 ```
 
 `distanceCosine`, `distanceL2`, `distanceDot` (negative dot product), and `distanceJaccard`
-use smaller values for closer matches. Swift requires matching encodings; the database checks
-matching dimensions. Numeric Jaccard is weighted; binary Jaccard compares true-bit sets.
+use smaller values for closer matches. Swift requires matching encodings and equal known dimensions;
+the database checks variable-size operands. Numeric Jaccard is weighted; binary Jaccard compares true-bit sets.
 Binary L2 is unavailable.
 
 ### Compatible constructor inputs
@@ -286,7 +286,13 @@ let sliced = TursoVec.slice(TursoVec.vector32("[1, 2, 3, 4]"), from: 1, to: 3, a
 let restored = try Quantized8Vector(vectorBytes: quantized.vectorBytes)
 ```
 
-`as:` selects a matching result representation. All vector values and representations expose
+`as:` selects a matching result representation; its dimensions are validated when decoding.
+Fixed values and strategies carry `VectorDimensions<N>` through query expressions. Distance
+comparisons reject different fixed counts; fixed and variable-size operands remain interoperable.
+Concatenation allows different counts, and default constructors and slices return variable-size
+representations unless `as:` selects a fixed result.
+
+All vector values and representations expose
 `vectorBytes` and `init(vectorBytes:)`. Encoded equality compares stored component bit patterns;
 dense equality follows Swift scalar semantics.
 

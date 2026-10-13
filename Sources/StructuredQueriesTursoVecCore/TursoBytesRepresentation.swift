@@ -81,6 +81,7 @@ extension Array.TursoBytesRepresentation: ExpressibleByArrayLiteral {
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Bool
+      public typealias Dimensions = VectorDimensions<count>
       public typealias Encoding = [Bool].TursoBytesRepresentation
       public typealias VectorBytesRepresentation = Self
       /// The logical vector value bound to or decoded from a query.

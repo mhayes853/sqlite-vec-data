@@ -109,6 +109,17 @@ representation independent of dimensions. For example, `EmbeddingVector<3>` and
 `[Float].VectorBytesRepresentation` share an encoding. Its `VectorBytesRepresentation` associated
 type selects the wrapper for a particular value, including fixed dimensions.
 
+The `Dimensions` associated type defaults to `Void` for runtime-sized values. Fixed representations
+use ``VectorDimensions`` with the same count across scalar types and strategies. Query integrations
+use that identity to reject unequal known dimensions while allowing variable-size operands.
+
+```swift
+func sameDimensions<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
+  _ left: L, _ right: R
+) where L.Dimensions == R.Dimensions {}
+sameDimensions(EmbeddingVector<3>(repeating: 1), EmbeddingVector<3>(repeating: 2))
+```
+
 Integration targets can adopt this protocol for database-specific encoded values and strategies
 while leaving shared scalar serialization unchanged.
 

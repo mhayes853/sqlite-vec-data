@@ -329,6 +329,7 @@ import StructuredQueriesCore
 
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   extension FixedEmbeddingVector: VectorBytesRepresentable where Scalar: VectorScalar {
+    public typealias Dimensions = VectorDimensions<count>
     public typealias Encoding = [Scalar].VectorBytesRepresentation
 
     /// The serialized blob, including any metadata required by this encoding.
@@ -362,6 +363,7 @@ import StructuredQueriesCore
       Hashable, Sendable, QueryBindable, VectorBytesRepresentable
     {
       public typealias Scalar = Element
+      public typealias Dimensions = VectorDimensions<count>
       public typealias Encoding = [Element].VectorBytesRepresentation
       public typealias VectorBytesRepresentation = Self
       /// The logical vector value bound to or decoded from a query.

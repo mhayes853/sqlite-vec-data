@@ -33,7 +33,60 @@ public enum Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Bool>
-  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("(\(expression) MATCH \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query =
+  ///   Embedding
+  ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+  ///   .limit(5)
+  /// // SELECT "Embeddings"."embedding", "Embeddings"."label"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_normalize(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("(\(expression) MATCH \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query =
+  ///   Embedding
+  ///   .where { Vec.match($0.embedding, to: Vec.normalize(queryVector)) }
+  ///   .limit(5)
+  /// // SELECT "Embeddings"."embedding", "Embeddings"."label"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_normalize(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("(\(expression) MATCH \(vector))")
   }
 
@@ -61,7 +114,68 @@ public enum Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Bool>
-  where V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("(\(expression) MATCH vec_bit(\(vector)))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+  ///   var embedding: [Bool]
+  /// }
+  ///
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("(\(expression) MATCH vec_bit(\(vector)))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding bit[16]);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Bool].PackedBitsRepresentation.self)
+  ///   var embedding: [Bool]
+  /// }
+  ///
+  /// let vector = try [Bool].PackedBitsRepresentation(vectorBytes: [0x85, 0x02])
+  /// let query = Embedding.where { Vec.match($0.embedding, to: vector) }.limit(5)
+  /// // SELECT "Embeddings"."embedding"
+  /// // FROM "Embeddings"
+  /// // WHERE (("Embeddings"."embedding" MATCH vec_bit(?)))
+  /// // LIMIT ?
+  /// ```
+  @_disfavoredOverload
+  public static func match<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Bool>
+  where
+    V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("(\(expression) MATCH vec_bit(\(vector)))")
   }
 
@@ -88,7 +202,60 @@ public enum Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
-  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.distanceL2($0.embedding, to: queryVector)
+  /// }
+  /// // SELECT vec_distance_l2("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_distance_l2(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.distanceL2($0.embedding, to: queryVector)
+  /// }
+  /// // SELECT vec_distance_l2("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("vec_distance_l2(\(expression), \(vector))")
   }
 
@@ -115,7 +282,60 @@ public enum Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
-  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_distance_l1(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.distanceL1($0.embedding, to: queryVector)
+  /// }
+  /// // SELECT vec_distance_l1("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL1<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_distance_l1(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.distanceL1($0.embedding, to: queryVector)
+  /// }
+  /// // SELECT vec_distance_l1("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL1<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("vec_distance_l1(\(expression), \(vector))")
   }
 
@@ -142,7 +362,60 @@ public enum Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
-  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_distance_cosine(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.distanceCosine($0.embedding, to: queryVector)
+  /// }
+  /// // SELECT vec_distance_cosine("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func distanceCosine<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_distance_cosine(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.distanceCosine($0.embedding, to: queryVector)
+  /// }
+  /// // SELECT vec_distance_cosine("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func distanceCosine<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("vec_distance_cosine(\(expression), \(vector))")
   }
 
@@ -171,7 +444,64 @@ public enum Vec {
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
   ) -> some QueryExpression<Double>
-  where V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding {
+  where
+    V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_distance_hamming(vec_bit(\(expression)), vec_bit(\(vector)))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Bool].PackedBitsRepresentation = [
+  ///   true, false, true, false, false, false, false, true
+  /// ]
+  /// let query = BinaryEmbedding.select {
+  ///   Vec.distanceHamming($0.embedding, to: queryVector)
+  /// }
+  /// // SELECT vec_distance_hamming(vec_bit("BinaryEmbeddings"."embedding"), vec_bit(?))
+  /// // FROM "BinaryEmbeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func distanceHamming<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_distance_hamming(vec_bit(\(expression)), vec_bit(\(vector)))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Bool].PackedBitsRepresentation = [
+  ///   true, false, true, false, false, false, false, true
+  /// ]
+  /// let query = BinaryEmbedding.select {
+  ///   Vec.distanceHamming($0.embedding, to: queryVector)
+  /// }
+  /// // SELECT vec_distance_hamming(vec_bit("BinaryEmbeddings"."embedding"), vec_bit(?))
+  /// // FROM "BinaryEmbeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func distanceHamming<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == [Bool].PackedBitsRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
     SQLQueryExpression("vec_distance_hamming(vec_bit(\(expression)), vec_bit(\(vector)))")
   }
 
@@ -260,7 +590,64 @@ public enum Vec {
   ) -> some QueryExpression<T>
   where
     V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
-    T.Encoding == [Float].VectorBytesRepresentation
+    T.Encoding == [Float].VectorBytesRepresentation,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_add(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.add($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
+  /// }
+  /// // SELECT vec_add("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == [Float].VectorBytesRepresentation,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_add(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.add($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
+  /// }
+  /// // SELECT vec_add("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == [Float].VectorBytesRepresentation,
+    W.Dimensions == Void
   {
     SQLQueryExpression("vec_add(\(expression), \(vector))")
   }
@@ -281,12 +668,59 @@ public enum Vec {
   ///   - expression: The vector expression to add to.
   ///   - vector: The query vector to add.
   /// - Returns: A query expression for the summed vector.
-  public static func add<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+  public static func add<V: VectorBytesRepresentable & QueryBindable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     _ vector: some QueryExpression<W>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
-    Self.add(expression, vector, as: [Float].VectorBytesRepresentation.self)
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    Self.add(expression, vector, as: V.self)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.add($0.embedding, queryVector)
+  /// }
+  /// // SELECT vec_add("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func add<V: VectorBytesRepresentable, W: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>
+  ) -> some QueryExpression<W>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    Self.add(expression, vector, as: W.self)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.add($0.embedding, queryVector)
+  /// }
+  /// // SELECT vec_add("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func add<V: VectorBytesRepresentable & QueryBindable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
+    Self.add(expression, vector, as: V.self)
   }
 
   /// Subtracts a query vector from an expression and returns the result in the requested representation.
@@ -317,7 +751,64 @@ public enum Vec {
   ) -> some QueryExpression<T>
   where
     V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
-    T.Encoding == [Float].VectorBytesRepresentation
+    T.Encoding == [Float].VectorBytesRepresentation,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_sub(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.sub($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
+  /// }
+  /// // SELECT vec_sub("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == [Float].VectorBytesRepresentation,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_sub(\(expression), \(vector))")
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.sub($0.embedding, queryVector, as: [Float].VectorBytesRepresentation.self)
+  /// }
+  /// // SELECT vec_sub("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == [Float].VectorBytesRepresentation,
+    W.Dimensions == Void
   {
     SQLQueryExpression("vec_sub(\(expression), \(vector))")
   }
@@ -338,12 +829,59 @@ public enum Vec {
   ///   - expression: The vector expression to subtract from.
   ///   - vector: The query vector to subtract.
   /// - Returns: A query expression for the difference vector.
-  public static func sub<V: VectorBytesRepresentable, W: VectorBytesRepresentable>(
+  public static func sub<V: VectorBytesRepresentable & QueryBindable, W: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>,
     _ vector: some QueryExpression<W>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding {
-    Self.sub(expression, vector, as: [Float].VectorBytesRepresentation.self)
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    Self.sub(expression, vector, as: V.self)
+  }
+
+  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.sub($0.embedding, queryVector)
+  /// }
+  /// // SELECT vec_sub("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func sub<V: VectorBytesRepresentable, W: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>
+  ) -> some QueryExpression<W>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    Self.sub(expression, vector, as: W.self)
+  }
+
+  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// let queryVector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
+  /// let query = Embedding.select {
+  ///   Vec.sub($0.embedding, queryVector)
+  /// }
+  /// // SELECT vec_sub("Embeddings"."embedding", ?)
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func sub<V: VectorBytesRepresentable & QueryBindable, W: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
+    Self.sub(expression, vector, as: V.self)
   }
 
   /// Extracts a slice from a vector expression using a start index and exclusive end index.
@@ -612,11 +1150,13 @@ public enum Vec {
   ///
   /// - Parameter expression: The vector expression to normalize.
   /// - Returns: A query expression for the normalized vector.
-  public static func normalize<V: VectorBytesRepresentable>(
+  public static func normalize<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where V.Encoding == [Float].VectorBytesRepresentation {
-    Self.normalize(expression, as: [Float].VectorBytesRepresentation.self)
+  ) -> some QueryExpression<V>
+  where
+    V.Encoding == [Float].VectorBytesRepresentation
+  {
+    Self.normalize(expression, as: V.self)
   }
 
   /// Converts a vector expression to an f32 representation and returns the result in the requested type.
@@ -662,6 +1202,31 @@ public enum Vec {
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
   where V.Encoding == [Float].VectorBytesRepresentation {
     Self.f32(expression, as: [Float].VectorBytesRepresentation.self)
+  }
+
+  /// Parses a JSON array of numbers as a Float32 vector.
+  ///
+  /// ```swift
+  /// let expression = Vec.f32("[1, 2, 3]")
+  /// // vec_f32(?)
+  /// ```
+  public static func f32(
+    _ json: some QueryExpression<String>
+  ) -> some QueryExpression<[Float].VectorBytesRepresentation> {
+    Self.f32(json, as: [Float].VectorBytesRepresentation.self)
+  }
+
+  /// Parses JSON as Float32, validating the requested dimensions when decoding.
+  ///
+  /// ```swift
+  /// let expression = Vec.f32("[1, 2, 3]", as: EmbeddingVector<3>.self)
+  /// // vec_f32(?)
+  /// ```
+  public static func f32<T: VectorBytesRepresentable & QueryBindable>(
+    _ json: some QueryExpression<String>,
+    as result: T.Type
+  ) -> some QueryExpression<T> where T.Encoding == [Float].VectorBytesRepresentation {
+    SQLQueryExpression("vec_f32(\(json))")
   }
 
   /// Converts a vector expression to a bit representation and returns the result in the requested type.
