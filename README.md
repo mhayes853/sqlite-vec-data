@@ -110,6 +110,10 @@ Normalization and arithmetic retain known dimensions. Distances, arithmetic, and
 unequal fixed counts at compile time; variable-size operands remain supported and are checked by
 the database.
 
+Constructors and quantization also retain fixed counts. For length-preserving operations, `as:`
+rejects conflicting known counts; JSON and variable-size inputs use decoding-time validation.
+`Vec.bit` tags packed binary storage. Use `quantizeBinary()` to convert numeric components to bits.
+
 ### Signed Int8 vectors
 
 ```swift
@@ -254,6 +258,21 @@ Constructors accept JSON string expressions or vectors with a `TursoVectorEncodi
 Shared Float32 works directly; raw Double, Float16, SQLiteVec Int8, and packed bits are rejected.
 Use `.TursoFloat64BytesRepresentation` for Double and `.TursoBytesRepresentation` for binary values.
 `extract` requires a compatible vector.
+
+The table lists results for JSON and variable-size inputs. Fixed inputs produce the corresponding
+fixed-size result, including through format conversions:
+
+```swift
+let embedding = EmbeddingVector<3>([0.1, 0.2, 0.3])
+let precise = TursoVec.vector64(embedding)
+// vector64(?)
+let candidate = EmbeddingVector64<3>.TursoFloat64BytesRepresentation(
+  queryOutput: EmbeddingVector64<3>([0.2, 0.4, 0.6])
+)
+let distance = TursoVec.distanceL2(precise, to: candidate)
+// vector_distance_l2(vector64(?), ?)
+// precise decodes as EmbeddingVector64<3>; comparison with a known count of 4 is rejected.
+```
 
 ```swift
 let vector: [Float].VectorBytesRepresentation = [1, 2, 3]

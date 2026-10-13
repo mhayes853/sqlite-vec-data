@@ -176,6 +176,29 @@ public enum TursoVec {
     SQLQueryExpression("vector32(\(expression))")
   }
 
+  #if swift(>=6.2)
+    /// Converts a fixed-size vector while preserving its logical dimension count.
+    ///
+    /// ```swift
+    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+    /// let converted = TursoVec.vector32(source)
+    /// // vector32(?)
+    /// let components = TursoVec.extract(converted)
+    /// // vector_extract(vector32(?))
+    /// // The result retains eight logical dimensions for subsequent operations.
+    /// ```
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    public static func vector32<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+      _ expression: some QueryExpression<V>
+    ) -> some QueryExpression<EmbeddingVector<count>>
+    where
+      V.Encoding: TursoVectorEncoding,
+      V.Dimensions == VectorDimensions<count>
+    {
+      Self.vector32(expression, as: EmbeddingVector<count>.self)
+    }
+  #endif
+
   /// Converts a supported vector BLOB to a 32-bit floating-point vector with `vector32`.
   ///
   /// ```swift
@@ -198,28 +221,26 @@ public enum TursoVec {
   public static func vector32<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where V.Encoding: TursoVectorEncoding {
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == Void
+  {
     Self.vector32(expression, as: [Float].VectorBytesRepresentation.self)
   }
 
-  /// Converts a supported vector BLOB, decoding into the requested matching representation.
-  /// Fixed-size representations validate the decoded number of dimensions.
+  /// Preserves matching input and result dimensions.
   ///
   /// ```swift
   /// @Table("documents")
   /// struct Document {
-  ///   var id: Int
-  ///   var embedding: EmbeddingVector<3>
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
   /// }
-  ///
-  /// let source = TursoVec.vector64("[0.1, 0.2, 0.3]")
-  /// // vector64(?)
-  /// let embedding = TursoVec.vector32(source, as: EmbeddingVector<3>.self)
-  /// // vector32(vector64(?))
-  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-  ///   (1, embedding)
+  /// let converted = Document.select {
+  ///   TursoVec.vector32($0.embedding, as: EmbeddingVector<8>.self)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vector32(vector64(?)))
+  /// // SELECT vector32("documents"."embedding")
+  /// // FROM "documents"
   /// ```
   public static func vector32<
     V: VectorBytesRepresentable & QueryBindable,
@@ -228,7 +249,68 @@ public enum TursoVec {
     _ expression: some QueryExpression<V>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding: TursoVectorEncoding, T.Encoding == [Float].VectorBytesRepresentation {
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Float].VectorBytesRepresentation,
+    V.Dimensions == T.Dimensions
+  {
+    SQLQueryExpression("vector32(\(expression))")
+  }
+
+  /// Decodes a runtime-sized source with a checked result representation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector32($0.embedding, as: EmbeddingVector<8>.self)
+  /// }
+  /// // SELECT vector32("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector32<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Float].VectorBytesRepresentation,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vector32(\(expression))")
+  }
+
+  /// Returns a runtime-sized result from a known or runtime-sized source.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector32($0.embedding, as: [Float].VectorBytesRepresentation.self)
+  /// }
+  /// // SELECT vector32("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector32<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Float].VectorBytesRepresentation,
+    T.Dimensions == Void
+  {
     SQLQueryExpression("vector32(\(expression))")
   }
 
@@ -283,6 +365,29 @@ public enum TursoVec {
     SQLQueryExpression("vector64(\(expression))")
   }
 
+  #if swift(>=6.2)
+    /// Converts a fixed-size vector while preserving its logical dimension count.
+    ///
+    /// ```swift
+    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+    /// let converted = TursoVec.vector64(source)
+    /// // vector64(?)
+    /// let components = TursoVec.extract(converted)
+    /// // vector_extract(vector64(?))
+    /// // The result retains eight logical dimensions for subsequent operations.
+    /// ```
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    public static func vector64<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+      _ expression: some QueryExpression<V>
+    ) -> some QueryExpression<EmbeddingVector64<count>.TursoFloat64BytesRepresentation>
+    where
+      V.Encoding: TursoVectorEncoding,
+      V.Dimensions == VectorDimensions<count>
+    {
+      Self.vector64(expression, as: EmbeddingVector64<count>.TursoFloat64BytesRepresentation.self)
+    }
+  #endif
+
   /// Converts a supported vector BLOB to a 64-bit floating-point vector with `vector64`.
   ///
   /// ```swift
@@ -305,29 +410,26 @@ public enum TursoVec {
   public static func vector64<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<[Double].TursoFloat64BytesRepresentation>
-  where V.Encoding: TursoVectorEncoding {
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == Void
+  {
     Self.vector64(expression, as: [Double].TursoFloat64BytesRepresentation.self)
   }
 
-  /// Converts a supported vector BLOB, decoding into the requested matching representation.
-  /// Fixed-size representations validate the decoded number of dimensions.
+  /// Preserves matching input and result dimensions.
   ///
   /// ```swift
   /// @Table("documents")
   /// struct Document {
-  ///   var id: Int
-  ///   @Column(as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self)
-  ///   var embedding: EmbeddingVector64<3>
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
   /// }
-  ///
-  /// let source = TursoVec.vector32("[1, 2, 3]")
-  /// // vector32(?)
-  /// let embedding = TursoVec.vector64(source, as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self)
-  /// // vector64(vector32(?))
-  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-  ///   (1, embedding)
+  /// let converted = Document.select {
+  ///   TursoVec.vector64($0.embedding, as: EmbeddingVector64<8>.TursoFloat64BytesRepresentation.self)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vector64(vector32(?)))
+  /// // SELECT vector64("documents"."embedding")
+  /// // FROM "documents"
   /// ```
   public static func vector64<
     V: VectorBytesRepresentable & QueryBindable,
@@ -336,7 +438,68 @@ public enum TursoVec {
     _ expression: some QueryExpression<V>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding: TursoVectorEncoding, T.Encoding == [Double].TursoFloat64BytesRepresentation {
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Double].TursoFloat64BytesRepresentation,
+    V.Dimensions == T.Dimensions
+  {
+    SQLQueryExpression("vector64(\(expression))")
+  }
+
+  /// Decodes a runtime-sized source with a checked result representation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector64($0.embedding, as: EmbeddingVector64<8>.TursoFloat64BytesRepresentation.self)
+  /// }
+  /// // SELECT vector64("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector64<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Double].TursoFloat64BytesRepresentation,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vector64(\(expression))")
+  }
+
+  /// Returns a runtime-sized result from a known or runtime-sized source.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector64($0.embedding, as: [Double].TursoFloat64BytesRepresentation.self)
+  /// }
+  /// // SELECT vector64("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector64<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Double].TursoFloat64BytesRepresentation,
+    T.Dimensions == Void
+  {
     SQLQueryExpression("vector64(\(expression))")
   }
 
@@ -388,6 +551,29 @@ public enum TursoVec {
     SQLQueryExpression("vector8(\(expression))")
   }
 
+  #if swift(>=6.2)
+    /// Converts a fixed-size vector while preserving its logical dimension count.
+    ///
+    /// ```swift
+    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+    /// let converted = TursoVec.vector8(source)
+    /// // vector8(?)
+    /// let components = TursoVec.extract(converted)
+    /// // vector_extract(vector8(?))
+    /// // The result retains eight logical dimensions for subsequent operations.
+    /// ```
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    public static func vector8<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+      _ expression: some QueryExpression<V>
+    ) -> some QueryExpression<InlineQuantized8Vector<count>>
+    where
+      V.Encoding: TursoVectorEncoding,
+      V.Dimensions == VectorDimensions<count>
+    {
+      Self.vector8(expression, as: InlineQuantized8Vector<count>.self)
+    }
+  #endif
+
   /// Converts a supported vector BLOB to a quantized vector with `vector8`.
   ///
   /// ```swift
@@ -410,30 +596,27 @@ public enum TursoVec {
   /// ```
   public static func vector8<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<Quantized8Vector> where V.Encoding: TursoVectorEncoding {
+  ) -> some QueryExpression<Quantized8Vector>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == Void
+  {
     Self.vector8(expression, as: Quantized8Vector.self)
   }
 
-  /// Converts a supported vector BLOB, decoding into the requested matching representation.
-  /// Fixed-size representations validate the decoded number of dimensions.
+  /// Preserves matching input and result dimensions.
   ///
   /// ```swift
   /// @Table("documents")
   /// struct Document {
-  ///   var id: Int
-  ///   @Column(as: InlineQuantized8Vector<3>.self)
-  ///   var embedding: InlineQuantized8Vector<3>
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
   /// }
-  ///
-  /// let source = TursoVec.vector32("[-0.75, 0, 0.5]")
-  /// // vector32(?)
-  /// let embedding = TursoVec.vector8(source, as: InlineQuantized8Vector<3>.self)
-  /// // vector8(vector32(?))
-  /// // Quantized conversion discards precision; binary conversion keeps only positive signs.
-  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-  ///   (1, embedding)
+  /// let converted = Document.select {
+  ///   TursoVec.vector8($0.embedding, as: InlineQuantized8Vector<8>.self)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vector8(vector32(?)))
+  /// // SELECT vector8("documents"."embedding")
+  /// // FROM "documents"
   /// ```
   public static func vector8<
     V: VectorBytesRepresentable & QueryBindable,
@@ -442,7 +625,68 @@ public enum TursoVec {
     _ expression: some QueryExpression<V>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding: TursoVectorEncoding, T.Encoding == Quantized8Vector {
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == Quantized8Vector,
+    V.Dimensions == T.Dimensions
+  {
+    SQLQueryExpression("vector8(\(expression))")
+  }
+
+  /// Decodes a runtime-sized source with a checked result representation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector8($0.embedding, as: InlineQuantized8Vector<8>.self)
+  /// }
+  /// // SELECT vector8("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector8<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == Quantized8Vector,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vector8(\(expression))")
+  }
+
+  /// Returns a runtime-sized result from a known or runtime-sized source.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector8($0.embedding, as: Quantized8Vector.self)
+  /// }
+  /// // SELECT vector8("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector8<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == Quantized8Vector,
+    T.Dimensions == Void
+  {
     SQLQueryExpression("vector8(\(expression))")
   }
 
@@ -499,6 +743,29 @@ public enum TursoVec {
     SQLQueryExpression("vector1bit(\(expression))")
   }
 
+  #if swift(>=6.2)
+    /// Converts a fixed-size vector while preserving its logical dimension count.
+    ///
+    /// ```swift
+    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+    /// let converted = TursoVec.vector1bit(source)
+    /// // vector1bit(?)
+    /// let components = TursoVec.extract(converted)
+    /// // vector_extract(vector1bit(?))
+    /// // The result retains eight logical dimensions for subsequent operations.
+    /// ```
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    public static func vector1bit<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+      _ expression: some QueryExpression<V>
+    ) -> some QueryExpression<BinaryEmbeddingVector<count>.TursoBytesRepresentation>
+    where
+      V.Encoding: TursoVectorEncoding,
+      V.Dimensions == VectorDimensions<count>
+    {
+      Self.vector1bit(expression, as: BinaryEmbeddingVector<count>.TursoBytesRepresentation.self)
+    }
+  #endif
+
   /// Converts a supported vector BLOB to a binary vector with `vector1bit`.
   ///
   /// ```swift
@@ -521,30 +788,27 @@ public enum TursoVec {
   /// ```
   public static func vector1bit<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<[Bool].TursoBytesRepresentation> where V.Encoding: TursoVectorEncoding {
+  ) -> some QueryExpression<[Bool].TursoBytesRepresentation>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == Void
+  {
     Self.vector1bit(expression, as: [Bool].TursoBytesRepresentation.self)
   }
 
-  /// Converts a supported vector BLOB, decoding into the requested matching representation.
-  /// Fixed-size representations validate the decoded number of dimensions.
+  /// Preserves matching input and result dimensions.
   ///
   /// ```swift
   /// @Table("documents")
   /// struct Document {
-  ///   var id: Int
-  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
-  ///   var embedding: BinaryEmbeddingVector<3>
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
   /// }
-  ///
-  /// let source = TursoVec.vector32("[-0.75, 0, 0.5]")
-  /// // vector32(?)
-  /// let embedding = TursoVec.vector1bit(source, as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
-  /// // vector1bit(vector32(?))
-  /// // Binary components become [false, false, true].
-  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-  ///   (1, embedding)
+  /// let converted = Document.select {
+  ///   TursoVec.vector1bit($0.embedding, as: BinaryEmbeddingVector<8>.TursoBytesRepresentation.self)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vector1bit(vector32(?)))
+  /// // SELECT vector1bit("documents"."embedding")
+  /// // FROM "documents"
   /// ```
   public static func vector1bit<
     V: VectorBytesRepresentable & QueryBindable,
@@ -553,7 +817,68 @@ public enum TursoVec {
     _ expression: some QueryExpression<V>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding: TursoVectorEncoding, T.Encoding == [Bool].TursoBytesRepresentation {
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Bool].TursoBytesRepresentation,
+    V.Dimensions == T.Dimensions
+  {
+    SQLQueryExpression("vector1bit(\(expression))")
+  }
+
+  /// Decodes a runtime-sized source with a checked result representation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector1bit($0.embedding, as: BinaryEmbeddingVector<8>.TursoBytesRepresentation.self)
+  /// }
+  /// // SELECT vector1bit("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector1bit<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Bool].TursoBytesRepresentation,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vector1bit(\(expression))")
+  }
+
+  /// Returns a runtime-sized result from a known or runtime-sized source.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector1bit($0.embedding, as: [Bool].TursoBytesRepresentation.self)
+  /// }
+  /// // SELECT vector1bit("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector1bit<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == [Bool].TursoBytesRepresentation,
+    T.Dimensions == Void
+  {
     SQLQueryExpression("vector1bit(\(expression))")
   }
 
@@ -607,6 +932,29 @@ public enum TursoVec {
     SQLQueryExpression("vector32_sparse(\(expression))")
   }
 
+  #if swift(>=6.2)
+    /// Converts a fixed-size vector while preserving its logical dimension count.
+    ///
+    /// ```swift
+    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+    /// let converted = TursoVec.vector32Sparse(source)
+    /// // vector32_sparse(?)
+    /// let components = TursoVec.extract(converted)
+    /// // vector_extract(vector32_sparse(?))
+    /// // The result retains eight logical dimensions for subsequent operations.
+    /// ```
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    public static func vector32Sparse<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+      _ expression: some QueryExpression<V>
+    ) -> some QueryExpression<SizedSparseFloat32Vector<count>>
+    where
+      V.Encoding: TursoVectorEncoding,
+      V.Dimensions == VectorDimensions<count>
+    {
+      Self.vector32Sparse(expression, as: SizedSparseFloat32Vector<count>.self)
+    }
+  #endif
+
   /// Converts a supported vector BLOB to a sparse Float32 vector with `vector32_sparse`.
   ///
   /// ```swift
@@ -629,30 +977,27 @@ public enum TursoVec {
   /// ```
   public static func vector32Sparse<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<SparseFloat32Vector> where V.Encoding: TursoVectorEncoding {
+  ) -> some QueryExpression<SparseFloat32Vector>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == Void
+  {
     Self.vector32Sparse(expression, as: SparseFloat32Vector.self)
   }
 
-  /// Converts a supported vector BLOB, decoding into the requested matching representation.
-  /// Fixed-size representations validate the decoded number of dimensions.
+  /// Preserves matching input and result dimensions.
   ///
   /// ```swift
   /// @Table("documents")
   /// struct Document {
-  ///   var id: Int
-  ///   @Column(as: SizedSparseFloat32Vector<3>.self)
-  ///   var embedding: SizedSparseFloat32Vector<3>
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
   /// }
-  ///
-  /// let source = TursoVec.vector32("[0, 0.5, 0]")
-  /// // vector32(?)
-  /// let embedding = TursoVec.vector32Sparse(source, as: SizedSparseFloat32Vector<3>.self)
-  /// // vector32_sparse(vector32(?))
-  /// // Only the component at index 1 is stored in the sparse result.
-  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-  ///   (1, embedding)
+  /// let converted = Document.select {
+  ///   TursoVec.vector32Sparse($0.embedding, as: SizedSparseFloat32Vector<8>.self)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vector32_sparse(vector32(?)))
+  /// // SELECT vector32_sparse("documents"."embedding")
+  /// // FROM "documents"
   /// ```
   public static func vector32Sparse<
     V: VectorBytesRepresentable & QueryBindable,
@@ -661,7 +1006,68 @@ public enum TursoVec {
     _ expression: some QueryExpression<V>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding: TursoVectorEncoding, T.Encoding == SparseFloat32Vector {
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == SparseFloat32Vector,
+    V.Dimensions == T.Dimensions
+  {
+    SQLQueryExpression("vector32_sparse(\(expression))")
+  }
+
+  /// Decodes a runtime-sized source with a checked result representation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: [Float].VectorBytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector32Sparse($0.embedding, as: SizedSparseFloat32Vector<8>.self)
+  /// }
+  /// // SELECT vector32_sparse("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector32Sparse<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == SparseFloat32Vector,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vector32_sparse(\(expression))")
+  }
+
+  /// Returns a runtime-sized result from a known or runtime-sized source.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  /// }
+  /// let converted = Document.select {
+  ///   TursoVec.vector32Sparse($0.embedding, as: SparseFloat32Vector.self)
+  /// }
+  /// // SELECT vector32_sparse("documents"."embedding")
+  /// // FROM "documents"
+  /// ```
+  @_disfavoredOverload
+  public static func vector32Sparse<
+    V: VectorBytesRepresentable & QueryBindable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding: TursoVectorEncoding, T.Encoding == SparseFloat32Vector,
+    T.Dimensions == Void
+  {
     SQLQueryExpression("vector32_sparse(\(expression))")
   }
 
@@ -688,6 +1094,29 @@ public enum TursoVec {
     SQLQueryExpression("vector(\(expression))")
   }
 
+  #if swift(>=6.2)
+    /// Converts a fixed-size vector while preserving its logical dimension count.
+    ///
+    /// ```swift
+    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+    /// let converted = TursoVec.vector(source)
+    /// // vector(?)
+    /// let components = TursoVec.extract(converted)
+    /// // vector_extract(vector(?))
+    /// // The result retains eight logical dimensions for subsequent operations.
+    /// ```
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    public static func vector<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+      _ expression: some QueryExpression<V>
+    ) -> some QueryExpression<EmbeddingVector<count>>
+    where
+      V.Encoding: TursoVectorEncoding,
+      V.Dimensions == VectorDimensions<count>
+    {
+      SQLQueryExpression("vector(\(expression))")
+    }
+  #endif
+
   /// Converts a supported vector BLOB to Float32 using the `vector` alias.
   ///
   /// ```swift
@@ -710,7 +1139,10 @@ public enum TursoVec {
   public static func vector<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where V.Encoding: TursoVectorEncoding {
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == Void
+  {
     SQLQueryExpression("vector(\(expression))")
   }
 

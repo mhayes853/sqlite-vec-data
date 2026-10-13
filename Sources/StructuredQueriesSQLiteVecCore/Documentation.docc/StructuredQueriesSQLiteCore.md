@@ -159,7 +159,10 @@ let result = Vec.add(normalized, Vec.f32("[0, 2, 0]"))
 Normalization and default arithmetic results retain known dimensions. When one arithmetic operand
 is variable-size, the fixed operand determines the result's dimension type. Distances, arithmetic,
 and `MATCH` require equal fixed counts; variable-size operands are checked by the database.
-`as:` result counts and slice bounds remain runtime decoding constraints.
+Constructors and quantization preserve known dimensions. For operations that preserve length,
+`as:` requires compatible known operand and result counts. JSON and runtime-sized inputs still
+validate fixed results during decoding. Slice bounds and result counts remain runtime checks.
+`Vec.bit` tags packed binary storage; `quantizeBinary()` converts numeric components to signs.
 
 ### Signed Int8 vectors
 

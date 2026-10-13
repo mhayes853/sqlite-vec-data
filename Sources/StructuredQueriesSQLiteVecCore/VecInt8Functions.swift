@@ -1,11 +1,8 @@
 import StructuredQueriesCore
 
 extension Vec {
-  /// Marks a signed-byte blob with SQLiteVec's Int8 subtype.
-  ///
-  /// This reinterprets bytes, rather than numerically converting Float32 components. Use
-  /// `quantizeInt8` for Float32 quantization. Blob subtypes do not survive storage or binding,
-  /// so this helper is also needed when inserting into vec0 Int8 columns.
+
+  /// Preserves matching input and result dimensions.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -16,21 +13,82 @@ extension Vec {
   ///   var label: String
   /// }
   ///
-  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3, -4, 5, -6, 7, -8]
-  /// let insert = Embedding.insert { ($0.embedding, $0.label) } values: {
-  ///   (Vec.int8(vector, as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self), "Signed embedding")
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.int8($0.embedding, as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self))
   /// }
-  /// // INSERT INTO "Embeddings" ("embedding", "label") VALUES (vec_int8(?), ?)
+  /// // SELECT "Embeddings"."label", vec_int8("Embeddings"."embedding")
+  /// // FROM "Embeddings"
   /// ```
   public static func int8<V: VectorBytesRepresentable, T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding == [Int8].Int8BytesRepresentation, T.Encoding == V.Encoding {
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, T.Encoding == V.Encoding,
+    V.Dimensions == T.Dimensions
+  {
     SQLQueryExpression("vec_int8(\(expression))")
   }
 
-  /// Marks a signed-byte blob with SQLiteVec's Int8 subtype.
+  /// Decodes a runtime-sized source with a checked result representation.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.int8($0.embedding, as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_int8("Embeddings"."embedding")
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func int8<V: VectorBytesRepresentable, T: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, T.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_int8(\(expression))")
+  }
+
+  /// Returns a runtime-sized result from a known or runtime-sized source.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
+  ///   var embedding: FixedEmbeddingVector<8, Int8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.int8($0.embedding, as: [Int8].Int8BytesRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_int8("Embeddings"."embedding")
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func int8<V: VectorBytesRepresentable, T: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, T.Encoding == V.Encoding,
+    T.Dimensions == Void
+  {
+    SQLQueryExpression("vec_int8(\(expression))")
+  }
+
+  /// Preserves the source vector type and its dimension count while attaching the SQLiteVec subtype.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -47,11 +105,32 @@ extension Vec {
   /// }
   /// // INSERT INTO "Embeddings" ("embedding", "label") VALUES (vec_int8(?), ?)
   /// ```
+  public static func int8<V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<V>
+  where V.Encoding == [Int8].Int8BytesRepresentation {
+    Self.int8(expression, as: V.self)
+  }
+
+  /// Preserves a computed source's dimensions through its query representation.
+  ///
+  /// ```swift
+  /// func tagged<V: VectorBytesRepresentable>(
+  ///   _ expression: some QueryExpression<V>
+  /// ) -> some QueryExpression<V.VectorBytesRepresentation>
+  /// where V.Encoding == [Int8].Int8BytesRepresentation {
+  ///   Vec.int8(expression)
+  /// }
+  /// let source: [Int8].Int8BytesRepresentation = [1, -2, 3]
+  /// let expression = tagged(source)
+  /// // vec_int8(?)
+  /// ```
+  @_disfavoredOverload
   public static func int8<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<[Int8].Int8BytesRepresentation>
+  ) -> some QueryExpression<V.VectorBytesRepresentation>
   where V.Encoding == [Int8].Int8BytesRepresentation {
-    Self.int8(expression, as: [Int8].Int8BytesRepresentation.self)
+    Self.int8(expression, as: V.VectorBytesRepresentation.self)
   }
 
   /// Parses a JSON array of integers in [-128, 127] as a signed Int8 vector.
@@ -564,7 +643,7 @@ extension Vec {
     SQLQueryExpression("vec_to_json(vec_int8(\(expression)))")
   }
 
-  /// Adds signed Int8 components, returning signed bytes with SQLiteVec's arithmetic semantics.
+  /// Preserves compatible operand and result dimensions.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -598,12 +677,12 @@ extension Vec {
   where
     V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
     T.Encoding == V.Encoding,
-    V.Dimensions == W.Dimensions
+    V.Dimensions == W.Dimensions, T.Dimensions == V.Dimensions
   {
     SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
 
-  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -638,12 +717,12 @@ extension Vec {
   where
     V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
     T.Encoding == V.Encoding,
-    V.Dimensions == Void
+    V.Dimensions == Void, T.Dimensions == W.Dimensions
   {
     SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
 
-  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -678,7 +757,160 @@ extension Vec {
   where
     V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
     T.Encoding == V.Encoding,
-    W.Dimensions == Void
+    W.Dimensions == Void, T.Dimensions == V.Dimensions
+  {
+    SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
+  ///   var embedding: FixedEmbeddingVector<8, Int8>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = FixedEmbeddingVector<8, Int8>
+  ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<8, Int8>(repeating: 2))
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.add($0.embedding, queryVector, as: [Int8].Int8BytesRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_add(vec_int8("Embeddings"."embedding"), vec_int8(?))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    T.Dimensions == Void, V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Int8].Int8BytesRepresentation(queryOutput: [Int8](repeating: 2, count: 8))
+  /// let query = Embedding.select {
+  ///   (
+  ///     $0.label,
+  ///     Vec.add(
+  ///       $0.embedding,
+  ///       queryVector,
+  ///       as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
+  ///     )
+  ///   )
+  /// }
+  /// // SELECT "Embeddings"."label", vec_add(vec_int8("Embeddings"."embedding"), vec_int8(?))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    V.Dimensions == Void, W.Dimensions == Void
+  {
+    SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = FixedEmbeddingVector<8, Int8>
+  ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<8, Int8>(repeating: 2))
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.add($0.embedding, queryVector, as: [Int8].Int8BytesRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_add(vec_int8("Embeddings"."embedding"), vec_int8(?))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    V.Dimensions == Void, T.Dimensions == Void
+  {
+    SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
+  ///   var embedding: FixedEmbeddingVector<8, Int8>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Int8].Int8BytesRepresentation(queryOutput: [Int8](repeating: 2, count: 8))
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.add($0.embedding, queryVector, as: [Int8].Int8BytesRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_add(vec_int8("Embeddings"."embedding"), vec_int8(?))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func add<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    W.Dimensions == Void, T.Dimensions == Void
   {
     SQLQueryExpression("vec_add(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
@@ -772,7 +1004,7 @@ extension Vec {
     Self.add(expression, vector, as: V.self)
   }
 
-  /// Subtracts signed Int8 components, returning signed bytes with SQLiteVec's arithmetic semantics.
+  /// Preserves compatible operand and result dimensions.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -806,12 +1038,12 @@ extension Vec {
   where
     V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
     T.Encoding == V.Encoding,
-    V.Dimensions == W.Dimensions
+    V.Dimensions == W.Dimensions, T.Dimensions == V.Dimensions
   {
     SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
 
-  /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -846,12 +1078,12 @@ extension Vec {
   where
     V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
     T.Encoding == V.Encoding,
-    V.Dimensions == Void
+    V.Dimensions == Void, T.Dimensions == W.Dimensions
   {
     SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
 
-  /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -886,7 +1118,160 @@ extension Vec {
   where
     V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
     T.Encoding == V.Encoding,
-    W.Dimensions == Void
+    W.Dimensions == Void, T.Dimensions == V.Dimensions
+  {
+    SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
+  ///   var embedding: FixedEmbeddingVector<8, Int8>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = FixedEmbeddingVector<8, Int8>
+  ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<8, Int8>(repeating: 2))
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.sub($0.embedding, queryVector, as: [Int8].Int8BytesRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_sub(vec_int8("Embeddings"."embedding"), vec_int8(?))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    T.Dimensions == Void, V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Int8].Int8BytesRepresentation(queryOutput: [Int8](repeating: 2, count: 8))
+  /// let query = Embedding.select {
+  ///   (
+  ///     $0.label,
+  ///     Vec.sub(
+  ///       $0.embedding,
+  ///       queryVector,
+  ///       as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self
+  ///     )
+  ///   )
+  /// }
+  /// // SELECT "Embeddings"."label", vec_sub(vec_int8("Embeddings"."embedding"), vec_int8(?))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    V.Dimensions == Void, W.Dimensions == Void
+  {
+    SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = FixedEmbeddingVector<8, Int8>
+  ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<8, Int8>(repeating: 2))
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.sub($0.embedding, queryVector, as: [Int8].Int8BytesRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_sub(vec_int8("Embeddings"."embedding"), vec_int8(?))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    V.Dimensions == Void, T.Dimensions == Void
+  {
+    SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
+  }
+
+  /// Checks every known operand and result count; runtime-sized values are validated by SQLiteVec.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
+  ///   var embedding: FixedEmbeddingVector<8, Int8>
+  ///   var label: String
+  /// }
+  ///
+  /// let queryVector = [Int8].Int8BytesRepresentation(queryOutput: [Int8](repeating: 2, count: 8))
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.sub($0.embedding, queryVector, as: [Int8].Int8BytesRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_sub(vec_int8("Embeddings"."embedding"), vec_int8(?))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func sub<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    _ vector: some QueryExpression<W>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, W.Encoding == V.Encoding,
+    T.Encoding == V.Encoding,
+    W.Dimensions == Void, T.Dimensions == Void
   {
     SQLQueryExpression("vec_sub(vec_int8(\(expression)), vec_int8(\(vector)))")
   }
@@ -1218,7 +1603,7 @@ extension Vec {
     Self.slice(expression, start: start, length: length, as: [Int8].Int8BytesRepresentation.self)
   }
 
-  /// Quantizes signed Int8 components by sign into packed bits. Dimensions must be divisible by eight.
+  /// Preserves matching input and result dimensions.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -1245,12 +1630,49 @@ extension Vec {
     _ expression: some QueryExpression<V>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding == [Int8].Int8BytesRepresentation, T.Encoding == [Bool].PackedBitsRepresentation
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, T.Encoding == [Bool].PackedBitsRepresentation,
+    V.Dimensions == T.Dimensions
   {
     SQLQueryExpression("vec_quantize_binary(vec_int8(\(expression)))")
   }
 
-  /// Quantizes signed Int8 components by sign into packed bits. Dimensions must be divisible by eight.
+  /// Decodes a runtime-sized source with a checked result representation.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   (
+  ///     $0.label,
+  ///     Vec.quantizeBinary($0.embedding, as: BinaryEmbeddingVector<8>.PackedBitsRepresentation.self)
+  ///   )
+  /// }
+  /// // SELECT "Embeddings"."label", vec_quantize_binary(vec_int8("Embeddings"."embedding"))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func quantizeBinary<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, T.Encoding == [Bool].PackedBitsRepresentation,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression("vec_quantize_binary(vec_int8(\(expression)))")
+  }
+
+  /// Returns a runtime-sized result from a known or runtime-sized source.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
@@ -1258,6 +1680,71 @@ extension Vec {
   /// struct Embedding: Vec0 {
   ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
   ///   var embedding: FixedEmbeddingVector<8, Int8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.quantizeBinary($0.embedding, as: [Bool].PackedBitsRepresentation.self))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_quantize_binary(vec_int8("Embeddings"."embedding"))
+  /// // FROM "Embeddings"
+  /// ```
+  @_disfavoredOverload
+  public static func quantizeBinary<
+    V: VectorBytesRepresentable,
+    T: VectorBytesRepresentable & QueryBindable
+  >(
+    _ expression: some QueryExpression<V>,
+    as result: T.Type
+  ) -> some QueryExpression<T>
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation, T.Encoding == [Bool].PackedBitsRepresentation,
+    T.Dimensions == Void
+  {
+    SQLQueryExpression("vec_quantize_binary(vec_int8(\(expression)))")
+  }
+
+  #if swift(>=6.2)
+    /// Converts a fixed-size vector while preserving its logical dimension count.
+    ///
+    /// ```swift
+    /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+    /// @Table("Embeddings")
+    /// struct Embedding: Vec0 {
+    ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
+    ///   var embedding: FixedEmbeddingVector<8, Int8>
+    ///   var label: String
+    /// }
+    ///
+    /// let query = Embedding.select {
+    ///   ($0.label, Vec.quantizeBinary($0.embedding))
+    /// }
+    /// // SELECT "Embeddings"."label", vec_quantize_binary(vec_int8("Embeddings"."embedding"))
+    /// // FROM "Embeddings"
+    /// // The result retains eight logical dimensions.
+    /// ```
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    public static func quantizeBinary<let count: Int, V: VectorBytesRepresentable>(
+      _ expression: some QueryExpression<V>
+    ) -> some QueryExpression<BinaryEmbeddingVector<count>.PackedBitsRepresentation>
+    where
+      V.Encoding == [Int8].Int8BytesRepresentation,
+      V.Dimensions == VectorDimensions<count>
+    {
+      Self.quantizeBinary(
+        expression,
+        as: BinaryEmbeddingVector<count>.PackedBitsRepresentation.self
+      )
+    }
+  #endif
+  /// Quantizes signed Int8 components by sign into packed bits. Dimensions must be divisible by eight.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: [Int8].Int8BytesRepresentation.self)
+  ///   var embedding: [Int8]
   ///   var label: String
   /// }
   ///
@@ -1270,7 +1757,10 @@ extension Vec {
   public static func quantizeBinary<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
-  where V.Encoding == [Int8].Int8BytesRepresentation {
+  where
+    V.Encoding == [Int8].Int8BytesRepresentation,
+    V.Dimensions == Void
+  {
     Self.quantizeBinary(expression, as: [Bool].PackedBitsRepresentation.self)
   }
 }

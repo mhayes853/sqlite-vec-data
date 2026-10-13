@@ -245,9 +245,31 @@ let expression = distance(EmbeddingVector<3>([1, 0, 0]), to: EmbeddingVector<3>(
 
 A helper accepting a runtime-sized left or right operand can constrain that operand's `Dimensions`
 to `Void` instead. SQLiteVec normalization and arithmetic now return the dimension-preserving
-representation, so fixed results decode to their fixed logical value. Explicit `as:` counts and
-slice bounds remain runtime checks. `Vec.f32` also accepts JSON string expressions, matching the
+representation, so fixed results decode to their fixed logical value. Length-preserving constructors,
+quantization, and explicit `as:` results also retain compatible known counts. JSON and runtime-sized
+sources validate fixed results during decoding; slice bounds and concatenated result counts remain
+runtime checks. `Vec.f32` also accepts JSON string expressions, matching the
 Int8 constructor's typed-result API.
+
+`Vec.bit` and `.bit()` no longer accept Float32 inputs. Use `quantizeBinary()` for sign quantization,
+or supply a packed-bit representation to tag binary storage.
+
+Turso constructors infer `VectorDimensions<N>` and return fixed-size results for fixed inputs.
+Generic forwarding helpers can carry that count explicitly:
+
+```swift
+func precise<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+  _ embedding: some QueryExpression<V>
+) -> some QueryExpression<EmbeddingVector64<count>.TursoFloat64BytesRepresentation>
+where V.Encoding: TursoVectorEncoding, V.Dimensions == VectorDimensions<count> {
+  TursoVec.vector64(embedding)
+}
+let converted = precise(EmbeddingVector<3>([0.1, 0.2, 0.3]))
+// vector64(?)
+```
+
+For an intentionally runtime-sized result in a helper with an abstract `Dimensions` type, use an
+explicit `as:` array-backed or runtime-sized representation. This makes dimension erasure visible.
 
 ### Carry encoding constraints in generic SQL helpers
 

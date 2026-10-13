@@ -291,11 +291,14 @@ let suppliedValues = inline.decodedValues() // [21, 41]: scale and shift are pre
 let sparseEntries = Array(zip(sized.indices, sized.values)) // [(1, 2), (3, 5)]
 ```
 
-`as:` selects a matching result representation; its dimensions are validated when decoding.
+Format conversions preserve known dimensions. `as:` rejects a conflicting known count when
+conversion preserves length. JSON and runtime-sized inputs validate fixed results when decoding.
 Fixed values and strategies carry `VectorDimensions<N>` through query expressions. Distance
 comparisons reject different fixed counts; fixed and variable-size operands remain interoperable.
 Concatenation allows different counts, and default constructors and slices return variable-size
-representations unless `as:` selects a fixed result.
+representations for JSON and runtime-sized inputs. Fixed inputs retain their logical count through
+each format conversion; slicing and concatenation use `as:` for a fixed result with decoding-time
+dimension validation.
 
 All vector values and representations expose
 `vectorBytes` and `init(vectorBytes:)`. Encoded equality compares stored component bit patterns;

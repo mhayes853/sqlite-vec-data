@@ -6,6 +6,29 @@ import Testing
 
 @Suite
 struct `TursoVec Query tests` {
+  #if swift(>=6.2)
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Format Conversion Chains Retain Fixed Dimensions`() {
+      // https://docs.turso.tech/sql-reference/functions/vector#vector-creation
+      let source = EmbeddingVector<3>([0, 1, 0])
+      let precise = TursoVec.vector64(source)
+      let compressed = TursoVec.vector8(source)
+      let sparse = TursoVec.vector32Sparse(source)
+      let binary = TursoVec.vector1bit(source)
+      let restored = TursoVec.vector(TursoVec.vector32(precise))
+      requireThreeDimensions(precise)
+      requireThreeDimensions(compressed)
+      requireThreeDimensions(sparse)
+      requireThreeDimensions(binary)
+      requireThreeDimensions(restored)
+      expectNoDifference(
+        TursoVec.distanceL2(restored, to: source).queryFragment.prepare { "?\($0)" }.sql,
+        "vector_distance_l2(vector(vector32(vector64(?1))), ?2)"
+      )
+    }
+  #endif
+
   @Test
   func `Inserts The Documented Float32 Embedding`() {
     // https://docs.turso.tech/sql-reference/functions/vector#vector32
@@ -347,6 +370,13 @@ struct `TursoVec Query tests` {
     var quantized: InlineQuantized8Vector<4>
     var sparse: SizedSparseFloat32Vector<4>
   }
+#endif
+
+#if swift(>=6.2)
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  private func requireThreeDimensions<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) where V.Dimensions == VectorDimensions<3> {}
 #endif
 
 @Table("documents")

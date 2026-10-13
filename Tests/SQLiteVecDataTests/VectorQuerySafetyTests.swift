@@ -15,6 +15,41 @@ struct `Vector Query Safety tests` {
   #if swift(>=6.2)
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+    func `Subtype And Quantization Chains Retain Fixed Results`() async throws {
+      // https://alexgarcia.xyz/sqlite-vec/api-reference.html#vec_quantize_binary-vector
+      // https://github.com/mhayes853/sqlite-vec-data/blob/f980c99e337ff7c3aff250558d038ee2b149f47e/Sources/CSQLiteVec/sqlite-vec.c#L1434-L1478
+      let source = EmbeddingVector<8>([1, -1, 0, 1, -1, 0, 1, -1])
+      let floats = Vec.f32(source)
+      let codes = Vec.int8(Vec.quantizeInt8(floats))
+      let bits = Vec.bit(Vec.quantizeBinary(codes))
+      requireEightDimensions(floats)
+      requireEightDimensions(codes)
+      requireEightDimensions(bits)
+      let query = #sql(
+        "SELECT \(floats), \(codes), \(bits)",
+        as: (
+          EmbeddingVector<8>,
+          FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation,
+          BinaryEmbeddingVector<8>.PackedBitsRepresentation
+        )
+        .self
+      )
+      try await self.database.read { db in
+        let result = try #require(try query.fetchOne(db))
+        expectNoDifference(result.0, source)
+        expectNoDifference(
+          result.1,
+          FixedEmbeddingVector<8, Int8>([126, -128, 0, 126, -128, 0, 126, -128])
+        )
+        expectNoDifference(
+          result.2,
+          BinaryEmbeddingVector<8>([true, false, false, true, false, false, true, false])
+        )
+      }
+    }
+
+    @Test
+    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
     func `Float32 JSON Preserves Fixed Dimensions Through Normalization And Arithmetic`()
       async throws
     {
@@ -78,4 +113,9 @@ struct `Vector Query Safety tests` {
   private func requireThreeDimensions<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) where V.Dimensions == VectorDimensions<3> {}
+
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  private func requireEightDimensions<V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) where V.Dimensions == VectorDimensions<8> {}
 #endif
