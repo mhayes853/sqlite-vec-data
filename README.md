@@ -4,11 +4,11 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmhayes853%2Fsqlite-vec-data%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/mhayes853/sqlite-vec-data)
 
-Vector search in Swift: [SQLiteData](https://github.com/pointfreeco/sqlite-data) integration for
-[sqlite-vec](https://github.com/asg017/sqlite-vec), and StructuredQueries helpers for
+Vector search in Swift with [SQLiteData](https://github.com/pointfreeco/sqlite-data),
+[sqlite-vec](https://github.com/asg017/sqlite-vec), and
 [Turso Database](https://docs.turso.tech/sql-reference/functions/vector).
 
-SQL comments show the generated queries with placeholders for bound values.
+SQL comments show generated queries; placeholders represent bound values.
 
 ## sqlite-vec
 
@@ -24,8 +24,7 @@ configuration.prepareSQLiteVecExtension()
 let database = try SQLiteData.defaultDatabase(configuration: configuration)
 ```
 
-For process-wide registration on non-Apple platforms, register the auto extension before opening
-connections instead:
+On non-Apple platforms, register process-wide before opening connections:
 
 ```swift
 import SQLiteVecData
@@ -60,8 +59,7 @@ let query = Embedding
 // LIMIT ?
 ```
 
-`match` accepts a bound vector or a computed expression with the same encoding.
-`Vec.match(column, to: expression)` provides the namespace form.
+`match` and `Vec.match` accept bound or computed vectors with matching encodings.
 
 ### Vector functions
 
@@ -87,17 +85,14 @@ let elements = Vec.each(vector)
 // ORDER BY "vec_each"."rowid"
 ```
 
-Scalar helpers work on bound values, computed expressions, and ordinary BLOB columns. They support
-arithmetic, slicing, inspection, and `.vecEach()` for joins or correlated subqueries. Slices return
-variable-size results; `as:` selects a matching fixed-size result and validates its dimensions. Float32 and signed Int8 support L1, L2, and cosine distances;
-normalization requires Float32. Binary vectors support Hamming distance.
+Helpers support bound values, computed expressions, and BLOB columns. Use arithmetic, slices,
+inspection, and `.vecEach()` in joins or subqueries. Float32 and Int8 support L1, L2, and cosine;
+Float32 supports normalization; binary vectors support Hamming distance.
 
-Distance helpers return `REAL` values decoded as `Double`; the Int8 L1 helper casts SQLiteVec's
-integer result. `length()` returns an `Int`. Iteration yields `VecEach` (`VecEachOf<Float>`) for
-Float32, and `VecEachOf<Int8>` or `VecEachOf<Bool>` for the integer elements of Int8 and binary
-vectors.
+Distances return `Double` (SQL REAL); Int8 L1 is cast to REAL. `length()` returns `Int`.
+Iteration returns `VecEachOf<Float>` (also called `VecEach`), `VecEachOf<Int8>`, or `VecEachOf<Bool>`.
 
-Float32 constructors also accept JSON, with `as:` for a fixed-size result:
+Construct Float32 from JSON; `as:` selects a fixed-size result:
 
 ```swift
 let fixed = Vec.f32("[1, 2, 3]", as: EmbeddingVector<3>.self)
@@ -106,18 +101,14 @@ let normalized = Vec.normalize(fixed)
 // vec_normalize(vec_f32(?))
 ```
 
-Normalization and arithmetic retain known dimensions. Distances, arithmetic, and `MATCH` reject
-unequal fixed counts at compile time; variable-size operands remain supported and are checked by
-the database.
+Length-preserving operations retain fixed counts. Distances, arithmetic, and `MATCH` reject
+unequal known dimensions; the database checks variable-size operands.
 
-Constructors and quantization also retain fixed counts. For length-preserving operations, `as:`
-rejects conflicting known counts; JSON and variable-size inputs use decoding-time validation.
-`Vec.bit` tags packed binary storage. Use `quantizeBinary()` to convert numeric components to bits.
+`as:` rejects conflicting known counts and validates decoded dimensions. Slices default to
+variable-size results. `Vec.bit` tags packed bits; `quantizeBinary()` converts numeric signs.
 
-Query helpers constrain `Encoding` through SQLiteVec capability protocols. Numerical operations
-accept `SQLiteVecNumericEncoding`; Float32, signed Int8, and packed binary refine it or
-`SQLiteVecVectorEncoding` with their exact layouts. Fixed and variable-size values share these
-capabilities through their canonical encoding.
+`Encoding` capability protocols identify supported layouts and operations for both fixed and
+variable-size values. `SQLiteVecNumericEncoding` covers Float32 and signed Int8.
 
 ### Signed Int8 vectors
 
@@ -140,16 +131,14 @@ let quantized = Vec.quantizeInt8(vector)
 // vec_quantize_int8(?, 'unit')
 ```
 
-`Vec.int8` tags signed bytes or parses integer JSON. `quantizeInt8` maps [-1, 1] to signed
-codes and clamps values outside that range, without normalizing. Use `Vec.int8` or a
-quantization expression when inserting; query helpers attach the required subtype automatically.
+`Vec.int8` tags signed bytes or parses integer JSON. `quantizeInt8` maps [-1, 1] to signed codes,
+clamping without normalization. Inserts require either helper; queries attach subtypes automatically.
 
 ### Binary vectors
 
-`StructuredQueriesSQLiteVecCore` supplies `.PackedBitsRepresentation` on `[Bool]` and
-`BinaryEmbeddingVector<N>` for raw binary BLOBs with dimensions divisible by eight.
-Use `init(validating:)` for dynamic inputs; it throws `InvalidDimensionsError` for partial bytes.
-The required `init(queryOutput:)`, array literals, and `queryOutput` mutation precondition alignment.
+`StructuredQueriesSQLiteVecCore` supplies `.PackedBitsRepresentation` for `[Bool]` and
+`BinaryEmbeddingVector<N>`. Counts must be divisible by eight. `init(validating:)` throws
+`InvalidDimensionsError`; nonthrowing construction, literals, and mutation precondition alignment.
 
 ```swift
 let components = [true, false, true, false, false, false, false, true]
@@ -183,14 +172,13 @@ let query = BinaryEmbedding
 // LIMIT ?
 ```
 
-Packed-bit dimensions and slice boundaries must be divisible by eight. `Vec.quantizeBinary`
-converts positive Float32 or Int8 components to true bits. Binary inserts use `Vec.bit`;
-query helpers tag the bytes automatically.
+Binary slices require byte-aligned bounds. `Vec.quantizeBinary` maps positive Float32 or Int8
+components to true. Inserts use `Vec.bit`; queries tag packed bytes automatically.
 
 ## Turso
 
-`StructuredQueriesTursoVecCore` generates SQL and bindings for Turso Database's native vector
-functions. Execute them with a compatible Turso driver.
+`StructuredQueriesTursoVecCore` generates native vector SQL and bindings. Execute them with a
+compatible Turso driver.
 
 ### Create a table and search
 
@@ -204,8 +192,8 @@ CREATE TABLE documents (
 );
 ```
 
-`F32_BLOB(4)` describes a four-dimensional Float32 column with BLOB affinity; plain `BLOB`
-also works. Keep stored and query vectors consistent in format and dimensions.
+`F32_BLOB(4)` describes four-dimensional Float32 with BLOB affinity; plain `BLOB` also works.
+Keep stored and query formats and dimensions consistent.
 
 ```swift
 import StructuredQueriesSQLite
@@ -244,8 +232,8 @@ let prepared = query.query.prepare { "?\($0)" }
 // Pass prepared.sql and prepared.bindings to your driver.
 ```
 
-This performs exact search over the candidate rows. Add a `where` clause to narrow them.
-The target provides scalar vector functions; experimental sparse indexing uses separate DDL.
+Distance ordering searches candidate rows exactly; narrow them with `where`. Experimental sparse
+indexing uses separate DDL.
 
 ### Formats and functions
 
@@ -259,15 +247,12 @@ Convert JSON explicitly with the constructor for the column's format:
 | `TursoVec.vector1bit` | `[Bool].TursoBytesRepresentation` |
 | `TursoVec.vector32Sparse` | `SparseFloat32Vector` |
 
-Constructors accept JSON string expressions or vectors with a `TursoVectorEncoding`.
-Shared Float32 works directly; raw Double, Float16, SQLiteVec Int8, and packed bits are rejected.
-Use `.TursoFloat64BytesRepresentation` for Double and `.TursoBytesRepresentation` for binary values.
-The `TursoVectorEncoding` hierarchy identifies supported formats; `TursoNumericVectorEncoding`
-permits L2, and `TursoBinaryEncoding` identifies framed binary storage.
-`extract` requires a compatible vector.
+Constructors accept JSON strings or vectors with a `TursoVectorEncoding`; `extract` requires a compatible
+vector. Shared Float32 works directly. Double requires `.TursoFloat64BytesRepresentation`, and
+binary requires `.TursoBytesRepresentation`. Raw Double, Float16, SQLiteVec Int8, and packed bits
+are rejected. Numeric encodings support L2; binary encodings use Turso framing.
 
-The table lists results for JSON and variable-size inputs. Fixed inputs produce the corresponding
-fixed-size result, including through format conversions:
+The table shows JSON and variable-size results. Fixed inputs retain dimensions across conversions:
 
 ```swift
 let embedding = EmbeddingVector<3>([0.1, 0.2, 0.3])
@@ -289,14 +274,12 @@ let json = TursoVec.extract(precise)
 // vector_extract(vector64(?))
 ```
 
-Distance helpers cover cosine, L2, negative dot product, and Jaccard with matching formats.
-`concat` joins two dense Float32 or Float64 vectors; `slice` accepts those formats and sparse
-Float32. Use `as:` to select a matching fixed-size result.
+Matching formats support cosine, L2, negative dot product, and Jaccard. `concat` accepts dense
+Float32/Float64; `slice` also accepts sparse Float32. Use `as:` for fixed-size results.
 
-`Quantized8Vector` stores affine unsigned-byte codes, scale, and shift. It differs from IEEE FP8
-and sqlite-vec's signed Int8. `SparseFloat32Vector` stores only entries and their indices, plus the
-logical dimension count: useful for TF-IDF, bag-of-words, and other mostly zero feature vectors.
-Both types work directly as column values:
+`Quantized8Vector` stores affine UInt8 codes, scale, and shift, distinct from FP8 and sqlite-vec
+Int8. `SparseFloat32Vector` stores indexed features and a logical count, useful for TF-IDF
+and bag-of-words. Both bind directly as column values:
 
 ```swift
 // CREATE TABLE compressed_documents (id INTEGER PRIMARY KEY, embedding BLOB NOT NULL);
@@ -320,24 +303,19 @@ let insert = CompressedDocument.insert { ($0.id, $0.embedding) } values: {
 // INSERT INTO "compressed_documents" ("id", "embedding") VALUES (?, ?)
 ```
 
-`init(validating:)` preserves encoded components and checks dimensions, without quantizing or
-expanding sparse storage.
+`init(validating:)` checks dimensions while preserving encoded components and sparse storage.
 
-Float64 arrays, inline arrays, and `EmbeddingVector64<N>` use `.TursoFloat64BytesRepresentation`
-for Turso's required type tag. Their shared `.VectorBytesRepresentation` stores raw Float64 bytes
-and is not a Turso Float64 binding. `.TursoFloat32BytesRepresentation` emits raw Float32 and also
-accepts tagged Float32 when decoding; direct shared Float32 binding remains supported.
+Float64 arrays, inline arrays, and `EmbeddingVector64<N>` require Turso's tagged strategy. Shared
+Float64 bytes are raw. `.TursoFloat32BytesRepresentation` writes raw Float32 and also reads tagged
+Float32; shared Float32 works directly.
 
-Turso binary columns use `.TursoBytesRepresentation` on `[Bool]` or `BinaryEmbeddingVector<N>`.
-It preserves the exact dimension count, including partial bytes. `distanceHamming` emits
+Turso binary strategies preserve exact counts, including partial bytes. `distanceHamming` calls
 `vector_distance_cos` and returns a `Double` bit count. Binary L2 is unavailable.
 
 ## Vector values
 
-Both query modules export `StructuredQueriesVectorCore`. Array strategies work with `@Column(as:)`;
-fixed-size values provide mutable collections, hashing, Codable, and dimension-checked decoding.
-The SQLiteVec target supplies `.PackedBitsRepresentation` and `.Int8BytesRepresentation`;
-the Turso target supplies its binary strategy plus quantized and sparse values.
+Both query modules export `StructuredQueriesVectorCore`. Array strategies support `@Column(as:)`;
+fixed values provide mutable collections, hashing, Codable, and dimension-checked decoding.
 
 | Value | Database representation |
 | --- | --- |
@@ -362,10 +340,8 @@ let cachedBytes: [UInt8] = [0, 0, 0x80, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0]
 let restored = try EmbeddingVector<3>(vectorBytes: cachedBytes) // [1, 0, 0]
 ```
 
-Float32 bytes are shared by both engines on little-endian platforms. Float16 representations
-provide serialization only; neither engine supports binary16 vector queries. Query helpers enforce
-compatible encodings and equal known dimensions. Fixed-size representations also validate decoded
-dimensions.
+Both engines share little-endian Float32. Float16 supports serialization only. Helpers enforce
+compatible encodings and known dimensions; fixed results also validate decoded counts.
 
 ## Testing sqlite-vec
 
@@ -394,9 +370,8 @@ struct `Vector tests` {
 }
 ```
 
-On non-Apple platforms, add `SQLiteVecDataTestSupport` to your test target and use
-`.sqliteVecAutoExtension` to register sqlite-vec once for the process. Connections opened by the
-suite then support sqlite-vec without configuration:
+On non-Apple platforms, add `SQLiteVecDataTestSupport` and use `.sqliteVecAutoExtension` to
+register sqlite-vec process-wide for subsequent connections:
 
 ```swift
 #if !canImport(Darwin)
@@ -417,8 +392,7 @@ struct `Auto Extension Vector tests` {
 #endif
 ```
 
-Registration applies to all subsequent connections in the process. Use connection preparation
-for suites that need isolated registration or run on Apple platforms.
+Use per-connection preparation on Apple platforms or for isolated registration.
 
 ## Products
 
@@ -431,13 +405,11 @@ for suites that need isolated registration or run on Apple platforms.
 | `SQLiteVecDataTestSupport` | Non-Apple auto-extension suite trait |
 | `CSQLiteVec` | Bundled sqlite-vec C extension |
 
-The `SQLiteVecNEON` trait enables sqlite-vec ARM SIMD by default; `SQLiteVecAVX` enables SIMD on
-supported x86 processors.
+`SQLiteVecNEON` enables ARM SIMD by default; opt into `SQLiteVecAVX` for supported x86 processors.
 
-The default `SQLiteVecStaticAPI` trait compiles sqlite-vec against the linked SQLite's functions,
-which per-connection setup needs on non-Apple platforms. Packages that bring their own SQLite
-builds, such as Turso Database, can disable it so sqlite-vec only uses the API table SQLite passes
-to `sqlite3_vec_init`. Without it, use `registerSQLiteVecAutoExtension()` on non-Apple platforms.
+The default `SQLiteVecStaticAPI` calls linked SQLite functions and enables non-Apple per-connection setup.
+Disable it for custom SQLite builds that require the extension API table; use
+`registerSQLiteVecAutoExtension()` on non-Apple platforms in that configuration.
 
 ## Documentation
 
@@ -467,9 +439,9 @@ Choose the product for your database:
 .product(name: "StructuredQueriesTursoVecCore", package: "sqlite-vec-data")
 ```
 
-For standalone query helpers, also add `StructuredQueriesSQLite` from
-[swift-structured-queries](https://github.com/pointfreeco/swift-structured-queries) to use
-`@Table`, `@Column`, and `#sql`.
+Standalone query helpers also need `StructuredQueriesSQLite` from
+[swift-structured-queries](https://github.com/pointfreeco/swift-structured-queries) for `@Table`,
+`@Column`, and `#sql`.
 
 ## License
 

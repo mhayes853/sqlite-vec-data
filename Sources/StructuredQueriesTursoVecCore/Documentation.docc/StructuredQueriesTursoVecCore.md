@@ -5,11 +5,11 @@ StructuredQueries helpers for Turso Database's native vector functions.
 ## Overview
 
 ``TursoVec`` generates SQL and bindings for the
-[Turso Database vector API](https://docs.turso.tech/sql-reference/functions/vector).
-Use a compatible Turso driver to execute statements. This module exports
-`StructuredQueriesVectorCore`; ordinary `@Table` models need no extra vector conformance.
+[Turso vector API](https://docs.turso.tech/sql-reference/functions/vector). Execute them with a
+compatible driver. This module exports `StructuredQueriesVectorCore` and works with ordinary
+`@Table` models.
 
-SQL comments show the generated queries with placeholders for bound values.
+SQL comments show generated queries; placeholders represent bound values.
 
 ### Create a table and search
 
@@ -24,11 +24,11 @@ CREATE TABLE documents (
 );
 ```
 
-`F32_BLOB(4)` describes four-dimensional Float32 data with
+`F32_BLOB(4)` describes four-dimensional Float32 with
 [BLOB affinity](https://github.com/tursodatabase/turso/blob/2487f62c372c99a21551a6450d4a10309c7dad2b/core/vdbe/affinity.rs#L186-L202).
-Plain `BLOB` also works. The engine does not enforce the
+Plain `BLOB` also works. Turso does not enforce the
 [declared count](https://github.com/tursodatabase/turso-go/blob/ea06d135c592ae9a653ebf6ba5e069c8417c030c/turso_test.go#L354-L366);
-`EmbeddingVector<4>` validates it when decoding. Fixed-size types require Swift 6.2 and iOS 26,
+`EmbeddingVector<4>` validates decoded dimensions. Fixed types require Swift 6.2 and iOS 26,
 macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
 ```swift
@@ -67,9 +67,9 @@ let prepared = query.query.prepare { "?\($0)" }
 // Pass prepared.sql and prepared.bindings to your driver.
 ```
 
-For variable-size values, use `[Float]` with `@Column(as: [Float].VectorBytesRepresentation.self)`.
-Distance ordering performs exact search over candidate rows; a `where` clause can narrow them.
-Experimental sparse indexing uses separate DDL and has no helper in this target.
+For variable-size values, use `[Float].VectorBytesRepresentation` with `@Column(as:)`. Distance
+ordering searches candidate rows exactly; narrow them with `where`. Experimental sparse indexing
+uses separate DDL without a helper.
 
 ### Formats and distances
 
@@ -91,17 +91,16 @@ let distances = Document.select {
 // FROM "documents"
 ```
 
-`distanceCosine`, `distanceL2`, `distanceDot` (negative dot product), and `distanceJaccard`
-use smaller values for closer matches. Swift requires matching encodings and equal known dimensions;
-the database checks variable-size operands. Numeric Jaccard is weighted; binary Jaccard compares true-bit sets.
-Binary L2 is unavailable.
+`distanceCosine`, `distanceL2`, `distanceDot` (negative dot product), and `distanceJaccard` rank
+closer matches lower. Operands need matching encodings and equal known counts; Turso checks
+variable counts. Numeric Jaccard is weighted; binary Jaccard compares true-bit sets. Binary L2
+is unavailable.
 
 ### Compatible constructor inputs
 
-Constructors accept JSON string expressions or vectors whose `Encoding` conforms to
-``TursoVectorEncoding``. The protocol belongs to this target; shared Float32, Turso Float64,
-binary, quantized, and sparse encodings conform. Fixed-size and custom representations inherit
-compatibility through their canonical encoding. `extract` requires a compatible vector.
+Constructors accept JSON strings or vectors with a ``TursoVectorEncoding``: shared Float32, Turso Float64,
+binary, quantized, and sparse layouts. Fixed and custom values inherit compatibility from their
+canonical encoding. `extract` requires a compatible vector.
 
 ```swift
 let vector: [Float].VectorBytesRepresentation = [1, 2, 3]
@@ -111,22 +110,19 @@ let json = TursoVec.extract(precise)
 // vector_extract(vector64(?))
 ```
 
-Raw Double, Float16, SQLiteVec Int8, and packed-bit strategies cannot be passed to these helpers.
-Use `.TursoFloat64BytesRepresentation` for Double and `.TursoBytesRepresentation` for binary values.
-Generic forwarding helpers need `where V.Encoding: TursoVectorEncoding`. Operation-specific encoding
-constraints still apply.
+Raw Double, Float16, SQLiteVec Int8, and packed bits are unsupported. Use
+`.TursoFloat64BytesRepresentation` for Double and `.TursoBytesRepresentation` for binary. Generic
+forwarding needs `where V.Encoding: TursoVectorEncoding`, plus operation-specific constraints.
 
-Ordinary `@Column(as:)` declarations are database-independent and can store arbitrary BLOBs;
-these checks apply when using the Turso helpers. The database validates JSON contents, dimensions,
-and value-dependent conversion restrictions.
+`@Column(as:)` can store arbitrary BLOBs; compatibility checks apply to Turso helpers. The database
+validates JSON, variable dimensions, and value-dependent conversions.
 
 ### Floating-point BLOB strategies
 
-Shared `.VectorBytesRepresentation` strategies contain raw little-endian scalar payloads.
-Use `.TursoFloat64BytesRepresentation` for Float64 columns and bindings so the required type byte
-is written and validated. Float32 can use its shared strategy or `.TursoFloat32BytesRepresentation`,
-which additionally accepts the optional Float32 tag when reading existing blobs. The latter writes
-raw Float32, so both strategies share an encoding identity and can be compared directly.
+Shared strategies store raw little-endian scalars. `.TursoFloat64BytesRepresentation` writes and
+validates the required Float64 type byte. Float32 supports the shared strategy or
+`.TursoFloat32BytesRepresentation`, which also reads tagged blobs. The two Float32 strategies write raw bytes and
+share an encoding identity.
 
 ```swift
 @Table("precise_documents")
@@ -144,15 +140,13 @@ let query = PreciseDocument.select { TursoVec.distanceL2($0.embedding, to: turso
 // FROM "precise_documents"
 ```
 
-These strategies also support scalar arrays and `InlineArray`. Fixed-dimension validation and
-floating-point equality and hashing are delegated to the shared raw strategies. Raw Float64 and
-Turso Float64 have separate encoding identities; the query helpers require the Turso identity.
+Strategies support arrays, inline arrays, and fixed values, delegating dimensions, equality, and
+hashing to the shared strategy. Raw and Turso Float64 have distinct encoding identities.
 
 ### Quantized vectors
 
-``Quantized8Vector`` stores unsigned `codes`, `scale`, and `shift`. Each code reconstructs as
-`Float(code) * scale + shift`. This is affine UInt8 quantization, distinct from IEEE FP8 and
-sqlite-vec's signed Int8 format.
+``Quantized8Vector`` stores UInt8 `codes`, `scale`, and `shift`, reconstructing
+`Float(code) * scale + shift`. This affine format differs from FP8 and sqlite-vec Int8.
 
 ```swift
 // CREATE TABLE compressed_documents (id INTEGER PRIMARY KEY, embedding BLOB NOT NULL);
@@ -172,15 +166,14 @@ let insert = CompressedDocument.insert { ($0.id, $0.embedding) } values: {
 // INSERT INTO "compressed_documents" ("id", "embedding") VALUES (?, ?)
 ```
 
-`init(quantizing:)` applies min/max quantization once. `init(codes:scale:shift:)` accepts encoded
-components and validates finite values and nonnegative scale. Reading and rebinding preserve the
-components; `decodedValues()` explicitly reconstructs floats. Encoded types are column values
-directly, without an `@Column(as:)` strategy.
+`init(quantizing:)` applies min/max quantization. `init(codes:scale:shift:)` validates finite
+components and nonnegative scale. Reading and rebinding preserve them; `decodedValues()`
+reconstructs floats. Values bind directly without `@Column(as:)`.
 
 ### Sparse vectors
 
-``SparseFloat32Vector`` stores the logical dimension count, sorted unique indices, and Float32
-values. Use it for TF-IDF, bag-of-words, and other mostly zero features:
+``SparseFloat32Vector`` stores logical dimensions, sorted unique indices, and Float32 values,
+suited to TF-IDF, bag-of-words, and mostly zero features:
 
 ```swift
 // CREATE TABLE sparse_documents (id INTEGER PRIMARY KEY, embedding BLOB NOT NULL);
@@ -199,15 +192,14 @@ let query = SparseDocument.select { TursoVec.distanceJaccard($0.embedding, to: s
 // FROM "sparse_documents"
 ```
 
-Compression omits positive and negative zeros. The component initializer preserves explicit zeros
-and IEEE bits. Decoding keeps sparse storage; `denseValues()` allocates a dense array.
-Each entry uses eight bytes for its value and index, plus five bytes per vector for dimensions and
-the format tag. This can add overhead for dense embeddings. Sparse storage alone creates no index.
+Compression omits signed zeros; component initialization preserves explicit zeros and IEEE bits.
+Decoding stays sparse; `denseValues()` allocates a dense array. Storage uses eight bytes per entry
+plus five per vector, so dense embeddings can grow. Sparse storage creates no index.
 
 ### Binary vectors
 
-Use `.TursoBytesRepresentation` on `[Bool]` or `BinaryEmbeddingVector<N>` to preserve exact
-binary dimensions, including partial bytes:
+`.TursoBytesRepresentation` on `[Bool]` and `BinaryEmbeddingVector<N>` preserves exact counts,
+including partial bytes:
 
 ```swift
 // CREATE TABLE binary_documents (id INTEGER PRIMARY KEY, embedding BLOB NOT NULL);
@@ -225,13 +217,11 @@ let query = BinaryDocument.select { TursoVec.distanceHamming($0.embedding, to: b
 // FROM "binary_documents"
 ```
 
-Binary cosine returns Hamming distance; `distanceHamming` names that operation explicitly and
-returns `Double` (SQL REAL). Local `BinaryEmbeddingVector.hammingDistance(to:)` returns `Int`.
-Extraction and dot distance interpret true as +1 and false as -1; Jaccard compares true-bit sets.
+Binary cosine is Hamming distance: `distanceHamming` returns `Double` (SQL REAL); local Hamming
+returns `Int`. Extraction and dot distance use true = +1, false = -1; Jaccard compares true-bit sets.
 
-The representation adds padding and format metadata to the shared packed value. `packedBytes`
-exposes only the raw payload; bind `.TursoBytesRepresentation` to supply the complete Turso BLOB.
-`.PackedBitsRepresentation` belongs to `StructuredQueriesSQLiteVecCore` and has a different layout.
+`packedBytes` exposes raw payload only; `.TursoBytesRepresentation` adds padding and format
+metadata. SQLiteVec's `.PackedBitsRepresentation` uses a different layout.
 
 ### Concatenate and slice
 
@@ -242,9 +232,9 @@ let sliced = TursoVec.slice(joined, from: 1, to: 3)
 // vector_slice(vector_concat(vector32(?), vector32(?)), ?, ?)
 ```
 
-`concat` accepts two matching dense Float32 or Float64 vectors. `slice` accepts those formats
-and sparse Float32, with an inclusive start and exclusive end. Neither supports quantized or binary
-operands. For sparse concatenation, convert through dense Float32:
+`concat` accepts matching dense Float32/Float64. `slice` also accepts sparse Float32, with inclusive
+start and exclusive end. Neither accepts quantized or binary. For sparse concatenation, convert
+through dense Float32:
 
 ```swift
 let left = TursoVec.vector32Sparse("[0, 1]")
@@ -257,16 +247,16 @@ let joined = TursoVec.vector32Sparse(
 // vector32_sparse(vector_concat(vector32(vector32_sparse(?)), vector32(vector32_sparse(?))))
 ```
 
-This workaround uses dense intermediate storage; the
-[engine's sparse concat implementation](https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/concat.rs#L24)
+This allocates dense intermediates because the
+[engine's sparse concat](https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/concat.rs#L24)
 does not shift the second operand's indices.
 
 ### Encoding capabilities
 
-``TursoVectorEncoding`` identifies supported serialized vector formats. Its numeric branch,
-``TursoNumericVectorEncoding``, supports L2 and is refined by ``TursoFloat32Encoding``,
-``TursoFloat64Encoding``, ``TursoQuantized8Encoding``, and ``TursoSparseFloat32Encoding``.
-``TursoBinaryEncoding`` instead refines the engine base and the shared `BinaryVectorEncoding`.
+``TursoVectorEncoding`` identifies supported layouts. ``TursoNumericVectorEncoding`` supports L2
+and branches into ``TursoFloat32Encoding``, ``TursoFloat64Encoding``, ``TursoQuantized8Encoding``,
+and ``TursoSparseFloat32Encoding``. ``TursoBinaryEncoding`` refines the base and
+`BinaryVectorEncoding`.
 
 ```swift
 func numericDistance<L: VectorBytesRepresentable & QueryBindable,
@@ -283,18 +273,14 @@ let distance = numericDistance(left, to: right)
 // vector_distance_l2(?, ?)
 ```
 
-Conformance promises the corresponding Turso layout and framing; it does not convert bytes.
-Raw Float64, Float16, SQLiteVec signed Int8, and SQLiteVec packed-bit layouts do not gain engine
-support from their scalar type. Fixed and variable representations use the same encoding capabilities.
-Slicing and concatenation retain their existing format restrictions.
+Conformance promises valid Turso bytes; it does not convert them. Capabilities apply to fixed and
+variable values. Slice and concat retain their format restrictions.
 
 ### Fixed-size results and bytes
 
-``InlineQuantized8Vector`` stores unsigned codes inline with scale and shift.
-``SizedSparseFloat32Vector`` fixes logical dimensions while keeping a variable number of entries.
-Both bind directly and validate decoded dimensions. Their `init(validating:)` initializers preserve
-an existing vector's encoded components and check dimensions, without requantizing or expanding
-sparse storage:
+``InlineQuantized8Vector`` stores inline UInt8 codes, scale, and shift. ``SizedSparseFloat32Vector``
+fixes logical dimensions with variable entries. Both bind directly; `init(validating:)` and decoding
+check counts while preserving encoded components:
 
 ```swift
 let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
@@ -318,22 +304,17 @@ let suppliedValues = inline.decodedValues() // [21, 41]: scale and shift are pre
 let sparseEntries = Array(zip(sized.indices, sized.values)) // [(1, 2), (3, 5)]
 ```
 
-Format conversions preserve known dimensions. `as:` rejects a conflicting known count when
-conversion preserves length. JSON and runtime-sized inputs validate fixed results when decoding.
-Fixed values and strategies carry `VectorDimensions<N>` through query expressions. Distance
-comparisons reject different fixed counts; fixed and variable-size operands remain interoperable.
-Concatenation allows different counts, and default constructors and slices return variable-size
-representations for JSON and runtime-sized inputs. Fixed inputs retain their logical count through
-each format conversion; slicing and concatenation use `as:` for a fixed result with decoding-time
-dimension validation.
+Conversions preserve fixed dimensions through `VectorDimensions<N>`. Length-preserving `as:`
+results reject conflicting known counts; JSON and variable inputs validate fixed results when
+decoding. Distances reject unequal known counts but allow fixed/variable pairs. Concat accepts
+different counts; slices and concat default to variable results, with `as:` for fixed results
+validated during decoding.
 
-All vector values and representations expose
-`vectorBytes` and `init(vectorBytes:)`. Encoded equality compares stored component bit patterns;
-dense equality follows Swift scalar semantics.
+Values expose `vectorBytes` and `init(vectorBytes:)`. Encoded equality compares component bits;
+dense equality follows scalar semantics.
 
-Invalid quantized or sparse constructor components throw ``TursoVectorError``. Handle its stable
-`code` and use `reason` for diagnostics; codes are extensible, so switches need a default case.
-Malformed bytes instead throw `VectorDecodingError`.
+Invalid components throw ``TursoVectorError``: handle `code`, use `reason` for diagnostics, and
+include a default in code switches. Malformed bytes throw `VectorDecodingError`.
 
 See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
 and [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

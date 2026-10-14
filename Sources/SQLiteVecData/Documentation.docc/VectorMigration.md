@@ -4,8 +4,7 @@ Update existing SQLiteVec clients for the reusable vector core and stricter SQL 
 
 ## Overview
 
-This release contains source and behavior changes to the existing SQLiteVec bindings, alongside
-the new Turso Database target. The table below identifies the changes to check in existing code.
+This release changes SQLiteVec APIs and behavior and adds Turso Database support:
 
 | Existing API or behavior | Updated API or behavior |
 | --- | --- |
@@ -29,27 +28,23 @@ the new Turso Database target. The table below identifies the changes to check i
 
 ### Imports and package products
 
-Existing `SQLiteVecData` and `StructuredQueriesSQLiteVecCore` imports continue to expose the shared
-Float32 APIs. You do not need to add another product solely to keep using `EmbeddingVector` or
-`[Float].VectorBytesRepresentation`. Existing qualified names such as
-`StructuredQueriesSQLiteVecCore.EmbeddingVector` remain available through the re-export.
+`SQLiteVecData` and `StructuredQueriesSQLiteVecCore` re-export shared Float32 APIs, including
+qualified names. Existing imports need no extra product for `EmbeddingVector` or
+`[Float].VectorBytesRepresentation`.
 
-`.PackedBitsRepresentation` on `[Bool]` and `BinaryEmbeddingVector<N>` is supplied by
-`StructuredQueriesSQLiteVecCore`. Import that module or `SQLiteVecData` to use the strategy.
-Its public spelling, byte format, and dimension checks are unchanged; stored blobs need no rewrite. Core-only and Turso-only imports do not expose it. `BinaryEmbeddingVector` and
-`packedBytes` remain in the shared core, including support for partial bytes.
+`.PackedBitsRepresentation` remains available through `StructuredQueriesSQLiteVecCore` or
+`SQLiteVecData`, with unchanged bytes and dimensions. Core-only and Turso-only imports omit it.
+`BinaryEmbeddingVector` and partial-byte `packedBytes` remain in core.
 
-Add `StructuredQueriesVectorCore` when using shared vector values without either database binding.
-Add `StructuredQueriesTursoVecCore` for the Rust-based Turso Database engine. Its APIs do not target
-libSQL's DiskANN or `vector_top_k` functionality.
+Use `StructuredQueriesVectorCore` for database-independent values; use `StructuredQueriesTursoVecCore`
+for Rust-based Turso Database, excluding libSQL DiskANN and `vector_top_k`.
 
-Fixed-size vectors continue to require Swift 6.2 and the documented platform availability
-(iOS 26, macOS 26, tvOS 26, watchOS 26, and visionOS 26). Variable-size representations work on the
-package's earlier supported platforms.
+Fixed values require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
+Variable-size strategies support earlier package platforms.
 
 ### Keep existing Float32 values and tables
 
-Ordinary Float32 declarations and bindings can stay as they are:
+Keep existing Float32 declarations and bindings:
 
 ```swift
 @Table("Embeddings")
@@ -67,19 +62,17 @@ let query = Embedding
 // LIMIT ?
 ```
 
-On supported little-endian platforms, valid existing Float32 blobs and Codable scalar arrays retain
-the same format. There is no required table recreation or data rewrite for those values. SQLiteVec
-reads native Float32 bytes, so this compatibility does not extend to blobs created on big-endian
-systems. Int8 and packed-bit payloads have no multibyte scalar endianness.
+Valid Float32 BLOBs on little-endian platforms and Codable scalar arrays keep their format; no
+table or data rewrite is needed. SQLiteVec reads native Float32, so big-endian BLOBs are excluded.
+Int8 and packed bits have no multibyte endianness.
 
-Malformed blobs that were previously partially decoded now throw. Repair those rows rather than
-padding or truncating them implicitly. Fixed-size representations additionally validate that the
-stored number of components matches the Swift dimension count.
+Incomplete BLOBs now throw instead of partially decoding; repair affected rows. Fixed strategies
+also validate stored component counts.
 
 ### Update extensions and representation identities
 
-`EmbeddingVector<N>` and `EmbeddingVector64<N>` are precision aliases of one generic value type.
-For an extension that uses Float32 operations, constrain the underlying type explicitly:
+`EmbeddingVector<N>` and `EmbeddingVector64<N>` alias one generic type. Constrain Float32
+extensions explicitly:
 
 ```swift
 // Before: extension EmbeddingVector { ... }
@@ -91,7 +84,7 @@ extension FixedEmbeddingVector where Scalar == Float {
 let squaredNorm = EmbeddingVector<3>([1, 2, 3]).squaredNorm() // 14
 ```
 
-Likewise, Float32-specific extensions on the array representation should constrain `Element`:
+Constrain Float32 array extensions with `Element == Float`:
 
 ```swift
 extension Array.VectorBytesRepresentation where Element == Float {
@@ -103,8 +96,7 @@ let embedding: [Float].VectorBytesRepresentation = [1, 2, 3]
 let squaredNorm = embedding.squaredNorm // 14
 ```
 
-`EmbeddingVector<N>.VectorBytesRepresentation` is now a distinct wrapper. Update code that relied
-on it being the same type as the vector:
+`EmbeddingVector<N>.VectorBytesRepresentation` is a wrapper. Update assumptions of type identity:
 
 ```swift
 let vector = EmbeddingVector<3>([1, 2, 3])
@@ -112,20 +104,16 @@ let vector = EmbeddingVector<3>([1, 2, 3])
 let binding = EmbeddingVector<3>.VectorBytesRepresentation(queryOutput: vector)
 ```
 
-Float32 vectors remain directly query-bindable, so wrapping is optional when a function accepts
-`EmbeddingVector` itself. Float64 and binary values use their explicit column and binding strategies.
+Float32 remains directly bindable. Float64 and binary use explicit strategies.
 
 ### Select Turso floating-point framing explicitly
 
-`VectorScalar` and the shared `.VectorBytesRepresentation` strategies now use raw little-endian
-payloads for every precision. Float32 decoding rejects incomplete components, including a trailing
-type byte; Double no longer appends or consumes Turso's type byte.
+Shared codecs now store raw little-endian scalars. Float32 rejects trailing tags; Double neither
+adds nor consumes Turso's tag.
 
-Use `.TursoFloat64BytesRepresentation` on `[Double]`, `InlineArray<N, Double>`, and
-`EmbeddingVector64<N>` for Turso Float64 columns, bindings, and typed query results. This strategy
-retains the existing Turso blob layout. Existing rows need no rewrite when the strategy is updated.
-Use `.TursoFloat32BytesRepresentation` when Float32 rows include the optional type byte. Shared
-Float32 binding and decoding of untagged Float32 remain supported.
+Use `.TursoFloat64BytesRepresentation` for Double arrays, inline arrays, and `EmbeddingVector64<N>`.
+It preserves existing Turso BLOBs without rewriting rows. For tagged Float32 rows, use
+`.TursoFloat32BytesRepresentation`; shared Float32 still supports untagged bytes.
 
 ```swift
 let values = EmbeddingVector64<3>([1, 2, 3])
@@ -135,17 +123,16 @@ let distance = TursoVec.distanceL2(binding, to: candidate)
 // vector_distance_l2(?, ?)
 ```
 
-Raw and Turso Float64 have separate `Encoding` identities. Passing an untagged Float64 payload to
-Turso would identify it as Float32, so Float64 query helpers require the explicit Turso strategy.
+Raw and Turso Float64 have distinct `Encoding` identities. Untagged Double bytes would be read as
+Float32, so Turso helpers require the tagged strategy.
 
 ### Constrain Turso constructor inputs
 
-Turso constructors accept `QueryExpression<String>` for JSON or vector expressions whose
-`Encoding` conforms to `TursoVectorEncoding`. `extract` accepts only the latter. Replace raw
-Double or packed-bit inputs with their Turso strategies; raw Float16 and SQLiteVec Int8 blobs
-are unsupported. Shared Float32 inputs continue to work directly.
+Turso constructors accept JSON string expressions or vectors with `Encoding: TursoVectorEncoding`;
+`extract` requires a vector. Use Turso strategies for Double and binary. Raw Float16 and SQLiteVec
+Int8 are unsupported; shared Float32 works directly.
 
-Generic helpers that forward vectors to constructors or extraction need the encoding constraint:
+Constrain generic constructor and extraction helpers:
 
 ```swift
 func vectorJSON<V: VectorBytesRepresentable & QueryBindable>(
@@ -158,17 +145,15 @@ let json = vectorJSON(embedding)
 // vector_extract(?)
 ```
 
-The protocol lives in `StructuredQueriesTursoVecCore`. A custom representation using an existing
-compatible canonical encoding needs no additional conformance. Ordinary `@Column(as:)` declarations
-remain database-independent; these constraints apply to the Turso helpers.
+The protocol belongs to `StructuredQueriesTursoVecCore`. Existing compatible canonical encodings
+need no extra conformance. `@Column(as:)` stays database-independent.
 
 ### Update custom vector conformances
 
-`Encoding` identifies the byte layout independently of dimensions. Use the existing canonical
-representation for the layout you actually serialize. `VectorBytesRepresentation` identifies the
-wrapper for your specific value, including any fixed dimensions.
+`Encoding` identifies the serialized layout; `VectorBytesRepresentation` selects a value wrapper,
+including dimensions. Reuse a canonical encoding only when your bytes match.
 
-Here is a directly query-bindable custom Float32 representation using the shared serialization:
+A custom Float32 binding can reuse shared serialization:
 
 ```swift
 struct CustomVector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
@@ -195,40 +180,32 @@ let distance = Vec.distanceL2(embedding, to: queryVector)
 // vec_distance_l2(?, ?)
 ```
 
-The protocol supplies BLOB binding and query decoding defaults for query-bindable conformers.
-A fixed-size custom type must validate its own dimension count during byte decoding. Declaring a
-Float32 `Encoding` promises Float32-compatible bytes; it does not convert another layout.
+The protocol supplies BLOB binding and decoding defaults. Custom fixed types must validate counts;
+declaring an encoding promises compatible bytes without converting them.
 
-`Encoding` and `VectorBytesRepresentation` must now conform to `VectorBytesRepresentable` and
-`QueryBindable`, with matching `Scalar` types. The query representation must also preserve the
-value's `Encoding` and `Dimensions`. Custom conformances with inconsistent metadata no longer
-compile. Self-representing runtime-sized types declare `Dimensions = Void` explicitly to resolve
-the recursive constraint. Canonical encodings remain independent of fixed dimensions.
+Both associated representations now conform to `VectorBytesRepresentable` and `QueryBindable`
+with matching scalars. The query wrapper preserves `Encoding` and `Dimensions`; inconsistent
+metadata fails compilation. Self-representing runtime types declare `Dimensions = Void` to resolve
+recursive constraints. Canonical encodings stay independent of fixed counts.
 
-Custom `VectorScalar` conformers additionally supply an unsigned fixed-width integer `BitPattern`,
-`bitPattern`, and `init(bitPattern:)`. The generic codec preserves those bits in little-endian order.
-`encodeVector(_:)` and `decodeVector(_:)` are extension operations, not protocol requirements.
-Put database framing in a representation supplied by the database integration target. Float16, Float, and
-Double already conform. Float16 uses raw binary16 serialization and is not a database vector format. Adding a scalar conformance does not make a new precision supported by
-SQLiteVec or Turso's query helpers.
+Custom `VectorScalar` conformers supply unsigned fixed-width `BitPattern`, `bitPattern`, and
+`init(bitPattern:)`. Generic codec extensions preserve little-endian bits; they are not customization
+points. Put database framing in integration strategies. Float16, Float, and Double conform, but
+Float16 and new scalar conformances do not imply database query support.
 
 ### Validate packed-bit input and carry fixed dimensions
 
-Use the throwing `init(validating:)` on array or fixed `.PackedBitsRepresentation` strategies
-for user-provided binary data. Partial bytes throw `InvalidDimensionsError`, whose `dimensions`
-property records the count. The required nonthrowing initializer and array literals now check
-alignment at construction; mutating an array strategy's `queryOutput` checks it immediately too.
+Validate binary inputs with `init(validating:)`. Partial bytes throw `InvalidDimensionsError` with
+the rejected `dimensions`. Nonthrowing construction, literals, and mutation precondition alignment:
 
 ```swift
 let bits = try [Bool].PackedBitsRepresentation(validating: [Bool](repeating: true, count: 16))
 let payload = bits.vectorBytes // [0xff, 0xff]; partial bytes throw instead of trapping.
 ```
 
-`VectorBytesRepresentable.Dimensions` defaults to `Void`, preserving runtime-sized custom types.
-For a custom fixed representation, declare `typealias Dimensions = VectorDimensions<N>` with its
-logical component count. Distances, arithmetic, and `MATCH` reject unequal known dimensions;
-fixed/variable combinations continue to use database validation. Generic forwarding helpers must
-carry the corresponding dimension constraint:
+`Dimensions` defaults to `Void`; custom fixed types use `VectorDimensions<N>`. Distances, arithmetic,
+and `MATCH` reject unequal known counts; the database checks runtime-sized operands. Carry dimensions
+in generic helpers:
 
 ```swift
 func distance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
@@ -243,19 +220,13 @@ let expression = distance(EmbeddingVector<3>([1, 0, 0]), to: EmbeddingVector<3>(
 // vec_distance_l2(?, ?)
 ```
 
-A helper accepting a runtime-sized left or right operand can constrain that operand's `Dimensions`
-to `Void` instead. SQLiteVec normalization and arithmetic now return the dimension-preserving
-representation, so fixed results decode to their fixed logical value. Length-preserving constructors,
-quantization, and explicit `as:` results also retain compatible known counts. JSON and runtime-sized
-sources validate fixed results during decoding; slice bounds and concatenated result counts remain
-runtime checks. `Vec.f32` also accepts JSON string expressions, matching the
-Int8 constructor's typed-result API.
+Constrain a runtime operand's `Dimensions` to `Void` instead. Length-preserving operations retain
+compatible counts, including explicit `as:` results. JSON and variable inputs validate fixed results
+when decoding; slices and concat have runtime bounds and result lengths. `Vec.f32` now accepts JSON.
 
-`Vec.bit` and `.bit()` no longer accept Float32 inputs. Use `quantizeBinary()` for sign quantization,
-or supply a packed-bit representation to tag binary storage.
+`Vec.bit` and `.bit()` reject Float32. Use `quantizeBinary()` for signs or packed bits for tagging.
 
-Turso constructors infer `VectorDimensions<N>` and return fixed-size results for fixed inputs.
-Generic forwarding helpers can carry that count explicitly:
+Turso constructors retain fixed counts. Forward them explicitly in generic helpers:
 
 ```swift
 func precise<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
@@ -268,13 +239,11 @@ let converted = precise(EmbeddingVector<3>([0.1, 0.2, 0.3]))
 // vector64(?)
 ```
 
-For an intentionally runtime-sized result in a helper with an abstract `Dimensions` type, use an
-explicit `as:` array-backed or runtime-sized representation. This makes dimension erasure visible.
+Use `as:` with a runtime-sized strategy to erase dimensions explicitly.
 
 ### Carry encoding constraints in generic SQL helpers
 
-Previously, a generic helper could forward any `VectorBytesRepresentable` to a SQLiteVec
-function. Add the operation's supported encoding constraint:
+Add the operation's encoding constraint to generic SQLiteVec helpers:
 
 ```swift
 func float32Length<V: VectorBytesRepresentable>(
@@ -286,14 +255,12 @@ let dimensions = float32Length(EmbeddingVector<3>([0.1, 0.2, 0.3]))
 // vec_length(?)
 ```
 
-Float32 and signed Int8 support L1, L2, cosine distance, addition, and subtraction. Normalization
-requires Float32. Hamming requires raw packed bits. Inspection, slicing, iteration, and `MATCH`
-support Float32, signed Int8, and packed bits. Comparisons require matching encodings; numeric
-operations cannot silently mix Float32 and Int8, or raw binary and Turso binary framing.
+Float32 and Int8 support numeric distances and arithmetic; only Float32 normalizes. Packed bits
+support Hamming. All three support inspection, slices, iteration, and `MATCH`. Comparisons require
+matching encodings, preventing mixed numeric formats or binary framing.
 
-Scalar convenience methods extend `QueryExpression`, including computed vectors and ordinary BLOB
-columns. Distances and arithmetic accept bound or computed operands with matching encodings.
-Column slices return variable-size representations by default:
+Conveniences extend `QueryExpression` for bound values, computed vectors, and BLOB columns.
+Slices default to variable-size results:
 
 ```swift
 let prefix = Embedding.columns.embedding.slice(0..<2)
@@ -302,28 +269,21 @@ let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2
 // vec_slice("Embeddings"."embedding", 0, 2)
 ```
 
-The result selected by `as:` must match the operation's output encoding. Its dimension constraint
-is checked when decoding, so select a fixed result whose count matches a slice's length.
+`as:` must match the output encoding and decoded count; select a fixed count equal to slice length.
 
 ### Decode lengths and vector elements with their SQL types
 
-`vec_length` returns an integer, so `length()` and `Vec.length` now return `some QueryExpression<Int>`.
-Replace `Double` with `Int` where you decode or compare a length.
+`length()` and `Vec.length` now return `QueryExpression<Int>`. Update decoded and compared lengths.
 
-`vec_each` reports Float32 elements as `REAL` values, and Int8 and packed-bit elements as integers.
-Element tables are now generic over their value type: Float32 vectors keep `VecEach`, an alias of
-`VecEachOf<Float>`, while Int8 vectors return `VecEachOf<Int8>` and packed bits return
-`VecEachOf<Bool>`. Compare an Int8 element's `value` with `Int8` literals and a bit's `value` with
-`true` or `false`, rather than with `Float` values. Code that names `VecEach` for an Int8 or binary
-vector must use the matching `VecEachOf` type.
+`vec_each` returns REAL for Float32 and integers for Int8/bits. Use `VecEach` (`VecEachOf<Float>`),
+`VecEachOf<Int8>`, or `VecEachOf<Bool>` accordingly. Compare values with matching literals and
+update explicit Int8/binary table types.
 
-Distance helpers continue to return `Double`. SQLiteVec computes Int8 L1 distances as integers, so
-that helper now wraps its SQL in `CAST(... AS REAL)`.
+Distances remain `Double`; Int8 L1 now uses `CAST(... AS REAL)`.
 
 ### Decode binary results as bits
 
-Use `[Bool].PackedBitsRepresentation` for variable-size SQLiteVec binary results, or
-`BinaryEmbeddingVector<N>.PackedBitsRepresentation` for a fixed logical dimension count:
+Decode binary results with `[Bool].PackedBitsRepresentation` or a fixed binary strategy:
 
 ```swift
 let floats: [Float].VectorBytesRepresentation = [1, -1, 1, 0, -1, 1, 0, -1]
@@ -336,16 +296,13 @@ let fixedBits = Vec.quantizeBinary(
 // vec_quantize_binary(?)
 ```
 
-`Vec.bit` reinterprets existing blob bytes as bits; it does not quantize numerical components.
-Use `Vec.quantizeBinary` to quantize Float32 or signed Int8 components by sign. SQLiteVec packed-bit
-bindings require dimensions divisible by eight, and binary slice boundaries must be byte-aligned.
+`Vec.bit` tags existing bytes; `Vec.quantizeBinary` converts Float32 or Int8 signs. Packed counts
+and slice bounds must be byte-aligned.
 
-When inserting packed bits, use `Vec.bit(binding)` so the expression has SQLiteVec's binary subtype.
-Binary scalar helpers and `MATCH` attach this subtype for you. The packed value indexes bits least
-significant first within each byte; SQLiteVec's `vec_each` reports bits most significant first.
+Inserts require `Vec.bit(binding)`; scalar helpers and `MATCH` tag automatically. Swift indexes bits
+least significant first within a byte; `vec_each` uses most significant first.
 
-Turso's `.TursoBytesRepresentation` includes type and dimension metadata and cannot replace
-SQLiteVec's raw packed-bit representation.
+Turso's binary strategy adds type and dimension metadata and cannot replace SQLiteVec packed bits.
 
 ### Replace the Int8 quantization and conversion APIs
 
@@ -361,17 +318,14 @@ let query = Embedding.select { $0.embedding.quantizeInt8() }
 // FROM "Embeddings"
 ```
 
-The old numeric argument caused a SQLite error. The new SQL is
-`vec_quantize_int8(vector, 'unit')`. It maps components in [-1, 1] to signed codes in [-128, 127],
-clamps out-of-range inputs, and truncates toward zero with SQLiteVec's Float32 rounding. It does not
-normalize vectors; use `Vec.normalize` explicitly if your input requires unit-length normalization.
-The result is `[Int8].Int8BytesRepresentation`, whose query output is `[Int8]`, rather than `[Float]`.
-There is no per-vector scale or shift metadata and no implicit dequantization.
+`scale:` caused a SQLite error. The replacement emits `vec_quantize_int8(vector, 'unit')`, mapping
+[-1, 1] to [-128, 127], clamping, and truncating toward zero with Float32 rounding. It does not
+normalize; call `Vec.normalize` if needed. Results are `[Int8].Int8BytesRepresentation`, without
+scale, shift, or implicit dequantization.
 
-`Vec.int8` tags existing signed bytes or parses an integer JSON array. It is not a numeric Float32
-conversion. Replace a Float32 column's `.int8()` call with `.quantizeInt8()` if quantization was the
-intent; update callers to consume signed codes. Raw byte reinterpretation, if intentionally needed,
-can be expressed explicitly in SQL and decoded with the Int8 strategy.
+`Vec.int8` tags signed bytes or parses integer JSON; it does not convert Float32. Replace numeric
+`.int8()` calls with `.quantizeInt8()` and consume signed codes. Intentional byte reinterpretation
+requires explicit SQL and Int8 decoding.
 
 Store signed codes with a strategy from `StructuredQueriesSQLiteVecCore`:
 
@@ -398,23 +352,18 @@ let neighbors = Int8Embedding
 // LIMIT ?
 ```
 
-Int8 scalar helpers and `MATCH` attach `vec_int8` automatically because SQL subtypes do not survive
-storage or binding. Inserts should use `Vec.int8(binding)` or `Vec.quantizeInt8(floatExpression)`.
-Existing valid Int8 payloads retain their one-byte-per-component layout.
+SQL subtypes do not survive storage or binding. Helpers and `MATCH` tag Int8 automatically; inserts
+use `Vec.int8` or `Vec.quantizeInt8`. Existing Int8 bytes keep their layout.
 
-For fixed dimensions, use `FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation` with
-`@Column(as:)` and the Int8-producing functions' `as:` overloads. This reuses the shared fixed-size
-value; Int8 does not conform to the floating-point `VectorScalar` protocol. SQLiteVec signed Int8
-codes are not interchangeable with Turso's affine UInt8 `Quantized8Vector`. When moving signed codes
-to Turso, first create numeric Float32 components or integer JSON and use the corresponding
-`TursoVec` constructor; its blob conversions cannot identify SQLiteVec's raw signed-byte layout.
+Fixed Int8 uses `FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation` for `@Column(as:)` and
+`as:` results. Int8 is not a `VectorScalar`. Its signed codes differ from Turso affine UInt8; migrate
+through Float32 values or integer JSON, not raw signed bytes.
 
 ### Use encoding capabilities in generic helpers
 
-Concrete encoding constraints can be replaced by the corresponding engine protocol. The SQLiteVec
-hierarchy provides vector, numeric, Float32, signed Int8, and packed binary capabilities; the Turso
-hierarchy provides vector, numeric, dense Float32/Float64, quantized UInt8, sparse Float32, and framed
-binary capabilities. Scalar, canonical encoding, and dimension relationships remain enforced.
+Replace concrete encoding constraints with engine capabilities. SQLiteVec provides numeric,
+Float32, Int8, and binary branches; Turso adds Float64, quantized, and sparse. Scalar, encoding,
+and dimension relationships remain enforced:
 
 ```swift
 func numericDistance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
@@ -430,18 +379,14 @@ let distance = numericDistance(left, to: right)
 // vec_distance_l2(vec_int8(?), vec_int8(?))
 ```
 
-The leaf protocol promises valid bytes for its exact layout. SQLiteVec leaves inherit a default
-`sqliteVecExpression` subtype hook. Direct conformances to `SQLiteVecVectorEncoding` supply that
-hook themselves. `TursoVectorEncoding` now also inherits `VectorBytesRepresentable`; existing
-built-in representations need no changes. Shared codec adapters retain their raw IEEE input checks.
+Leaf protocols promise exact layouts. SQLiteVec leaves inherit subtype hooks; direct base
+conformances supply `sqliteVecExpression`. `TursoVectorEncoding` now inherits
+`VectorBytesRepresentable`; built-ins need no changes. Raw IEEE codec adapters retain input checks.
 
 ### Account for equality and decoding behavior
 
-Float32 embedding equality now follows Swift scalar equality. Positive and negative zero compare
-equal, and a vector containing a NaN does not compare equal to itself. Hashing follows the same
-scalar semantics. If your application needs bit-identical comparisons, compare `vectorBytes`
-explicitly. Persist actual vector values rather than Swift hash values.
+Float32 equality and hashing now follow scalar semantics: signed zeros compare equal; NaNs compare
+unequal, even to themselves. Compare `vectorBytes` for bit identity; persist values, not Swift hashes.
 
-Byte decoding throws `VectorDecodingError.invalidBytes` for invalid lengths or format metadata,
-and `dimensionMismatch(expected:actual:)` for the wrong fixed count. Handle these errors at the
-same boundary where you handle other corrupt database values.
+Decoding throws `VectorDecodingError.invalidBytes` for lengths or metadata and
+`dimensionMismatch(expected:actual:)` for fixed counts. Handle these alongside corrupt database data.

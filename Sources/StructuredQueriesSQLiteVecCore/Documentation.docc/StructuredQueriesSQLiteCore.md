@@ -4,11 +4,10 @@ StructuredQueries helpers for [sqlite-vec](https://github.com/asg017/sqlite-vec)
 
 ## Overview
 
-Model virtual tables with ``Vec0`` and use column helpers or the ``Vec`` namespace for vector
-queries. This module exports `StructuredQueriesVectorCore`; load the sqlite-vec extension through
-`SQLiteVecData` or your SQLite driver.
+Use ``Vec0`` tables, column helpers, or the ``Vec`` namespace. This module exports
+`StructuredQueriesVectorCore`; load sqlite-vec through `SQLiteVecData` or your driver.
 
-SQL comments show the generated queries with placeholders for bound values.
+SQL comments show generated queries; placeholders represent bound values.
 
 ### Create a table and search
 
@@ -59,8 +58,7 @@ let freeform = Embedding
 // LIMIT ?
 ```
 
-The left operand must be a vec0 vector column. A nearest-neighbor query requires `LIMIT` or a
-constraint on vec0's `k` column.
+`match` requires a vec0 vector column. Nearest-neighbor queries require `LIMIT` or a `k` constraint.
 
 ### Distances and vector operations
 
@@ -81,15 +79,11 @@ let sliced = Vec.slice(vector, start: 0, end: 2)
 // vec_slice(?, 0, 2)
 ```
 
-Scalar helpers accept bound values or computed vector expressions and also work on ordinary BLOB
-columns. Slices return variable-size results; `as:` selects a matching fixed-size result and validates
-its dimensions. `match` remains specific to vec0 columns.
+Scalar helpers accept bound values, computed expressions, and BLOB columns. Slices default to
+variable-size results; `as:` selects a fixed result with dimension-checked decoding.
 
-Distance helpers return `REAL` values decoded as `Double`, including the Int8 L1 distance, which
-SQLiteVec computes as an integer and the helper casts to `REAL`. `length()` and `Vec.length` return
-the dimension count as an `Int`. Float32 iteration yields ``VecEach`` elements, an alias of
-`VecEachOf<Float>`; Int8 and packed-bit vectors yield `VecEachOf<Int8>` and `VecEachOf<Bool>`
-because SQLiteVec reports their elements as integers.
+Distances return `Double` (SQL REAL); Int8 L1 is cast from integer to REAL. Length returns `Int`.
+Iteration yields `VecEachOf<Float>` (also ``VecEach``), `VecEachOf<Int8>`, or `VecEachOf<Bool>`.
 
 Column and namespace helpers support these encodings:
 
@@ -101,13 +95,12 @@ Column and namespace helpers support these encodings:
 | Hamming distance | — | — | Yes |
 | Binary sign quantization | Yes | Yes | — |
 
-Comparisons require matching encodings. An `as:` result must match the operation's output encoding;
-fixed-size results also validate decoded dimensions. Float64 and Turso-specific formats cannot be
-used with sqlite-vec helpers.
+Comparisons require matching encodings; `as:` must match the output encoding. Float64 and
+Turso-specific formats are unsupported.
 
 ### Iterate over elements
 
-``VecEach`` statements expose `rowid` and `value` and support joins, filters, and aggregates:
+``VecEach`` exposes `rowid` and `value` for joins, filters, and aggregates:
 
 ```swift
 let elements = Vec.each(vector)
@@ -142,7 +135,7 @@ let withNegativeElements = Embedding
 //   ("vec_each"."vector" = "Embeddings"."embedding") AND (("vec_each"."value") < (?))))
 ```
 
-Both helpers supply `vec_each`'s hidden vector constraint, including in correlated subqueries.
+Both forms supply the hidden vector constraint, including in correlated subqueries.
 
 ### Float32 JSON and fixed dimensions
 
@@ -155,14 +148,11 @@ let result = Vec.add(normalized, Vec.f32("[0, 2, 0]"))
 // vec_add(vec_normalize(vec_f32(?)), vec_f32(?))
 ```
 
-`Vec.f32` accepts JSON string expressions, with an optional matching `as:` strategy.
-Normalization and default arithmetic results retain known dimensions. When one arithmetic operand
-is variable-size, the fixed operand determines the result's dimension type. Distances, arithmetic,
-and `MATCH` require equal fixed counts; variable-size operands are checked by the database.
-Constructors and quantization preserve known dimensions. For operations that preserve length,
-`as:` requires compatible known operand and result counts. JSON and runtime-sized inputs still
-validate fixed results during decoding. Slice bounds and result counts remain runtime checks.
-`Vec.bit` tags packed binary storage; `quantizeBinary()` converts numeric components to signs.
+`Vec.f32` accepts JSON and optional `as:` strategies. Constructors, quantization, normalization,
+and arithmetic preserve known dimensions; a fixed arithmetic operand determines the result count
+when the other is variable-size. Distances, arithmetic, and `MATCH` reject unequal fixed counts.
+The database checks variable inputs; decoding validates fixed results. Length-preserving `as:`
+results require compatible known counts. Slice bounds and lengths remain runtime checks.
 
 ### Signed Int8 vectors
 
@@ -194,8 +184,8 @@ let query = Int8Embedding
 // LIMIT ?
 ```
 
-`Vec.int8` tags signed bytes or parses integer JSON, such as `Vec.int8("[-128, 0, 127]")`.
-Insert and update expressions need that subtype; query helpers attach it automatically.
+`Vec.int8` tags signed bytes or parses integer JSON. Inserts and updates require the subtype;
+queries attach it automatically.
 
 ```swift
 let floats: [Float].VectorBytesRepresentation = [-1, 0, 0.5, 2]
@@ -208,16 +198,14 @@ let fixedCodes = Vec.quantizeInt8(
 // vec_quantize_int8(?, 'unit')
 ```
 
-Quantization maps [-1, 1] to signed codes, clamps out-of-range values, and truncates toward zero
-using sqlite-vec's Float32 rounding. It does not normalize. These bytes have no scale or shift
-metadata. Keep Int8 arithmetic results in range to avoid overflow.
+Quantization maps [-1, 1] to signed codes, clamps, and truncates toward zero with Float32 rounding.
+It adds no normalization, scale, or shift. Keep arithmetic results in range to avoid overflow.
 
 ### Binary vectors
 
-This target supplies `.PackedBitsRepresentation` on `[Bool]` and `BinaryEmbeddingVector<N>`.
-Both use raw packed bytes, least significant bit first, with no dimension or format metadata.
-Dimensions must be divisible by eight. The shared binary value and its `packedBytes` support
-partial bytes independently of this strategy.
+`.PackedBitsRepresentation` on `[Bool]` and `BinaryEmbeddingVector<N>` stores raw bytes, least
+significant bit first. Counts must be divisible by eight. The shared binary value supports partial
+bytes; this SQLiteVec strategy does not.
 
 Validate user-provided components before wrapping them:
 
@@ -229,12 +217,10 @@ let fixed = try BinaryEmbeddingVector<8>.PackedBitsRepresentation(
 )
 ```
 
-Both initializers throw `[Bool].PackedBitsRepresentation.InvalidDimensionsError` for counts not
-divisible by eight. Its `dimensions` property identifies the rejected count. The nonthrowing query
-strategy initializer, array literals, and mutation precondition alignment immediately.
+Both initializers throw `[Bool].PackedBitsRepresentation.InvalidDimensionsError` with the rejected
+`dimensions`. Nonthrowing construction, literals, and mutation precondition alignment.
 
-`[Bool].PackedBitsRepresentation` stores bits without metadata. Dimensions and slice boundaries
-must be divisible by eight:
+Binary slices require byte-aligned bounds:
 
 ```swift
 // CREATE VIRTUAL TABLE BinaryEmbeddings USING vec0(embedding bit[8], label text);
@@ -262,20 +248,17 @@ let query = BinaryEmbedding
 // LIMIT ?
 ```
 
-Use `Vec.bit` for binary insert and update expressions; query helpers apply it automatically.
-`Vec.quantizeBinary` converts positive Float32 or Int8 components to true bits and returns a
-packed-bit representation. `Vec.bit` tags or reinterprets bytes without numerical quantization.
+Use `Vec.bit` for inserts and updates; queries tag automatically. `Vec.quantizeBinary` maps
+positive Float32 or Int8 components to true bits. `Vec.bit` tags bytes without quantizing.
 
-`Vec.each` iterates bits most significant first within each byte. Swift collection indices and
-`Vec.toJSON` use least significant first.
+`Vec.each` iterates most significant bit first; Swift indices and `Vec.toJSON` use least significant
+bit first within each byte.
 
 ### Encoding capabilities
 
-``SQLiteVecVectorEncoding`` supplies the SQL subtype hook used by query helpers.
-``SQLiteVecNumericEncoding`` covers Float32 and signed Int8 distances, arithmetic, and sign
-quantization. ``SQLiteVecFloat32Encoding``, ``SQLiteVecInt8Encoding``, and
-``SQLiteVecBinaryEncoding`` promise the corresponding byte layouts. Binary encodings also conform
-to the shared `BinaryVectorEncoding` protocol.
+``SQLiteVecVectorEncoding`` supplies the SQL subtype hook. ``SQLiteVecNumericEncoding`` supports
+Float32 and Int8 numeric operations; ``SQLiteVecFloat32Encoding``, ``SQLiteVecInt8Encoding``, and
+``SQLiteVecBinaryEncoding`` identify exact layouts. Binary also refines `BinaryVectorEncoding`.
 
 ```swift
 func numericDistance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
@@ -291,15 +274,15 @@ let distance = numericDistance(left, to: right)
 // vec_distance_l2(vec_int8(?), vec_int8(?))
 ```
 
-Custom encodings adopt the appropriate leaf protocol and validate their bytes and dimensions.
-The inherited `sqliteVecExpression` implementation applies `vec_int8` or `vec_bit`; Float32 passes
-through. Matching canonical encodings and known dimensions remain required for two-vector operations.
+Custom encodings adopt a leaf protocol and validate bytes and dimensions. Its default
+`sqliteVecExpression` tags Int8 and binary; Float32 passes through. Two-vector operations still
+require matching canonical encodings and compatible dimensions.
 
 ### Fixed-size values
 
-`EmbeddingVector<N>` binds Float32 directly. Signed Int8 and binary columns use
-`FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation` and
-`BinaryEmbeddingVector<N>.PackedBitsRepresentation`. These types require Swift 6.2 and iOS 26,
+`EmbeddingVector<N>` binds Float32 directly. Int8 uses
+`FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation`; binary uses
+`BinaryEmbeddingVector<N>.PackedBitsRepresentation`. Fixed types require Swift 6.2 and iOS 26,
 macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
 See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/),

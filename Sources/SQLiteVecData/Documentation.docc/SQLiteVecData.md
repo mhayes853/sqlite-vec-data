@@ -4,8 +4,8 @@ SQLiteData integration for sqlite-vec vector search.
 
 ## Overview
 
-This module exports `SQLiteData` and `StructuredQueriesSQLiteVecCore`. Use it to load the extension,
-create vec0 tables, and execute StructuredQueries statements through SQLiteData.
+This module exports `SQLiteData` and `StructuredQueriesSQLiteVecCore` for loading sqlite-vec,
+creating vec0 tables, and executing queries.
 
 ### Load the extension
 
@@ -19,8 +19,7 @@ configuration.prepareSQLiteVecExtension()
 let database = try SQLiteData.defaultDatabase(configuration: configuration)
 ```
 
-For process-wide registration on non-Apple platforms, call ``registerSQLiteVecAutoExtension()``
-before opening connections instead:
+On non-Apple platforms, call ``registerSQLiteVecAutoExtension()`` before opening connections:
 
 ```swift
 import SQLiteVecData
@@ -59,8 +58,8 @@ let neighbors = try database.read { db in
 }
 ```
 
-See the [sqlite-vec query documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriessqliteveccore/)
-for Float32, signed Int8, binary vectors, and scalar functions.
+See [sqlite-vec query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriessqliteveccore/)
+for Float32, Int8, binary vectors, and scalar functions.
 
 ### Testing
 
@@ -89,9 +88,8 @@ struct `Vector tests` {
 }
 ```
 
-On non-Apple platforms, add `SQLiteVecDataTestSupport` to your test target and use
-`.sqliteVecAutoExtension` to register sqlite-vec once for the process. Connections opened by the
-suite then support sqlite-vec without configuration:
+On non-Apple platforms, add `SQLiteVecDataTestSupport` and use `.sqliteVecAutoExtension` to
+register sqlite-vec process-wide for subsequent connections:
 
 ```swift
 #if !canImport(Darwin)
@@ -112,12 +110,11 @@ struct `Auto Extension Vector tests` {
 #endif
 ```
 
-Registration applies to all subsequent connections in the process. Use connection preparation
-for suites that need isolated registration or run on Apple platforms.
+Use per-connection preparation on Apple platforms or for isolated registration.
 
 ### Turso Database
 
-For native Turso vector queries, use the separate `StructuredQueriesTursoVecCore` product with a
-compatible Turso driver. See the [Turso query documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/).
+Use `StructuredQueriesTursoVecCore` with a compatible driver for
+[native Turso queries](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/).
 
 See the [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

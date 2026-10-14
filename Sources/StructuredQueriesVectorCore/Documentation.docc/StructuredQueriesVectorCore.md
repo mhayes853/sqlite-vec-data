@@ -4,9 +4,9 @@ Shared vector values, byte representations, and codecs for StructuredQueries.
 
 ## Overview
 
-Use byte strategies with `@Column(as:)`, or fixed-size values for dimension-checked decoding.
-The shared codecs serialize scalar bit patterns; binary values expose raw packed storage.
-Database integration targets supply their own formats and query functions.
+Use byte strategies with `@Column(as:)` or fixed values for dimension-checked decoding. Codecs
+serialize scalar bits; binary values expose packed bytes. Integration targets supply database
+formats and queries.
 
 ### Array representations
 
@@ -35,8 +35,8 @@ Serialization support does not imply support for vector queries in a database.
 
 ### Fixed-size vectors
 
-``FixedEmbeddingVector`` stores scalars in an inline array and provides a mutable random-access
-collection, hashing, and Codable scalar arrays:
+``FixedEmbeddingVector`` stores inline scalars with mutable random access, hashing, and Codable
+scalar arrays:
 
 | Type | Scalar | Query representation |
 | --- | --- | --- |
@@ -60,9 +60,8 @@ Dense equality follows scalar semantics: signed zeros compare equal; NaNs compar
 
 ### Packed binary values
 
-``BinaryEmbeddingVector`` exposes mutable Bool elements while storing `ceil(N / 8)` bytes;
-1,536 dimensions use 192 bytes. Codable uses a Bool array. `packedBytes` has no database metadata,
-and `init(packedBytes:)` checks the byte count and clears unused high bits.
+``BinaryEmbeddingVector`` provides mutable Bool elements in `ceil(N / 8)` bytes: 1,536 dimensions
+use 192 bytes. Codable stores Bool arrays. `init(packedBytes:)` checks length and clears unused bits.
 
 ```swift
 let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
@@ -77,12 +76,11 @@ let candidate = try BinaryEmbeddingVector<8>(packedBytes: [0x85])
 let distance = binary.hammingDistance(to: candidate) // 2 differing bits.
 ```
 
-Sign quantization tests `value > 0`: zeros, negatives, and NaNs become false. It discards magnitudes.
-Local Hamming distance counts differing bits and returns `Int`.
+Sign quantization uses `value > 0`; zeros, negatives, and NaNs become false. Hamming distance
+returns the number of differing bits as `Int`.
 
-Bit zero occupies the least significant bit of the first byte. Logical dimensions need not be
-divisible by eight; the value tracks the count and clears unused trailing bits. Raw `packedBytes`
-are storage payloads. Database integration targets supply binary binding and decoding strategies.
+Bits start at the least significant bit of the first byte. Counts may include partial bytes, with
+unused trailing bits cleared. Integration targets add database binding and decoding strategies.
 
 ### Serialize vector bytes
 
@@ -95,28 +93,24 @@ let validated = try EmbeddingVector<3>(validating: values)
 // A payload or array with a different component count throws.
 ```
 
-`init(vectorBytes:)` validates complete scalar payloads and fixed dimensions.
-`init(validating:)` checks a scalar array's count. Invalid bytes and dimensions throw
-``VectorDecodingError``. Query binding wraps these bytes in a BLOB; query decoding uses the same
-initializer.
+`init(vectorBytes:)` validates payloads and fixed dimensions; `init(validating:)` checks array
+counts. Failures throw ``VectorDecodingError``. Queries bind these bytes as BLOBs and decode
+through the same initializer.
 
 ### Codecs and encoding identity
 
-``VectorScalar`` describes Float16, Float, and Double through an unsigned integer `BitPattern`,
-`bitPattern`, and `init(bitPattern:)`. Generic `encodeVector` and `decodeVector` extension methods
-preserve IEEE bits in little-endian order and reject incomplete components. These operations add
-no format tags and are not protocol customization points. Adding a scalar conformance does not
-add a format to database query helpers.
+``VectorScalar`` supplies Float16, Float, and Double bit patterns through an unsigned `BitPattern`,
+`bitPattern`, and `init(bitPattern:)`. Generic codecs preserve IEEE bits in little-endian order,
+reject incomplete components, and add no tags. They are not customization points; scalar
+conformance alone does not add database support.
 
-``VectorBytesRepresentable`` identifies the byte layout through `Encoding`, a canonical
-representation independent of dimensions. For example, `EmbeddingVector<3>` and
-`[Float].VectorBytesRepresentation` share an encoding. Its `VectorBytesRepresentation` associated
-type selects the wrapper for a particular value, including fixed dimensions.
+``VectorBytesRepresentable`` uses `Encoding` to identify a layout independently of dimensions:
+`EmbeddingVector<3>` and `[Float].VectorBytesRepresentation` share it. The associated
+`VectorBytesRepresentation` selects the value's wrapper, including fixed dimensions.
 
-Both associated representations must conform to `VectorBytesRepresentable` and `QueryBindable`.
-Their scalars must match the value's scalar, and the query representation must preserve its
-`Encoding` and `Dimensions`. The `Document` column strategy above wraps logical values as BLOBs
-when inserting:
+Both associated representations conform to `VectorBytesRepresentable` and `QueryBindable` with
+matching scalars. The query wrapper also preserves `Encoding` and `Dimensions`. The `Document`
+strategy above wraps values as BLOBs on insert:
 
 ```swift
 let embedding: [Float] = [0.1, 0.2, 0.3]
@@ -126,12 +120,10 @@ let insert = Document.insert { ($0.id, $0.embedding) } values: {
 // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
 ```
 
-The `Dimensions` associated type defaults to `Void` for runtime-sized values. Fixed representations
-use ``VectorDimensions`` with the same count across scalar types and strategies. Query integrations
-use that identity to reject unequal known dimensions while allowing variable-size operands.
-Self-representing runtime-sized conformers declare `typealias Dimensions = Void` explicitly;
-Swift cannot infer the default through the recursive representation constraint. The canonical
-encoding's dimensions remain independent of the value's count.
+`Dimensions` is `Void` for runtime-sized values or ``VectorDimensions`` for a fixed count across
+scalar types and strategies. Helpers reject unequal known counts and allow variable operands.
+Self-representing runtime types must declare `Dimensions = Void` to resolve recursive constraints.
+Canonical encoding dimensions are independent of the value's count.
 
 ```swift
 func dotProduct<L: Collection & VectorBytesRepresentable, R: Collection & VectorBytesRepresentable>(
@@ -143,11 +135,9 @@ func dotProduct<L: Collection & VectorBytesRepresentable, R: Collection & Vector
 let score = dotProduct(EmbeddingVector<3>([1, 0, 0]), EmbeddingVector<3>([0.5, 1, 0])) // 0.5
 ```
 
-Integration targets can adopt this protocol for database-specific encoded values and strategies
-while leaving shared scalar serialization unchanged.
+Integration targets add encoded values and strategies without changing shared serialization.
 
-``BinaryVectorEncoding`` refines serialized vectors with `Scalar == Bool` without choosing a byte
-layout. Integration protocols add exact format and query capabilities; sharing the binary parent
-does not make differently framed payloads interchangeable.
+``BinaryVectorEncoding`` requires `Scalar == Bool`; integration protocols add layouts and
+capabilities. Different binary framing remains incompatible.
 
 See the [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).
