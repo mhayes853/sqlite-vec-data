@@ -405,7 +405,9 @@ Use per-connection preparation on Apple platforms or for isolated registration.
 | `SQLiteVecDataTestSupport` | Non-Apple auto-extension suite trait |
 | `CSQLiteVec` | Bundled sqlite-vec C extension |
 
-`SQLiteVecNEON` enables ARM SIMD by default; opt into `SQLiteVecAVX` for supported x86 processors.
+`SQLiteVecNEON` and `SQLiteVecAVX` are enabled by default for ARM and x86, respectively. AVX
+requires an AVX-capable CPU; for older x86 CPUs, select only `SQLiteVecNEON` and
+`SQLiteVecStaticAPI` traits.
 
 The default `SQLiteVecStaticAPI` calls linked SQLite functions and enables non-Apple per-connection setup.
 Disable it for custom SQLite builds that require the extension API table; use

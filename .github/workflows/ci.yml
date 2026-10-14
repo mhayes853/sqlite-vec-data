@@ -33,10 +33,10 @@ jobs:
           apt-get install -y libsqlite3-dev
       - name: "Test Swift Package on Linux"
         run: swift test
-      - name: "Test SQLiteVecAVX Trait on Linux"
-        run: swift test --traits SQLiteVecAVX,SQLiteVecStaticAPI
+      - name: "Test Without SQLiteVecAVX on Linux"
+        run: swift test --disable-default-traits --traits SQLiteVecNEON,SQLiteVecStaticAPI
       - name: "Build Without SQLiteVecStaticAPI on Linux"
-        run: swift build --disable-default-traits --traits SQLiteVecNEON
+        run: swift build --disable-default-traits --traits SQLiteVecNEON,SQLiteVecAVX
 
   linux-arm64:
     name: Linux ARM64

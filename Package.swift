@@ -15,7 +15,7 @@ let package = Package(
     .library(name: "SQLiteVecDataTestSupport", targets: ["SQLiteVecDataTestSupport"])
   ],
   traits: [
-    .default(enabledTraits: ["SQLiteVecNEON", "SQLiteVecStaticAPI"]),
+    .default(enabledTraits: ["SQLiteVecNEON", "SQLiteVecAVX", "SQLiteVecStaticAPI"]),
     .trait(
       name: "SQLiteVecNEON",
       description: "Enable sqlite-vec NEON vector implementations on ARM."
