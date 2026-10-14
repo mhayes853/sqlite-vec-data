@@ -261,6 +261,33 @@ This workaround uses dense intermediate storage; the
 [engine's sparse concat implementation](https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/concat.rs#L24)
 does not shift the second operand's indices.
 
+### Encoding capabilities
+
+``TursoVectorEncoding`` identifies supported serialized vector formats. Its numeric branch,
+``TursoNumericVectorEncoding``, supports L2 and is refined by ``TursoFloat32Encoding``,
+``TursoFloat64Encoding``, ``TursoQuantized8Encoding``, and ``TursoSparseFloat32Encoding``.
+``TursoBinaryEncoding`` instead refines the engine base and the shared `BinaryVectorEncoding`.
+
+```swift
+func numericDistance<L: VectorBytesRepresentable & QueryBindable,
+  R: VectorBytesRepresentable & QueryBindable>(
+  _ left: some QueryExpression<L>, to right: some QueryExpression<R>
+) -> some QueryExpression<Double>
+where L.Encoding: TursoNumericVectorEncoding, L.Encoding == R.Encoding,
+  L.Dimensions == R.Dimensions {
+  TursoVec.distanceL2(left, to: right)
+}
+let left = EmbeddingVector<3>([3, 4, 0])
+let right = EmbeddingVector<3>([0, 0, 0])
+let distance = numericDistance(left, to: right)
+// vector_distance_l2(?, ?)
+```
+
+Conformance promises the corresponding Turso layout and framing; it does not convert bytes.
+Raw Float64, Float16, SQLiteVec signed Int8, and SQLiteVec packed-bit layouts do not gain engine
+support from their scalar type. Fixed and variable representations use the same encoding capabilities.
+Slicing and concatenation retain their existing format restrictions.
+
 ### Fixed-size results and bytes
 
 ``InlineQuantized8Vector`` stores unsigned codes inline with scale and shift.

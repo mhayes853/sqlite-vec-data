@@ -181,14 +181,13 @@ extension Vec {
   /// - Returns: A select statement over the vector's indexed elements.
   public static func each<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> SelectOf<VecEach> where V.Encoding == [Float].VectorBytesRepresentation {
+  ) -> SelectOf<VecEach> where V.Encoding: SQLiteVecFloat32Encoding {
     expression.vecEach()
   }
 }
 
 extension QueryExpression
-where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Float].VectorBytesRepresentation
-{
+where QueryValue: VectorBytesRepresentable, QueryValue.Encoding: SQLiteVecFloat32Encoding {
   /// A select statement that iterates over the elements of this vector expression using SQLite
   /// Vec's `vec_each` virtual table.
   ///
@@ -220,7 +219,7 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Float].Vecto
   ///
   /// - Returns: A select statement over the vector's indexed elements.
   public func vecEach() -> SelectOf<VecEach> {
-    vecEachStatement(vector: self.queryFragment)
+    vecEachStatement(vector: QueryValue.Encoding.sqliteVecExpression(self.queryFragment))
   }
 }
 
@@ -238,13 +237,13 @@ extension Vec {
   /// ```
   public static func each<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> SelectOf<VecEachOf<Bool>> where V.Encoding == [Bool].PackedBitsRepresentation {
+  ) -> SelectOf<VecEachOf<Bool>> where V.Encoding: SQLiteVecBinaryEncoding {
     expression.vecEach()
   }
 }
 
 extension QueryExpression
-where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Bool].PackedBitsRepresentation {
+where QueryValue: VectorBytesRepresentable, QueryValue.Encoding: SQLiteVecBinaryEncoding {
   /// Iterates over a packed-bit vector, applying SQLiteVec's binary subtype.
   /// Within each byte, SQLiteVec's `vec_each` reports the most significant bit first.
   ///
@@ -256,7 +255,7 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Bool].Packed
   /// // WHERE ("vec_each"."vector" = vec_bit(?))
   /// ```
   public func vecEach() -> SelectOf<VecEachOf<Bool>> {
-    vecEachStatement(vector: "vec_bit(\(self))")
+    vecEachStatement(vector: QueryValue.Encoding.sqliteVecExpression(self.queryFragment))
   }
 }
 
@@ -273,13 +272,13 @@ extension Vec {
   /// ```
   public static func each<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
-  ) -> SelectOf<VecEachOf<Int8>> where V.Encoding == [Int8].Int8BytesRepresentation {
+  ) -> SelectOf<VecEachOf<Int8>> where V.Encoding: SQLiteVecInt8Encoding {
     expression.vecEach()
   }
 }
 
 extension QueryExpression
-where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Int8].Int8BytesRepresentation {
+where QueryValue: VectorBytesRepresentable, QueryValue.Encoding: SQLiteVecInt8Encoding {
   /// Iterates over signed Int8 components, applying SQLiteVec's required subtype.
   ///
   /// ```swift
@@ -290,7 +289,7 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Int8].Int8By
   /// // WHERE ("vec_each"."vector" = vec_int8(?))
   /// ```
   public func vecEach() -> SelectOf<VecEachOf<Int8>> {
-    vecEachStatement(vector: "vec_int8(\(self))")
+    vecEachStatement(vector: QueryValue.Encoding.sqliteVecExpression(self.queryFragment))
   }
 }
 
@@ -299,10 +298,11 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding == [Int8].Int8By
 private func vecEachStatement<Value>(vector: QueryFragment) -> SelectOf<VecEachOf<Value>>
 where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOutput == Value {
   func statement() -> SelectOf<VecEachOf<Value>> {
-    VecEachOf<Value>.where { _ in
-      SQLQueryExpression("\(VecEachOf<Value>.self).\(quote: "vector") = \(vector)")
-    }
-    .asSelect()
+    VecEachOf<Value>
+      .where { _ in
+        SQLQueryExpression("\(VecEachOf<Value>.self).\(quote: "vector") = \(vector)")
+      }
+      .asSelect()
   }
   #if DEBUG
     return $isBuildingVecEachStatement.withValue(true) { statement() }

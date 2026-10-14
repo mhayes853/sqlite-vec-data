@@ -12,6 +12,24 @@ struct `Vector Query Safety tests` {
     self.database = try DatabaseQueue(configuration: configuration)
   }
 
+  @Test
+  func `Custom Int8 Encoding Uses Shared Numerical Operations`() async throws {
+    let left = SearchCodes(queryOutput: [3, 4, 1, -1, 0, 0, 0, 0])
+    let right = SearchCodes(queryOutput: [0, 0, 1, -1, 0, 0, 0, 0])
+    let sum = Vec.add(left, right)
+    let query = #sql(
+      "SELECT \(Vec.distanceL2(left, to: right)), \(Vec.distanceL1(left, to: right)), \(sum), \(Vec.quantizeBinary(sum))",
+      as: (Double, Double, SearchCodes, [Bool].PackedBitsRepresentation).self
+    )
+    try await self.database.read { db in
+      let result = try #require(try query.fetchOne(db))
+      expectNoDifference(result.0, 5)
+      expectNoDifference(result.1, 7)
+      expectNoDifference(result.2, [Int8(3), 4, 2, -2, 0, 0, 0, 0])
+      expectNoDifference(result.3, [true, true, true, false, false, false, false, false])
+    }
+  }
+
   #if swift(>=6.2)
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
@@ -119,3 +137,19 @@ struct `Vector Query Safety tests` {
     _ expression: some QueryExpression<V>
   ) where V.Dimensions == VectorDimensions<8> {}
 #endif
+
+private struct SearchCodes: Hashable, Sendable, SQLiteVecInt8Encoding {
+  typealias Scalar = Int8
+  typealias Dimensions = Void
+  typealias Encoding = Self
+  typealias VectorBytesRepresentation = Self
+
+  var queryOutput: [Int8]
+  init(queryOutput: [Int8]) { self.queryOutput = queryOutput }
+  var vectorBytes: [UInt8] {
+    [Int8].Int8BytesRepresentation(queryOutput: self.queryOutput).vectorBytes
+  }
+  init(vectorBytes: [UInt8]) throws {
+    try self.init(queryOutput: [Int8].Int8BytesRepresentation(vectorBytes: vectorBytes).queryOutput)
+  }
+}

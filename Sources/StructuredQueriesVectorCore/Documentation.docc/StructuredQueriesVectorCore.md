@@ -146,4 +146,8 @@ let score = dotProduct(EmbeddingVector<3>([1, 0, 0]), EmbeddingVector<3>([0.5, 1
 Integration targets can adopt this protocol for database-specific encoded values and strategies
 while leaving shared scalar serialization unchanged.
 
+``BinaryVectorEncoding`` refines serialized vectors with `Scalar == Bool` without choosing a byte
+layout. Integration protocols add exact format and query capabilities; sharing the binary parent
+does not make differently framed payloads interchangeable.
+
 See the [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

@@ -6,6 +6,19 @@ import Testing
 
 @Suite
 struct `TursoVec Query tests` {
+  @Test
+  func `Custom Float64 Encoding Supports Conversions And Numerical Distances`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector64
+    // https://docs.turso.tech/sql-reference/functions/vector#vector-distance-l2
+    let left = SearchVector64(queryOutput: [1, 2, 3])
+    let right = SearchVector64(queryOutput: [2, 4, 6])
+    let converted = TursoVec.vector64(left, as: SearchVector64.self)
+    expectNoDifference(
+      TursoVec.distanceL2(converted, to: right).queryFragment.prepare { "?\($0)" }.sql,
+      "vector_distance_l2(vector64(?1), ?2)"
+    )
+  }
+
   #if swift(>=6.2)
     @Test
     @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
@@ -401,4 +414,22 @@ private struct Formats: Hashable, Sendable {
 private struct SQLiteEmbedding: Hashable, Sendable, Vec0 {
   @Column(as: [Float].VectorBytesRepresentation.self)
   var embedding: [Float]
+}
+
+private struct SearchVector64: Hashable, Sendable, TursoFloat64Encoding {
+  typealias Scalar = Double
+  typealias Dimensions = Void
+  typealias Encoding = Self
+  typealias VectorBytesRepresentation = Self
+
+  var queryOutput: [Double]
+  init(queryOutput: [Double]) { self.queryOutput = queryOutput }
+  var vectorBytes: [UInt8] {
+    [Double].TursoFloat64BytesRepresentation(queryOutput: self.queryOutput).vectorBytes
+  }
+  init(vectorBytes: [UInt8]) throws {
+    try self.init(
+      queryOutput: [Double].TursoFloat64BytesRepresentation(vectorBytes: vectorBytes).queryOutput
+    )
+  }
 }

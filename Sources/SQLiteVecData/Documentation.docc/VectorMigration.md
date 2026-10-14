@@ -409,6 +409,32 @@ codes are not interchangeable with Turso's affine UInt8 `Quantized8Vector`. When
 to Turso, first create numeric Float32 components or integer JSON and use the corresponding
 `TursoVec` constructor; its blob conversions cannot identify SQLiteVec's raw signed-byte layout.
 
+### Use encoding capabilities in generic helpers
+
+Concrete encoding constraints can be replaced by the corresponding engine protocol. The SQLiteVec
+hierarchy provides vector, numeric, Float32, signed Int8, and packed binary capabilities; the Turso
+hierarchy provides vector, numeric, dense Float32/Float64, quantized UInt8, sparse Float32, and framed
+binary capabilities. Scalar, canonical encoding, and dimension relationships remain enforced.
+
+```swift
+func numericDistance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
+  _ left: some QueryExpression<L>, to right: some QueryExpression<R>
+) -> some QueryExpression<Double>
+where L.Encoding: SQLiteVecNumericEncoding, L.Encoding == R.Encoding,
+  L.Dimensions == R.Dimensions {
+  Vec.distanceL2(left, to: right)
+}
+let left: [Int8].Int8BytesRepresentation = [3, 4, 0]
+let right: [Int8].Int8BytesRepresentation = [0, 0, 0]
+let distance = numericDistance(left, to: right)
+// vec_distance_l2(vec_int8(?), vec_int8(?))
+```
+
+The leaf protocol promises valid bytes for its exact layout. SQLiteVec leaves inherit a default
+`sqliteVecExpression` subtype hook. Direct conformances to `SQLiteVecVectorEncoding` supply that
+hook themselves. `TursoVectorEncoding` now also inherits `VectorBytesRepresentable`; existing
+built-in representations need no changes. Shared codec adapters retain their raw IEEE input checks.
+
 ### Account for equality and decoding behavior
 
 Float32 embedding equality now follows Swift scalar equality. Positive and negative zero compare

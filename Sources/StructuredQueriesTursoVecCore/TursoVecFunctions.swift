@@ -53,7 +53,7 @@ public enum TursoVec {
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
   where
-    L.Encoding == [Bool].TursoBytesRepresentation, R.Encoding == L.Encoding,
+    L.Encoding: TursoBinaryEncoding, R.Encoding == L.Encoding,
     L.Dimensions == R.Dimensions
   {
     Self.distanceCosine(expression, to: vector)
@@ -88,7 +88,7 @@ public enum TursoVec {
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
   where
-    L.Encoding == [Bool].TursoBytesRepresentation, R.Encoding == L.Encoding,
+    L.Encoding: TursoBinaryEncoding, R.Encoding == L.Encoding,
     L.Dimensions == Void
   {
     Self.distanceCosine(expression, to: vector)
@@ -123,7 +123,7 @@ public enum TursoVec {
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
   where
-    L.Encoding == [Bool].TursoBytesRepresentation, R.Encoding == L.Encoding,
+    L.Encoding: TursoBinaryEncoding, R.Encoding == L.Encoding,
     R.Dimensions == Void
   {
     Self.distanceCosine(expression, to: vector)
@@ -172,7 +172,7 @@ public enum TursoVec {
   public static func vector32<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<String>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == [Float].VectorBytesRepresentation {
+  ) -> some QueryExpression<T> where T.Encoding: TursoFloat32Encoding {
     SQLQueryExpression("vector32(\(expression))")
   }
 
@@ -250,7 +250,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Float].VectorBytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoFloat32Encoding,
     V.Dimensions == T.Dimensions
   {
     SQLQueryExpression("vector32(\(expression))")
@@ -279,7 +279,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Float].VectorBytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoFloat32Encoding,
     V.Dimensions == Void
   {
     SQLQueryExpression("vector32(\(expression))")
@@ -308,7 +308,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Float].VectorBytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoFloat32Encoding,
     T.Dimensions == Void
   {
     SQLQueryExpression("vector32(\(expression))")
@@ -361,7 +361,7 @@ public enum TursoVec {
   public static func vector64<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<String>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == [Double].TursoFloat64BytesRepresentation {
+  ) -> some QueryExpression<T> where T.Encoding: TursoFloat64Encoding {
     SQLQueryExpression("vector64(\(expression))")
   }
 
@@ -439,7 +439,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Double].TursoFloat64BytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoFloat64Encoding,
     V.Dimensions == T.Dimensions
   {
     SQLQueryExpression("vector64(\(expression))")
@@ -468,7 +468,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Double].TursoFloat64BytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoFloat64Encoding,
     V.Dimensions == Void
   {
     SQLQueryExpression("vector64(\(expression))")
@@ -497,13 +497,13 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Double].TursoFloat64BytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoFloat64Encoding,
     T.Dimensions == Void
   {
     SQLQueryExpression("vector64(\(expression))")
   }
 
-  /// Converts JSON to a quantized float8 vector with `vector8`.
+  /// Converts JSON to an affine quantized UInt8 vector with `vector8`.
   ///
   /// ```swift
   /// @Table("documents")
@@ -547,7 +547,7 @@ public enum TursoVec {
   public static func vector8<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<String>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == Quantized8Vector {
+  ) -> some QueryExpression<T> where T.Encoding: TursoQuantized8Encoding {
     SQLQueryExpression("vector8(\(expression))")
   }
 
@@ -626,7 +626,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == Quantized8Vector,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoQuantized8Encoding,
     V.Dimensions == T.Dimensions
   {
     SQLQueryExpression("vector8(\(expression))")
@@ -655,7 +655,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == Quantized8Vector,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoQuantized8Encoding,
     V.Dimensions == Void
   {
     SQLQueryExpression("vector8(\(expression))")
@@ -684,7 +684,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == Quantized8Vector,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoQuantized8Encoding,
     T.Dimensions == Void
   {
     SQLQueryExpression("vector8(\(expression))")
@@ -739,7 +739,7 @@ public enum TursoVec {
   public static func vector1bit<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<String>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == [Bool].TursoBytesRepresentation {
+  ) -> some QueryExpression<T> where T.Encoding: TursoBinaryEncoding {
     SQLQueryExpression("vector1bit(\(expression))")
   }
 
@@ -818,7 +818,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Bool].TursoBytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoBinaryEncoding,
     V.Dimensions == T.Dimensions
   {
     SQLQueryExpression("vector1bit(\(expression))")
@@ -847,7 +847,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Bool].TursoBytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoBinaryEncoding,
     V.Dimensions == Void
   {
     SQLQueryExpression("vector1bit(\(expression))")
@@ -876,7 +876,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == [Bool].TursoBytesRepresentation,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoBinaryEncoding,
     T.Dimensions == Void
   {
     SQLQueryExpression("vector1bit(\(expression))")
@@ -928,7 +928,7 @@ public enum TursoVec {
   public static func vector32Sparse<T: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<String>,
     as result: T.Type
-  ) -> some QueryExpression<T> where T.Encoding == SparseFloat32Vector {
+  ) -> some QueryExpression<T> where T.Encoding: TursoSparseFloat32Encoding {
     SQLQueryExpression("vector32_sparse(\(expression))")
   }
 
@@ -1007,7 +1007,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == SparseFloat32Vector,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoSparseFloat32Encoding,
     V.Dimensions == T.Dimensions
   {
     SQLQueryExpression("vector32_sparse(\(expression))")
@@ -1036,7 +1036,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == SparseFloat32Vector,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoSparseFloat32Encoding,
     V.Dimensions == Void
   {
     SQLQueryExpression("vector32_sparse(\(expression))")
@@ -1065,7 +1065,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    V.Encoding: TursoVectorEncoding, T.Encoding == SparseFloat32Vector,
+    V.Encoding: TursoVectorEncoding, T.Encoding: TursoSparseFloat32Encoding,
     T.Dimensions == Void
   {
     SQLQueryExpression("vector32_sparse(\(expression))")
@@ -1341,7 +1341,7 @@ public enum TursoVec {
   }
 
   /// Returns Euclidean distance between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the 32-bit floating-point format.
+  /// Both operands must use the same supported numeric encoding and have equal dimensions.
   ///
   /// ```swift
   /// @Table("documents")
@@ -1361,92 +1361,6 @@ public enum TursoVec {
   /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
   /// // LIMIT ?
   /// ```
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
-    L.Dimensions == R.Dimensions
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Allows a runtime-sized left operand; the database checks matching dimensions.
-  ///
-  /// ```swift
-  /// @Table("documents")
-  /// struct Document {
-  ///   var content: String
-  ///   @Column(as: [Float].TursoFloat32BytesRepresentation.self)
-  ///   var embedding: [Float]
-  /// }
-  ///
-  /// let queryVector = EmbeddingVector<3>([0.2, 0.4, 0.6])
-  /// let neighbors = Document
-  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
-  ///   .limit(5)
-  ///   .select(\.content)
-  /// // SELECT "documents"."content"
-  /// // FROM "documents"
-  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
-  /// // LIMIT ?
-  /// ```
-  @_disfavoredOverload
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
-    L.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Allows a runtime-sized right operand; the database checks matching dimensions.
-  ///
-  /// ```swift
-  /// @Table("documents")
-  /// struct Document {
-  ///   var content: String
-  ///   @Column(as: EmbeddingVector<3>.TursoFloat32BytesRepresentation.self)
-  ///   var embedding: EmbeddingVector<3>
-  /// }
-  ///
-  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [0.2, 0.4, 0.6])
-  /// let neighbors = Document
-  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
-  ///   .limit(5)
-  ///   .select(\.content)
-  /// // SELECT "documents"."content"
-  /// // FROM "documents"
-  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
-  /// // LIMIT ?
-  /// ```
-  @_disfavoredOverload
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
-    R.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Returns Euclidean distance between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the 64-bit floating-point format.
   ///
   /// ```swift
   /// @Table("documents")
@@ -1466,92 +1380,6 @@ public enum TursoVec {
   /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
   /// // LIMIT ?
   /// ```
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding,
-    L.Dimensions == R.Dimensions
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Allows a runtime-sized left operand; the database checks matching dimensions.
-  ///
-  /// ```swift
-  /// @Table("documents")
-  /// struct Document {
-  ///   var content: String
-  ///   @Column(as: [Double].TursoFloat64BytesRepresentation.self)
-  ///   var embedding: [Double]
-  /// }
-  ///
-  /// let queryVector = EmbeddingVector64<3>.TursoFloat64BytesRepresentation(queryOutput: EmbeddingVector64<3>([0.2, 0.4, 0.6]))
-  /// let neighbors = Document
-  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
-  ///   .limit(5)
-  ///   .select(\.content)
-  /// // SELECT "documents"."content"
-  /// // FROM "documents"
-  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
-  /// // LIMIT ?
-  /// ```
-  @_disfavoredOverload
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding,
-    L.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Allows a runtime-sized right operand; the database checks matching dimensions.
-  ///
-  /// ```swift
-  /// @Table("documents")
-  /// struct Document {
-  ///   var content: String
-  ///   @Column(as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self)
-  ///   var embedding: EmbeddingVector64<3>
-  /// }
-  ///
-  /// let queryVector: [Double].TursoFloat64BytesRepresentation = [0.2, 0.4, 0.6]
-  /// let neighbors = Document
-  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
-  ///   .limit(5)
-  ///   .select(\.content)
-  /// // SELECT "documents"."content"
-  /// // FROM "documents"
-  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
-  /// // LIMIT ?
-  /// ```
-  @_disfavoredOverload
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding,
-    R.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Returns Euclidean distance between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the quantized float8 format.
   ///
   /// ```swift
   /// @Table("documents")
@@ -1571,92 +1399,6 @@ public enum TursoVec {
   /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
   /// // LIMIT ?
   /// ```
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == Quantized8Vector, L.Encoding == R.Encoding,
-    L.Dimensions == R.Dimensions
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Allows a runtime-sized left operand; the database checks matching dimensions.
-  ///
-  /// ```swift
-  /// @Table("documents")
-  /// struct Document {
-  ///   var content: String
-  ///   @Column(as: Quantized8Vector.self)
-  ///   var embedding: Quantized8Vector
-  /// }
-  ///
-  /// let queryVector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
-  /// let neighbors = Document
-  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
-  ///   .limit(5)
-  ///   .select(\.content)
-  /// // SELECT "documents"."content"
-  /// // FROM "documents"
-  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
-  /// // LIMIT ?
-  /// ```
-  @_disfavoredOverload
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == Quantized8Vector, L.Encoding == R.Encoding,
-    L.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Allows a runtime-sized right operand; the database checks matching dimensions.
-  ///
-  /// ```swift
-  /// @Table("documents")
-  /// struct Document {
-  ///   var content: String
-  ///   @Column(as: InlineQuantized8Vector<3>.self)
-  ///   var embedding: InlineQuantized8Vector<3>
-  /// }
-  ///
-  /// let queryVector = try Quantized8Vector(quantizing: [0.2, 0.4, 0.6])
-  /// let neighbors = Document
-  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
-  ///   .limit(5)
-  ///   .select(\.content)
-  /// // SELECT "documents"."content"
-  /// // FROM "documents"
-  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
-  /// // LIMIT ?
-  /// ```
-  @_disfavoredOverload
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding == Quantized8Vector, L.Encoding == R.Encoding,
-    R.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Returns Euclidean distance between matching vectors.
-  /// The database requires equal dimensions. Both operands must use the sparse float32 format.
   ///
   /// ```swift
   /// @Table("documents")
@@ -1684,13 +1426,70 @@ public enum TursoVec {
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
   where
-    L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding,
+    L.Encoding: TursoNumericVectorEncoding, L.Encoding == R.Encoding,
     L.Dimensions == R.Dimensions
   {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
   /// Allows a runtime-sized left operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var content: String
+  ///   @Column(as: [Float].TursoFloat32BytesRepresentation.self)
+  ///   var embedding: [Float]
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector<3>([0.2, 0.4, 0.6])
+  /// let neighbors = Document
+  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
+  ///   .limit(5)
+  ///   .select(\.content)
+  /// // SELECT "documents"."content"
+  /// // FROM "documents"
+  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
+  /// // LIMIT ?
+  /// ```
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var content: String
+  ///   @Column(as: [Double].TursoFloat64BytesRepresentation.self)
+  ///   var embedding: [Double]
+  /// }
+  ///
+  /// let queryVector = EmbeddingVector64<3>.TursoFloat64BytesRepresentation(queryOutput: EmbeddingVector64<3>([0.2, 0.4, 0.6]))
+  /// let neighbors = Document
+  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
+  ///   .limit(5)
+  ///   .select(\.content)
+  /// // SELECT "documents"."content"
+  /// // FROM "documents"
+  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
+  /// // LIMIT ?
+  /// ```
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var content: String
+  ///   @Column(as: Quantized8Vector.self)
+  ///   var embedding: Quantized8Vector
+  /// }
+  ///
+  /// let queryVector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
+  /// let neighbors = Document
+  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
+  ///   .limit(5)
+  ///   .select(\.content)
+  /// // SELECT "documents"."content"
+  /// // FROM "documents"
+  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
+  /// // LIMIT ?
+  /// ```
   ///
   /// ```swift
   /// @Table("documents")
@@ -1719,13 +1518,70 @@ public enum TursoVec {
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
   where
-    L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding,
+    L.Encoding: TursoNumericVectorEncoding, L.Encoding == R.Encoding,
     L.Dimensions == Void
   {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
   }
 
   /// Allows a runtime-sized right operand; the database checks matching dimensions.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var content: String
+  ///   @Column(as: EmbeddingVector<3>.TursoFloat32BytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  /// }
+  ///
+  /// let queryVector = [Float].VectorBytesRepresentation(queryOutput: [0.2, 0.4, 0.6])
+  /// let neighbors = Document
+  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
+  ///   .limit(5)
+  ///   .select(\.content)
+  /// // SELECT "documents"."content"
+  /// // FROM "documents"
+  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
+  /// // LIMIT ?
+  /// ```
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var content: String
+  ///   @Column(as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self)
+  ///   var embedding: EmbeddingVector64<3>
+  /// }
+  ///
+  /// let queryVector: [Double].TursoFloat64BytesRepresentation = [0.2, 0.4, 0.6]
+  /// let neighbors = Document
+  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
+  ///   .limit(5)
+  ///   .select(\.content)
+  /// // SELECT "documents"."content"
+  /// // FROM "documents"
+  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
+  /// // LIMIT ?
+  /// ```
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var content: String
+  ///   @Column(as: InlineQuantized8Vector<3>.self)
+  ///   var embedding: InlineQuantized8Vector<3>
+  /// }
+  ///
+  /// let queryVector = try Quantized8Vector(quantizing: [0.2, 0.4, 0.6])
+  /// let neighbors = Document
+  ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
+  ///   .limit(5)
+  ///   .select(\.content)
+  /// // SELECT "documents"."content"
+  /// // FROM "documents"
+  /// // ORDER BY vector_distance_l2("documents"."embedding", ?)
+  /// // LIMIT ?
+  /// ```
   ///
   /// ```swift
   /// @Table("documents")
@@ -1754,7 +1610,7 @@ public enum TursoVec {
     to vector: some QueryExpression<R>
   ) -> some QueryExpression<Double>
   where
-    L.Encoding == SparseFloat32Vector, L.Encoding == R.Encoding,
+    L.Encoding: TursoNumericVectorEncoding, L.Encoding == R.Encoding,
     R.Dimensions == Void
   {
     SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
@@ -2143,8 +1999,8 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     _ vector: some QueryExpression<R>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding {
-    Self.concat(expression, vector, as: [Float].VectorBytesRepresentation.self)
+  where L.Encoding: TursoFloat32Encoding, L.Encoding == R.Encoding {
+    SQLQueryExpression("vector_concat(\(expression), \(vector))")
   }
 
   /// Concatenates two matching vectors; the result has the sum of their dimensions.
@@ -2169,7 +2025,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
+    L.Encoding: TursoFloat32Encoding, L.Encoding == R.Encoding,
     T.Encoding == L.Encoding
   {
     SQLQueryExpression("vector_concat(\(expression), \(vector))")
@@ -2194,8 +2050,8 @@ public enum TursoVec {
     _ expression: some QueryExpression<L>,
     _ vector: some QueryExpression<R>
   ) -> some QueryExpression<[Double].TursoFloat64BytesRepresentation>
-  where L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding {
-    Self.concat(expression, vector, as: [Double].TursoFloat64BytesRepresentation.self)
+  where L.Encoding: TursoFloat64Encoding, L.Encoding == R.Encoding {
+    SQLQueryExpression("vector_concat(\(expression), \(vector))")
   }
 
   /// Concatenates two matching vectors; the result has the sum of their dimensions.
@@ -2220,7 +2076,7 @@ public enum TursoVec {
     as result: T.Type
   ) -> some QueryExpression<T>
   where
-    L.Encoding == [Double].TursoFloat64BytesRepresentation, L.Encoding == R.Encoding,
+    L.Encoding: TursoFloat64Encoding, L.Encoding == R.Encoding,
     T.Encoding == L.Encoding
   {
     SQLQueryExpression("vector_concat(\(expression), \(vector))")
@@ -2241,8 +2097,8 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
-  where V.Encoding == [Float].VectorBytesRepresentation {
-    Self.slice(expression, from: start, to: end, as: [Float].VectorBytesRepresentation.self)
+  where V.Encoding: TursoFloat32Encoding {
+    SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
@@ -2264,7 +2120,7 @@ public enum TursoVec {
     to end: some QueryExpression<Int>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding == [Float].VectorBytesRepresentation, T.Encoding == V.Encoding {
+  where V.Encoding: TursoFloat32Encoding, T.Encoding == V.Encoding {
     SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 
@@ -2283,8 +2139,8 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
   ) -> some QueryExpression<[Double].TursoFloat64BytesRepresentation>
-  where V.Encoding == [Double].TursoFloat64BytesRepresentation {
-    Self.slice(expression, from: start, to: end, as: [Double].TursoFloat64BytesRepresentation.self)
+  where V.Encoding: TursoFloat64Encoding {
+    SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
@@ -2311,7 +2167,7 @@ public enum TursoVec {
     to end: some QueryExpression<Int>,
     as result: T.Type
   ) -> some QueryExpression<T>
-  where V.Encoding == [Double].TursoFloat64BytesRepresentation, T.Encoding == V.Encoding {
+  where V.Encoding: TursoFloat64Encoding, T.Encoding == V.Encoding {
     SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 
@@ -2330,8 +2186,8 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
   ) -> some QueryExpression<SparseFloat32Vector>
-  where V.Encoding == SparseFloat32Vector {
-    Self.slice(expression, from: start, to: end, as: SparseFloat32Vector.self)
+  where V.Encoding: TursoSparseFloat32Encoding {
+    SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 
   /// Extracts dimensions from the zero-based start index through the exclusive end index.
@@ -2352,7 +2208,8 @@ public enum TursoVec {
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>,
     as result: T.Type
-  ) -> some QueryExpression<T> where V.Encoding == SparseFloat32Vector, T.Encoding == V.Encoding {
+  ) -> some QueryExpression<T>
+  where V.Encoding: TursoSparseFloat32Encoding, T.Encoding == V.Encoding {
     SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
 }

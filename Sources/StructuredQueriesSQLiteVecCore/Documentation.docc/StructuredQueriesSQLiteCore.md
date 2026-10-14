@@ -269,6 +269,32 @@ packed-bit representation. `Vec.bit` tags or reinterprets bytes without numerica
 `Vec.each` iterates bits most significant first within each byte. Swift collection indices and
 `Vec.toJSON` use least significant first.
 
+### Encoding capabilities
+
+``SQLiteVecVectorEncoding`` supplies the SQL subtype hook used by query helpers.
+``SQLiteVecNumericEncoding`` covers Float32 and signed Int8 distances, arithmetic, and sign
+quantization. ``SQLiteVecFloat32Encoding``, ``SQLiteVecInt8Encoding``, and
+``SQLiteVecBinaryEncoding`` promise the corresponding byte layouts. Binary encodings also conform
+to the shared `BinaryVectorEncoding` protocol.
+
+```swift
+func numericDistance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
+  _ left: some QueryExpression<L>, to right: some QueryExpression<R>
+) -> some QueryExpression<Double>
+where L.Encoding: SQLiteVecNumericEncoding, L.Encoding == R.Encoding,
+  L.Dimensions == R.Dimensions {
+  Vec.distanceL2(left, to: right)
+}
+let left: [Int8].Int8BytesRepresentation = [3, 4, 0]
+let right: [Int8].Int8BytesRepresentation = [0, 0, 0]
+let distance = numericDistance(left, to: right)
+// vec_distance_l2(vec_int8(?), vec_int8(?))
+```
+
+Custom encodings adopt the appropriate leaf protocol and validate their bytes and dimensions.
+The inherited `sqliteVecExpression` implementation applies `vec_int8` or `vec_bit`; Float32 passes
+through. Matching canonical encodings and known dimensions remain required for two-vector operations.
+
 ### Fixed-size values
 
 `EmbeddingVector<N>` binds Float32 directly. Signed Int8 and binary columns use

@@ -114,6 +114,11 @@ Constructors and quantization also retain fixed counts. For length-preserving op
 rejects conflicting known counts; JSON and variable-size inputs use decoding-time validation.
 `Vec.bit` tags packed binary storage. Use `quantizeBinary()` to convert numeric components to bits.
 
+Query helpers constrain `Encoding` through SQLiteVec capability protocols. Numerical operations
+accept `SQLiteVecNumericEncoding`; Float32, signed Int8, and packed binary refine it or
+`SQLiteVecVectorEncoding` with their exact layouts. Fixed and variable-size values share these
+capabilities through their canonical encoding.
+
 ### Signed Int8 vectors
 
 ```swift
@@ -257,6 +262,8 @@ Convert JSON explicitly with the constructor for the column's format:
 Constructors accept JSON string expressions or vectors with a `TursoVectorEncoding`.
 Shared Float32 works directly; raw Double, Float16, SQLiteVec Int8, and packed bits are rejected.
 Use `.TursoFloat64BytesRepresentation` for Double and `.TursoBytesRepresentation` for binary values.
+The `TursoVectorEncoding` hierarchy identifies supported formats; `TursoNumericVectorEncoding`
+permits L2, and `TursoBinaryEncoding` identifies framed binary storage.
 `extract` requires a compatible vector.
 
 The table lists results for JSON and variable-size inputs. Fixed inputs produce the corresponding
