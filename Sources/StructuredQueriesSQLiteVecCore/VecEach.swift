@@ -47,8 +47,6 @@ public typealias VecEach = VecEachOf<Float>
 /// let query = VecEach.all
 /// // SELECT "vec_each"."rowid", "vec_each"."value" FROM "vec_each"
 /// ```
-///
-/// In debug builds, using this invalid entry point triggers a precondition failure.
 public struct VecEachOf<Value>: Hashable, Sendable, Table
 where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOutput == Value {
   public static var tableName: String { "vec_each" }
@@ -56,28 +54,6 @@ where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOu
   public static var columns: TableColumns { TableColumns() }
 
   public static var _columnWidth: Int { 2 }
-
-  #if DEBUG
-    public static var all: Where<Self> {
-      Self.checkedUnscoped
-    }
-
-    public static var unscoped: Where<Self> {
-      Self.checkedUnscoped
-    }
-
-    private static var checkedUnscoped: Where<Self> {
-      guard isBuildingVecEachStatement else {
-        preconditionFailure(
-          """
-          VecEachOf cannot be queried through static table entry points because vec_each \
-          requires its hidden vector column. Use vecEach() or Vec.each(_:) instead.
-          """
-        )
-      }
-      return uncheckedUnscoped(Self.self)
-    }
-  #endif
 
   /// The zero-based index of the current vector element.
   ///
@@ -297,24 +273,9 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding: SQLiteVecInt8En
 
 private func vecEachStatement<Value>(vector: QueryFragment) -> SelectOf<VecEachOf<Value>>
 where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOutput == Value {
-  func statement() -> SelectOf<VecEachOf<Value>> {
-    VecEachOf<Value>
-      .where { _ in
-        SQLQueryExpression("\(VecEachOf<Value>.self).\(quote: "vector") = \(vector)")
-      }
-      .asSelect()
-  }
-  #if DEBUG
-    return $isBuildingVecEachStatement.withValue(true) { statement() }
-  #else
-    return statement()
-  #endif
+  VecEachOf<Value>
+    .where { _ in
+      SQLQueryExpression("\(VecEachOf<Value>.self).\(quote: "vector") = \(vector)")
+    }
+    .asSelect()
 }
-
-#if DEBUG
-  @TaskLocal private var isBuildingVecEachStatement = false
-
-  private func uncheckedUnscoped<TableType: Table>(_ table: TableType.Type) -> Where<TableType> {
-    table.unscoped
-  }
-#endif

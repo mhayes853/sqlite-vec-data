@@ -184,7 +184,7 @@ extension Array.TursoBytesRepresentation: ExpressibleByArrayLiteral {
             actual: payload.dimensions
           )
         }
-        try self.init(queryOutput: BinaryEmbeddingVector<count>(packedBytes: payload.bytes))
+        try self.init(queryOutput: BinaryEmbeddingVector<count>(packedBytes: Array(payload.bytes)))
       }
     }
   }
@@ -212,15 +212,24 @@ private func encodeTursoBitsVector(_ elements: [Bool]) -> [UInt8] {
 private func encodeTursoBitsPayload(_ payload: [UInt8], dimensions: Int) -> [UInt8] {
   let padding = payload.count.isMultiple(of: 2) ? 1 : 0
   let trailingBits = (payload.count + padding + 1) * 8 - dimensions
-  return payload + Array(repeating: 0, count: padding) + [UInt8(trailingBits), 3]
+  var bytes = payload
+  bytes.reserveCapacity(bytes.count + padding + 2)
+  if padding != 0 { bytes.append(0) }
+  bytes.append(UInt8(trailingBits))
+  bytes.append(3)
+  return bytes
 }
 
 private func decodeTursoBitsVector(_ bytes: [UInt8]) throws -> [Bool] {
   let payload = try decodeTursoBitsPayload(bytes)
-  return (0..<payload.dimensions).map { payload.bytes[$0 / 8] & (UInt8(1) << ($0 % 8)) != 0 }
+  return bytes.withUnsafeBufferPointer { buffer in
+    (0..<payload.dimensions).map { buffer[$0 / 8] & (UInt8(1) << ($0 % 8)) != 0 }
+  }
 }
 
-private func decodeTursoBitsPayload(_ bytes: [UInt8]) throws -> (bytes: [UInt8], dimensions: Int) {
+private func decodeTursoBitsPayload(_ bytes: [UInt8]) throws -> (
+  bytes: ArraySlice<UInt8>, dimensions: Int
+) {
   guard bytes.count >= 3, bytes.count % 2 == 1, bytes.last == 3 else {
     throw VectorDecodingError.invalidBytes
   }
@@ -229,5 +238,5 @@ private func decodeTursoBitsPayload(_ bytes: [UInt8]) throws -> (bytes: [UInt8],
   guard (8...23).contains(trailingBits) else { throw VectorDecodingError.invalidBytes }
   let dimensions = (bytes.count - 1) * 8 - trailingBits
   guard dimensions >= 0 else { throw VectorDecodingError.invalidBytes }
-  return (Array(bytes.prefix(dimensions / 8 + (dimensions % 8 == 0 ? 0 : 1))), dimensions)
+  return (bytes.prefix(dimensions / 8 + (dimensions.isMultiple(of: 8) ? 0 : 1)), dimensions)
 }

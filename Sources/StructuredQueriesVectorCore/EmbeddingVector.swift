@@ -207,15 +207,17 @@ import StructuredQueriesCore
     /// ```swift
     /// let embedding = EmbeddingVector<3>([1, 0, 0])
     /// print(embedding.description) // EmbeddingVector<3>([1.0, 0.0, 0.0])
+    /// let codes = FixedEmbeddingVector<3, Int8>([1, 0, -1])
+    /// print(codes.description) // FixedEmbeddingVector<3, Int8>([1, 0, -1])
     /// ```
     public var description: String {
       let name =
         switch Scalar.self {
-        case is Float.Type: "EmbeddingVector"
-        case is Double.Type: "EmbeddingVector64"
-        default: "FixedEmbeddingVector"
+        case is Float.Type: "EmbeddingVector<\(Self.count)>"
+        case is Double.Type: "EmbeddingVector64<\(Self.count)>"
+        default: "FixedEmbeddingVector<\(Self.count), \(Scalar.self)>"
         }
-      return "\(name)<\(Self.count)>(\(Array(self)))"
+      return "\(name)(\(Array(self)))"
     }
   }
 

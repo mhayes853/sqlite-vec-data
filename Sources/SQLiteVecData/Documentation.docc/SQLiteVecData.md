@@ -88,11 +88,10 @@ struct `Vector tests` {
 }
 ```
 
-On non-Apple platforms, add `SQLiteVecDataTestSupport` and use `.sqliteVecAutoExtension` to
-register sqlite-vec process-wide for subsequent connections:
+Add `SQLiteVecDataTestSupport` for `.sqliteVecAutoExtension`. It registers process-wide on
+non-Apple platforms and does nothing on Apple; prepare Apple connections explicitly:
 
 ```swift
-#if !canImport(Darwin)
 import SQLiteVecData
 import SQLiteVecDataTestSupport
 import Testing
@@ -101,13 +100,16 @@ import Testing
 struct `Auto Extension Vector tests` {
   @Test
   func `Creates A Vector Table`() throws {
-    let database = try DatabaseQueue()
+    var configuration = Configuration()
+    #if canImport(Darwin)
+      configuration.prepareSQLiteVecExtension()
+    #endif
+    let database = try DatabaseQueue(configuration: configuration)
     try database.write { db in
       try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
     }
   }
 }
-#endif
 ```
 
 Use per-connection preparation on Apple platforms or for isolated registration.

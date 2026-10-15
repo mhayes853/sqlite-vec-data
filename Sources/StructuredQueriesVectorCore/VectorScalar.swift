@@ -2,6 +2,7 @@
 ///
 /// Float16, Float, and Double use raw little-endian payloads. Serialization preserves IEEE
 /// bit patterns and does not add metadata or imply support for database vector operations.
+/// `Float16` is IEEE binary16, not BF16. Framework tensor dtypes are not scalar conformances.
 ///
 /// ```swift
 /// let values: [Float] = [1, -0.0]

@@ -2,40 +2,9 @@ import CSQLiteVec
 import GRDB
 import GRDBSQLite
 
-@available(
-  macOS,
-  deprecated,
-  message:
-    "Process global auto extensions are not available on macOS. Use ``Database.loadSQLiteVecExtension`` instead."
-)
-@available(
-  iOS,
-  deprecated,
-  message:
-    "Process global auto extensions are not available on iOS. Use ``Database.loadSQLiteVecExtension`` instead."
-)
-@available(
-  tvOS,
-  deprecated,
-  message:
-    "Process global auto extensions are not available on tvOS. Use ``Database.loadSQLiteVecExtension`` instead."
-)
-@available(
-  watchOS,
-  deprecated,
-  message:
-    "Process global auto extensions are not available on watchOS. Use ``Database.loadSQLiteVecExtension`` instead."
-)
-@available(
-  visionOS,
-  deprecated,
-  message:
-    "Process global auto extensions are not available on visionOS. Use ``Database.loadSQLiteVecExtension`` instead."
-)
 /// Registers sqlite-vec as a process-global SQLite auto extension.
 ///
-/// On Apple platforms, use ``Database/loadSQLiteVecExtension()`` to load sqlite-vec into each
-/// database connection instead.
+/// On Apple platforms, prepare each connection with `Configuration.prepareSQLiteVecExtension()`.
 ///
 /// ```swift
 /// #if !canImport(Darwin)
@@ -46,6 +15,36 @@ import GRDBSQLite
 ///   }
 /// #endif
 /// ```
+@available(
+  macOS,
+  deprecated,
+  message:
+    "Process global auto extensions are not available on macOS. Use Configuration.prepareSQLiteVecExtension() instead."
+)
+@available(
+  iOS,
+  deprecated,
+  message:
+    "Process global auto extensions are not available on iOS. Use Configuration.prepareSQLiteVecExtension() instead."
+)
+@available(
+  tvOS,
+  deprecated,
+  message:
+    "Process global auto extensions are not available on tvOS. Use Configuration.prepareSQLiteVecExtension() instead."
+)
+@available(
+  watchOS,
+  deprecated,
+  message:
+    "Process global auto extensions are not available on watchOS. Use Configuration.prepareSQLiteVecExtension() instead."
+)
+@available(
+  visionOS,
+  deprecated,
+  message:
+    "Process global auto extensions are not available on visionOS. Use Configuration.prepareSQLiteVecExtension() instead."
+)
 public func registerSQLiteVecAutoExtension() throws {
   let vecInit:
     @convention(c) (

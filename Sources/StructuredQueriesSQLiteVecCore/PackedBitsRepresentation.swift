@@ -285,12 +285,14 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
 /// Bit zero is the least significant bit of the first byte. Binding requires a dimension count
 /// divisible by eight; the format cannot preserve a partial byte's dimension count.
 private func encodePackedBitsVector(_ elements: [Bool]) -> [UInt8] {
-  return stride(from: 0, to: elements.count, by: 8)
+  stride(from: 0, to: elements.count, by: 8)
     .map { offset in
       (0..<8).reduce(UInt8.zero) { $0 | (elements[offset + $1] ? UInt8(1) << $1 : 0) }
     }
 }
 
 private func decodePackedBitsVector(_ bytes: [UInt8]) -> [Bool] {
-  bytes.flatMap { byte in (0..<8).map { byte & (UInt8(1) << $0) != 0 } }
+  bytes.withUnsafeBufferPointer { buffer in
+    (0..<buffer.count * 8).map { buffer[$0 / 8] & (UInt8(1) << ($0 % 8)) != 0 }
+  }
 }

@@ -290,6 +290,22 @@ struct `Vector Representation tests` {
     expectNoDifference(turso.queryBinding, .blob([133, 1, 0, 23, 3]))
     var packedDecoder = BlobQueryDecoder(bytes: [133])
     expectNoDifference(try packedDecoder.decode([Bool].PackedBitsRepresentation.self), bits)
+
+    // Exercise every packed byte and both sides of Turso's payload/padding boundaries.
+    let everyByte = Array(UInt8.min...UInt8.max)
+    let everyBit = try [Bool].PackedBitsRepresentation(vectorBytes: everyByte).queryOutput
+    expectNoDifference(
+      [Bool].PackedBitsRepresentation(queryOutput: everyBit).vectorBytes,
+      everyByte
+    )
+    for count in [0, 1, 7, 8, 9, 15, 16, 17, 1_536, 1_537, everyBit.count] {
+      let components = Array(everyBit.prefix(count))
+      let framed = [Bool].TursoBytesRepresentation(queryOutput: components).vectorBytes
+      expectNoDifference(
+        try [Bool].TursoBytesRepresentation(vectorBytes: framed).queryOutput,
+        components
+      )
+    }
   }
 
   @Test

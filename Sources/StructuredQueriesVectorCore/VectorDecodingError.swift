@@ -1,5 +1,7 @@
 /// An invalid vector blob or an unexpected number of dimensions.
 ///
+/// Include an `@unknown default` when switching over this error to handle future cases.
+///
 /// ```swift
 /// do {
 ///   _ = try EmbeddingVector<3>(validating: [1, 2])
@@ -7,6 +9,9 @@
 ///   print("Expected \(expected) components, received \(actual).")
 /// }
 /// ```
+#if compiler(>=6.2.3)
+  @nonexhaustive
+#endif
 public enum VectorDecodingError: Error, Hashable, Sendable {
   /// The blob does not match the expected encoding.
   ///

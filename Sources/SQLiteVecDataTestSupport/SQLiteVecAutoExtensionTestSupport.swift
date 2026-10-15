@@ -16,55 +16,31 @@ public struct _SQLiteVecAutoExtensionTrait: SuiteTrait {
 }
 
 extension Trait where Self == _SQLiteVecAutoExtensionTrait {
-  /// Registers sqlite-vec as a process-global auto extension for non-Apple test suites.
+  /// Registers sqlite-vec process-wide on non-Apple platforms; does nothing on Apple platforms.
   ///
-  /// Use this trait on suites that need `vec0` available before opening SQLite connections. The
-  /// registration happens exactly once per process. For tests that also run on Apple platforms,
-  /// use `Configuration.prepareSQLiteVecExtension()` to load the extension into each connection.
+  /// Registration happens once per process. On Apple platforms, prepare each connection with
+  /// `Configuration.prepareSQLiteVecExtension()`. The trait can stay on cross-platform suites.
   ///
   /// ```swift
-  /// #if !canImport(Darwin)
-  ///   import SQLiteVecData
-  ///   import SQLiteVecDataTestSupport
-  ///   import Testing
+  /// import SQLiteVecData
+  /// import SQLiteVecDataTestSupport
+  /// import Testing
   ///
-  ///   @Suite(.sqliteVecAutoExtension)
-  ///   struct `Auto Extension Vector tests` {
-  ///     @Test
-  ///     func `Creates A Vector Table`() throws {
-  ///       let database = try DatabaseQueue()
-  ///       try database.write { db in
-  ///         try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
-  ///       }
+  /// @Suite(.sqliteVecAutoExtension)
+  /// struct `Auto Extension Vector tests` {
+  ///   @Test
+  ///   func `Creates A Vector Table`() throws {
+  ///     var configuration = Configuration()
+  ///     #if canImport(Darwin)
+  ///       configuration.prepareSQLiteVecExtension()
+  ///     #endif
+  ///     let database = try DatabaseQueue(configuration: configuration)
+  ///     try database.write { db in
+  ///       try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
   ///     }
   ///   }
-  /// #endif
+  /// }
   /// ```
-  @available(
-    macOS,
-    unavailable,
-    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
-  )
-  @available(
-    iOS,
-    unavailable,
-    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
-  )
-  @available(
-    tvOS,
-    unavailable,
-    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
-  )
-  @available(
-    watchOS,
-    unavailable,
-    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
-  )
-  @available(
-    visionOS,
-    unavailable,
-    message: "Use Configuration.prepareSQLiteVecExtension() for each connection."
-  )
   public static var sqliteVecAutoExtension: Self {
     Self()
   }

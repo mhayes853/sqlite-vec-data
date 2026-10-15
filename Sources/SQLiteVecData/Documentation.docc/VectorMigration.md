@@ -8,7 +8,7 @@ This release changes SQLiteVec APIs and behavior and adds Turso Database support
 
 | Existing API or behavior | Updated API or behavior |
 | --- | --- |
-| `.sqliteVecAutoExtension` is a no-op on Apple platforms | Unavailable on Apple; use `Configuration.prepareSQLiteVecExtension()` from `SQLiteVecData` on any platform |
+| `.sqliteVecAutoExtension` | Available across platforms; registration is a no-op on Apple. Prepare Apple connections with `Configuration.prepareSQLiteVecExtension()` |
 | `AVX` and `NEON` package traits | `SQLiteVecAVX` and `SQLiteVecNEON`, both enabled by default |
 | sqlite-vec only uses the API table passed to its entry point | The default `SQLiteVecStaticAPI` trait calls the linked SQLite's functions directly; disable it for SQLite builds that do not export them |
 | Vector types defined in `StructuredQueriesSQLiteVecCore` | Shared types defined in `StructuredQueriesVectorCore`, re-exported by the SQLiteVec target |
@@ -387,6 +387,8 @@ conformances supply `sqliteVecExpression`. `TursoVectorEncoding` now inherits
 
 Float32 equality and hashing now follow scalar semantics: signed zeros compare equal; NaNs compare
 unequal, even to themselves. Compare `vectorBytes` for bit identity; persist values, not Swift hashes.
+
+`VectorDecodingError` is nonexhaustive on Swift 6.2.3 and later; include `@unknown default` in switches.
 
 Decoding throws `VectorDecodingError.invalidBytes` for lengths or metadata and
 `dimensionMismatch(expected:actual:)` for fixed counts. Handle these alongside corrupt database data.
