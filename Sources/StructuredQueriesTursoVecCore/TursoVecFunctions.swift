@@ -176,28 +176,26 @@ public enum TursoVec {
     SQLQueryExpression("vector32(\(expression))")
   }
 
-  #if swift(>=6.2)
-    /// Converts a fixed-size vector while preserving its logical dimension count.
-    ///
-    /// ```swift
-    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
-    /// let converted = TursoVec.vector32(source)
-    /// // vector32(?)
-    /// let components = TursoVec.extract(converted)
-    /// // vector_extract(vector32(?))
-    /// // The result retains eight logical dimensions for subsequent operations.
-    /// ```
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    public static func vector32<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
-      _ expression: some QueryExpression<V>
-    ) -> some QueryExpression<EmbeddingVector<count>>
-    where
-      V.Encoding: TursoVectorEncoding,
-      V.Dimensions == VectorDimensions<count>
-    {
-      Self.vector32(expression, as: EmbeddingVector<count>.self)
-    }
-  #endif
+  /// Converts a fixed-size vector while preserving its logical dimension count.
+  ///
+  /// ```swift
+  /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+  /// let converted = TursoVec.vector32(source)
+  /// // vector32(?)
+  /// let components = TursoVec.extract(converted)
+  /// // vector_extract(vector32(?))
+  /// // The result retains eight logical dimensions for subsequent operations.
+  /// ```
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  public static func vector32<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<EmbeddingVector<count>>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == VectorDimensions<count>
+  {
+    Self.vector32(expression, as: EmbeddingVector<count>.self)
+  }
 
   /// Converts a supported vector BLOB to a 32-bit floating-point vector with `vector32`.
   ///
@@ -365,28 +363,26 @@ public enum TursoVec {
     SQLQueryExpression("vector64(\(expression))")
   }
 
-  #if swift(>=6.2)
-    /// Converts a fixed-size vector while preserving its logical dimension count.
-    ///
-    /// ```swift
-    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
-    /// let converted = TursoVec.vector64(source)
-    /// // vector64(?)
-    /// let components = TursoVec.extract(converted)
-    /// // vector_extract(vector64(?))
-    /// // The result retains eight logical dimensions for subsequent operations.
-    /// ```
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    public static func vector64<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
-      _ expression: some QueryExpression<V>
-    ) -> some QueryExpression<EmbeddingVector64<count>.TursoFloat64BytesRepresentation>
-    where
-      V.Encoding: TursoVectorEncoding,
-      V.Dimensions == VectorDimensions<count>
-    {
-      Self.vector64(expression, as: EmbeddingVector64<count>.TursoFloat64BytesRepresentation.self)
-    }
-  #endif
+  /// Converts a fixed-size vector while preserving its logical dimension count.
+  ///
+  /// ```swift
+  /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+  /// let converted = TursoVec.vector64(source)
+  /// // vector64(?)
+  /// let components = TursoVec.extract(converted)
+  /// // vector_extract(vector64(?))
+  /// // The result retains eight logical dimensions for subsequent operations.
+  /// ```
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  public static func vector64<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<EmbeddingVector64<count>.TursoFloat64BytesRepresentation>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == VectorDimensions<count>
+  {
+    Self.vector64(expression, as: EmbeddingVector64<count>.TursoFloat64BytesRepresentation.self)
+  }
 
   /// Converts a supported vector BLOB to a 64-bit floating-point vector with `vector64`.
   ///
@@ -551,28 +547,26 @@ public enum TursoVec {
     SQLQueryExpression("vector8(\(expression))")
   }
 
-  #if swift(>=6.2)
-    /// Converts a fixed-size vector while preserving its logical dimension count.
-    ///
-    /// ```swift
-    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
-    /// let converted = TursoVec.vector8(source)
-    /// // vector8(?)
-    /// let components = TursoVec.extract(converted)
-    /// // vector_extract(vector8(?))
-    /// // The result retains eight logical dimensions for subsequent operations.
-    /// ```
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    public static func vector8<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
-      _ expression: some QueryExpression<V>
-    ) -> some QueryExpression<InlineQuantized8Vector<count>>
-    where
-      V.Encoding: TursoVectorEncoding,
-      V.Dimensions == VectorDimensions<count>
-    {
-      Self.vector8(expression, as: InlineQuantized8Vector<count>.self)
-    }
-  #endif
+  /// Converts a fixed-size vector while preserving its logical dimension count.
+  ///
+  /// ```swift
+  /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+  /// let converted = TursoVec.vector8(source)
+  /// // vector8(?)
+  /// let components = TursoVec.extract(converted)
+  /// // vector_extract(vector8(?))
+  /// // The result retains eight logical dimensions for subsequent operations.
+  /// ```
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  public static func vector8<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<InlineQuantized8Vector<count>>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == VectorDimensions<count>
+  {
+    Self.vector8(expression, as: InlineQuantized8Vector<count>.self)
+  }
 
   /// Converts a supported vector BLOB to a quantized vector with `vector8`.
   ///
@@ -743,28 +737,26 @@ public enum TursoVec {
     SQLQueryExpression("vector1bit(\(expression))")
   }
 
-  #if swift(>=6.2)
-    /// Converts a fixed-size vector while preserving its logical dimension count.
-    ///
-    /// ```swift
-    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
-    /// let converted = TursoVec.vector1bit(source)
-    /// // vector1bit(?)
-    /// let components = TursoVec.extract(converted)
-    /// // vector_extract(vector1bit(?))
-    /// // The result retains eight logical dimensions for subsequent operations.
-    /// ```
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    public static func vector1bit<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
-      _ expression: some QueryExpression<V>
-    ) -> some QueryExpression<BinaryEmbeddingVector<count>.TursoBytesRepresentation>
-    where
-      V.Encoding: TursoVectorEncoding,
-      V.Dimensions == VectorDimensions<count>
-    {
-      Self.vector1bit(expression, as: BinaryEmbeddingVector<count>.TursoBytesRepresentation.self)
-    }
-  #endif
+  /// Converts a fixed-size vector while preserving its logical dimension count.
+  ///
+  /// ```swift
+  /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+  /// let converted = TursoVec.vector1bit(source)
+  /// // vector1bit(?)
+  /// let components = TursoVec.extract(converted)
+  /// // vector_extract(vector1bit(?))
+  /// // The result retains eight logical dimensions for subsequent operations.
+  /// ```
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  public static func vector1bit<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<BinaryEmbeddingVector<count>.TursoBytesRepresentation>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == VectorDimensions<count>
+  {
+    Self.vector1bit(expression, as: BinaryEmbeddingVector<count>.TursoBytesRepresentation.self)
+  }
 
   /// Converts a supported vector BLOB to a binary vector with `vector1bit`.
   ///
@@ -932,28 +924,26 @@ public enum TursoVec {
     SQLQueryExpression("vector32_sparse(\(expression))")
   }
 
-  #if swift(>=6.2)
-    /// Converts a fixed-size vector while preserving its logical dimension count.
-    ///
-    /// ```swift
-    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
-    /// let converted = TursoVec.vector32Sparse(source)
-    /// // vector32_sparse(?)
-    /// let components = TursoVec.extract(converted)
-    /// // vector_extract(vector32_sparse(?))
-    /// // The result retains eight logical dimensions for subsequent operations.
-    /// ```
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    public static func vector32Sparse<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
-      _ expression: some QueryExpression<V>
-    ) -> some QueryExpression<SizedSparseFloat32Vector<count>>
-    where
-      V.Encoding: TursoVectorEncoding,
-      V.Dimensions == VectorDimensions<count>
-    {
-      Self.vector32Sparse(expression, as: SizedSparseFloat32Vector<count>.self)
-    }
-  #endif
+  /// Converts a fixed-size vector while preserving its logical dimension count.
+  ///
+  /// ```swift
+  /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+  /// let converted = TursoVec.vector32Sparse(source)
+  /// // vector32_sparse(?)
+  /// let components = TursoVec.extract(converted)
+  /// // vector_extract(vector32_sparse(?))
+  /// // The result retains eight logical dimensions for subsequent operations.
+  /// ```
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  public static func vector32Sparse<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<SizedSparseFloat32Vector<count>>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == VectorDimensions<count>
+  {
+    Self.vector32Sparse(expression, as: SizedSparseFloat32Vector<count>.self)
+  }
 
   /// Converts a supported vector BLOB to a sparse Float32 vector with `vector32_sparse`.
   ///
@@ -1094,28 +1084,26 @@ public enum TursoVec {
     SQLQueryExpression("vector(\(expression))")
   }
 
-  #if swift(>=6.2)
-    /// Converts a fixed-size vector while preserving its logical dimension count.
-    ///
-    /// ```swift
-    /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
-    /// let converted = TursoVec.vector(source)
-    /// // vector(?)
-    /// let components = TursoVec.extract(converted)
-    /// // vector_extract(vector(?))
-    /// // The result retains eight logical dimensions for subsequent operations.
-    /// ```
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    public static func vector<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
-      _ expression: some QueryExpression<V>
-    ) -> some QueryExpression<EmbeddingVector<count>>
-    where
-      V.Encoding: TursoVectorEncoding,
-      V.Dimensions == VectorDimensions<count>
-    {
-      SQLQueryExpression("vector(\(expression))")
-    }
-  #endif
+  /// Converts a fixed-size vector while preserving its logical dimension count.
+  ///
+  /// ```swift
+  /// let source = EmbeddingVector<8>([0.1, -0.2, 0, 0.4, 0, -0.6, 0, 0.8])
+  /// let converted = TursoVec.vector(source)
+  /// // vector(?)
+  /// let components = TursoVec.extract(converted)
+  /// // vector_extract(vector(?))
+  /// // The result retains eight logical dimensions for subsequent operations.
+  /// ```
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  public static func vector<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<EmbeddingVector<count>>
+  where
+    V.Encoding: TursoVectorEncoding,
+    V.Dimensions == VectorDimensions<count>
+  {
+    SQLQueryExpression("vector(\(expression))")
+  }
 
   /// Converts a supported vector BLOB to Float32 using the `vector` alias.
   ///

@@ -28,7 +28,7 @@ CREATE TABLE documents (
 [BLOB affinity](https://github.com/tursodatabase/turso/blob/2487f62c372c99a21551a6450d4a10309c7dad2b/core/vdbe/affinity.rs#L186-L202).
 Plain `BLOB` also works. Turso does not enforce the
 [declared count](https://github.com/tursodatabase/turso-go/blob/ea06d135c592ae9a653ebf6ba5e069c8417c030c/turso_test.go#L354-L366);
-`EmbeddingVector<4>` validates decoded dimensions. Fixed types require Swift 6.2 and iOS 26,
+`EmbeddingVector<4>` validates decoded dimensions. Fixed types require iOS 26,
 macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
 ```swift

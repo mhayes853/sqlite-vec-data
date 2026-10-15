@@ -125,9 +125,8 @@ enum VectorElementType {
 #define PORTABLE_ALIGN32 __attribute__((aligned(32)))
 #define PORTABLE_ALIGN64 __attribute__((aligned(64)))
 
-static f32 __attribute__((target("avx")))
-l2_sqr_float_avx(const void *pVect1v, const void *pVect2v,
-                 const void *qty_ptr) {
+static f32 l2_sqr_float_avx(const void *pVect1v, const void *pVect2v,
+                            const void *qty_ptr) {
   f32 *pVect1 = (f32 *)pVect1v;
   f32 *pVect2 = (f32 *)pVect2v;
   size_t qty = *((size_t *)qty_ptr);
@@ -397,7 +396,7 @@ static f32 distance_l2_sqr_float(const void *a, const void *b, const void *d) {
   }
 #endif
 #ifdef SQLITE_VEC_ENABLE_AVX
-  if (((*(const size_t *)d) % 16 == 0) && sqlite_vec_cpu_supports_avx()) {
+  if (((*(const size_t *)d) % 16 == 0)) {
     return l2_sqr_float_avx(a, b, d);
   }
 #endif

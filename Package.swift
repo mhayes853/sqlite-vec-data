@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3;(experimentalCGen)
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -50,17 +50,18 @@ let package = Package(
   targets: [
     .target(
       name: "CSQLiteVec",
-      // sqlite-vec.c is included in sqlite-vec-arch.c, which adds architecture and CPU checks
-      // we cannot declare here.
-      exclude: ["sqlite-vec.c"],
+      exclude: ["sqlite-vec.c", "SHA256SUMS", "LICENSE-MIT"],
       cSettings: [
+        .headerSearchPath("."),
         // Use SQLite's static extension API for per-connection initialization. Without it,
         // sqlite-vec only uses the API table passed to its entry point, so it works with SQLite
         // builds that do not export every `sqlite3_*` function.
         .define("SQLITE_CORE", .when(traits: ["SQLiteVecStaticAPI"])),
         .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["SQLiteVecNEON"])),
         .define("SQLITE_VEC_ENABLE_AVX", to: "1", .when(traits: ["SQLiteVecAVX"]))
-      ]
+      ],
+      linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))],
+      plugins: [.plugin(name: "PatchSQLiteVec")]
     ),
     .target(
       name: "StructuredQueriesVectorCore",
@@ -126,6 +127,7 @@ let package = Package(
       swiftSettings: [
         .define("SQLITE_VEC_AVX_ENABLED", .when(traits: ["SQLiteVecAVX"]))
       ]
-    )
+    ),
+    .plugin(name: "PatchSQLiteVec", capability: .buildTool())
   ]
 )

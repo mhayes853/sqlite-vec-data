@@ -282,7 +282,7 @@ require matching canonical encodings and compatible dimensions.
 
 `EmbeddingVector<N>` binds Float32 directly. Int8 uses
 `FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation`; binary uses
-`BinaryEmbeddingVector<N>.PackedBitsRepresentation`. Fixed types require Swift 6.2 and iOS 26,
+`BinaryEmbeddingVector<N>.PackedBitsRepresentation`. Fixed types require iOS 26,
 macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
 See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/),

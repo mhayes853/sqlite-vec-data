@@ -357,132 +357,130 @@ struct `Vector Representation tests` {
     }
   }
 
-  #if swift(>=6.2)
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Stores Quantized Codes Inline And Retains Their Parameters`() throws {
-      // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
-      let fixture: [UInt8] = [10, 20, 0, 0, 0, 0, 0, 64, 0, 0, 128, 63, 0, 2, 4]
-      var decoder = BlobQueryDecoder(bytes: fixture)
-      let decoded = try decoder.decode(InlineQuantized8Vector<2>.self)
-      let vector = try #require(decoded)
-      let codes: [2 of UInt8] = vector.codes
-      expectNoDifference([codes[0], codes[1]], [10, 20])
-      expectNoDifference(vector.decodedValues(), EmbeddingVector<2>([21, 41]))
-      expectNoDifference(vector.queryBinding, .blob(fixture))
-      let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
-      expectNoDifference(try InlineQuantized8Vector<2>(validating: supplied), vector)
-      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
-        _ = try InlineQuantized8Vector<3>(validating: supplied)
-      }
-      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
-        _ = try InlineQuantized8Vector<3>(decoder: &decoder)
-      }
-      #expect {
-        _ = try InlineQuantized8Vector<2>(codes: [10, 20], scale: -1, shift: 1)
-      } throws: { error in
-        (error as? TursoVectorError)?.code == .invalidQuantization
-      }
-      let rounded = try EmbeddingVector<3>([0, 127.5, 255]).quantized8()
-      expectNoDifference(rounded.decodedValues(), EmbeddingVector<3>([0, 128, 255]))
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Stores Quantized Codes Inline And Retains Their Parameters`() throws {
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
+    let fixture: [UInt8] = [10, 20, 0, 0, 0, 0, 0, 64, 0, 0, 128, 63, 0, 2, 4]
+    var decoder = BlobQueryDecoder(bytes: fixture)
+    let decoded = try decoder.decode(InlineQuantized8Vector<2>.self)
+    let vector = try #require(decoded)
+    let codes: [2 of UInt8] = vector.codes
+    expectNoDifference([codes[0], codes[1]], [10, 20])
+    expectNoDifference(vector.decodedValues(), EmbeddingVector<2>([21, 41]))
+    expectNoDifference(vector.queryBinding, .blob(fixture))
+    let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+    expectNoDifference(try InlineQuantized8Vector<2>(validating: supplied), vector)
+    #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
+      _ = try InlineQuantized8Vector<3>(validating: supplied)
     }
+    #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
+      _ = try InlineQuantized8Vector<3>(decoder: &decoder)
+    }
+    #expect {
+      _ = try InlineQuantized8Vector<2>(codes: [10, 20], scale: -1, shift: 1)
+    } throws: { error in
+      (error as? TursoVectorError)?.code == .invalidQuantization
+    }
+    let rounded = try EmbeddingVector<3>([0, 127.5, 255]).quantized8()
+    expectNoDifference(rounded.decodedValues(), EmbeddingVector<3>([0, 128, 255]))
+  }
 
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Keeps Sized Sparse Entry Counts Variable`() throws {
-      // https://docs.turso.tech/guides/vector-search#sparse-vectors
-      let empty = try SizedSparseFloat32Vector<4>(indices: [], values: [])
-      let sparse = try SizedSparseFloat32Vector<4>(indices: [1, 3], values: [2, 4])
-      expectNoDifference(empty.denseValues(), EmbeddingVector<4>(repeating: 0))
-      expectNoDifference(sparse.denseValues(), EmbeddingVector<4>([0, 2, 0, 4]))
-      expectNoDifference(
-        sparse,
-        try EmbeddingVector<4>([0, 2, 0, 4]).sparseFloat32()
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Keeps Sized Sparse Entry Counts Variable`() throws {
+    // https://docs.turso.tech/guides/vector-search#sparse-vectors
+    let empty = try SizedSparseFloat32Vector<4>(indices: [], values: [])
+    let sparse = try SizedSparseFloat32Vector<4>(indices: [1, 3], values: [2, 4])
+    expectNoDifference(empty.denseValues(), EmbeddingVector<4>(repeating: 0))
+    expectNoDifference(sparse.denseValues(), EmbeddingVector<4>([0, 2, 0, 4]))
+    expectNoDifference(
+      sparse,
+      try EmbeddingVector<4>([0, 2, 0, 4]).sparseFloat32()
+    )
+    // Preserve explicit signed zero and NaN payloads, without compressing dense values again.
+    let supplied = try SparseFloat32Vector(
+      dimensions: 4,
+      indices: [1, 3],
+      values: [-0.0, Float(bitPattern: 0x7fc0_0042)]
+    )
+    let converted = try SizedSparseFloat32Vector<4>(validating: supplied)
+    expectNoDifference(converted.vectorBytes, supplied.vectorBytes)
+    #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 4)) {
+      _ = try SizedSparseFloat32Vector<3>(validating: supplied)
+    }
+    let fixture: [UInt8] = [
+      0, 0, 0, 64, 0, 0, 128, 64,
+      1, 0, 0, 0, 3, 0, 0, 0,
+      4, 0, 0, 0, 9
+    ]
+    var decoder = BlobQueryDecoder(bytes: fixture)
+    expectNoDifference(sparse.queryBinding, .blob(fixture))
+    expectNoDifference(try decoder.decode(SizedSparseFloat32Vector<4>.self), sparse)
+    #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 4)) {
+      _ = try SizedSparseFloat32Vector<3>(vectorBytes: fixture)
+    }
+    #expect {
+      _ = try SizedSparseFloat32Vector<4>(indices: [4], values: [1])
+    } throws: { error in
+      (error as? TursoVectorError)?.code == .invalidSparseComponents
+    }
+  }
+
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Treats Signed Zeros As Equal And NaNs As Unequal`() {
+    let floats = EmbeddingVector<2>([0, -0.0])
+    let doubles = EmbeddingVector64<2>([0, -0.0])
+    expectNoDifference(floats, EmbeddingVector<2>([0, 0]))
+    expectNoDifference(doubles, EmbeddingVector64<2>([0, 0]))
+    expectNoDifference(floats.hashValue, EmbeddingVector<2>([0, 0]).hashValue)
+    expectNoDifference(doubles.hashValue, EmbeddingVector64<2>([0, 0]).hashValue)
+    expectNoDifference(EmbeddingVector<1>([.nan]) == EmbeddingVector<1>([.nan]), false)
+    expectNoDifference(EmbeddingVector64<1>([.nan]) == EmbeddingVector64<1>([.nan]), false)
+  }
+
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Decodes Tagged Float32 Into Fixed And Inline Values`() throws {
+    // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs#L34
+    let fixture: [UInt8] = [0, 0, 128, 63, 1]
+    let fixed = try EmbeddingVector<1>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
+    let inline = try InlineArray<1, Float>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
+    expectNoDifference(fixed.queryOutput, EmbeddingVector<1>([1]))
+    expectNoDifference(inline.queryOutput[0], 1)
+    // Float32 is emitted without the optional tag, compatible with direct shared binding.
+    expectNoDifference(fixed.queryBinding, .blob([0, 0, 128, 63]))
+    expectNoDifference(inline.queryBinding, fixed.queryBinding)
+    #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
+      _ = try EmbeddingVector<2>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
+    }
+    #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
+      _ = try InlineArray<2, Float>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
+    }
+  }
+
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Decodes Fixed Float64 Bindings And Validates Dimensions`() throws {
+    // https://docs.turso.tech/guides/vector-search#vector-types
+    var doubleDecoder = BlobQueryDecoder(bytes: [0, 0, 0, 0, 0, 0, 240, 63, 2])
+    expectNoDifference(
+      try doubleDecoder.decode(EmbeddingVector64<1>.TursoFloat64BytesRepresentation.self),
+      EmbeddingVector64<1>([1])
+    )
+    let inlineDouble = try [1 of Double]
+      .TursoFloat64BytesRepresentation(
+        vectorBytes: [0, 0, 0, 0, 0, 0, 240, 63, 2]
       )
-      // Preserve explicit signed zero and NaN payloads, without compressing dense values again.
-      let supplied = try SparseFloat32Vector(
-        dimensions: 4,
-        indices: [1, 3],
-        values: [-0.0, Float(bitPattern: 0x7fc0_0042)]
-      )
-      let converted = try SizedSparseFloat32Vector<4>(validating: supplied)
-      expectNoDifference(converted.vectorBytes, supplied.vectorBytes)
-      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 4)) {
-        _ = try SizedSparseFloat32Vector<3>(validating: supplied)
-      }
-      let fixture: [UInt8] = [
-        0, 0, 0, 64, 0, 0, 128, 64,
-        1, 0, 0, 0, 3, 0, 0, 0,
-        4, 0, 0, 0, 9
-      ]
-      var decoder = BlobQueryDecoder(bytes: fixture)
-      expectNoDifference(sparse.queryBinding, .blob(fixture))
-      expectNoDifference(try decoder.decode(SizedSparseFloat32Vector<4>.self), sparse)
-      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 4)) {
-        _ = try SizedSparseFloat32Vector<3>(vectorBytes: fixture)
-      }
-      #expect {
-        _ = try SizedSparseFloat32Vector<4>(indices: [4], values: [1])
-      } throws: { error in
-        (error as? TursoVectorError)?.code == .invalidSparseComponents
-      }
+    expectNoDifference(inlineDouble.queryBinding, .blob([0, 0, 0, 0, 0, 0, 240, 63, 2]))
+    #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
+      _ = try EmbeddingVector64<2>.TursoFloat64BytesRepresentation(decoder: &doubleDecoder)
     }
-
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Treats Signed Zeros As Equal And NaNs As Unequal`() {
-      let floats = EmbeddingVector<2>([0, -0.0])
-      let doubles = EmbeddingVector64<2>([0, -0.0])
-      expectNoDifference(floats, EmbeddingVector<2>([0, 0]))
-      expectNoDifference(doubles, EmbeddingVector64<2>([0, 0]))
-      expectNoDifference(floats.hashValue, EmbeddingVector<2>([0, 0]).hashValue)
-      expectNoDifference(doubles.hashValue, EmbeddingVector64<2>([0, 0]).hashValue)
-      expectNoDifference(EmbeddingVector<1>([.nan]) == EmbeddingVector<1>([.nan]), false)
-      expectNoDifference(EmbeddingVector64<1>([.nan]) == EmbeddingVector64<1>([.nan]), false)
+    #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
+      _ = try [2 of Double].TursoFloat64BytesRepresentation(vectorBytes: inlineDouble.vectorBytes)
     }
-
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Decodes Tagged Float32 Into Fixed And Inline Values`() throws {
-      // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs#L34
-      let fixture: [UInt8] = [0, 0, 128, 63, 1]
-      let fixed = try EmbeddingVector<1>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
-      let inline = try InlineArray<1, Float>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
-      expectNoDifference(fixed.queryOutput, EmbeddingVector<1>([1]))
-      expectNoDifference(inline.queryOutput[0], 1)
-      // Float32 is emitted without the optional tag, compatible with direct shared binding.
-      expectNoDifference(fixed.queryBinding, .blob([0, 0, 128, 63]))
-      expectNoDifference(inline.queryBinding, fixed.queryBinding)
-      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
-        _ = try EmbeddingVector<2>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
-      }
-      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
-        _ = try InlineArray<2, Float>.TursoFloat32BytesRepresentation(vectorBytes: fixture)
-      }
-    }
-
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Decodes Fixed Float64 Bindings And Validates Dimensions`() throws {
-      // https://docs.turso.tech/guides/vector-search#vector-types
-      var doubleDecoder = BlobQueryDecoder(bytes: [0, 0, 0, 0, 0, 0, 240, 63, 2])
-      expectNoDifference(
-        try doubleDecoder.decode(EmbeddingVector64<1>.TursoFloat64BytesRepresentation.self),
-        EmbeddingVector64<1>([1])
-      )
-      let inlineDouble = try [1 of Double]
-        .TursoFloat64BytesRepresentation(
-          vectorBytes: [0, 0, 0, 0, 0, 0, 240, 63, 2]
-        )
-      expectNoDifference(inlineDouble.queryBinding, .blob([0, 0, 0, 0, 0, 0, 240, 63, 2]))
-      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
-        _ = try EmbeddingVector64<2>.TursoFloat64BytesRepresentation(decoder: &doubleDecoder)
-      }
-      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 2, actual: 1)) {
-        _ = try [2 of Double].TursoFloat64BytesRepresentation(vectorBytes: inlineDouble.vectorBytes)
-      }
-    }
-  #endif
+  }
 }
 
 private struct BlobQueryDecoder: Hashable, Sendable, QueryDecoder {

@@ -98,10 +98,41 @@ extension Array.TursoBytesRepresentation: ExpressibleByArrayLiteral {
   }
 }
 
-#if swift(>=6.2)
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension BinaryEmbeddingVector {
-    /// Turso binary storage, preserving exact dimensions through format metadata.
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+extension BinaryEmbeddingVector {
+  /// Turso binary storage, preserving exact dimensions through format metadata.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+  ///   var embedding: BinaryEmbeddingVector<3>
+  /// }
+  ///
+  /// let components: BinaryEmbeddingVector<3> = BinaryEmbeddingVector<3>([true, false, true])
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, components)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// ```
+  public struct TursoBytesRepresentation:
+    Hashable, Sendable, QueryBindable, VectorBytesRepresentable
+  {
+    public typealias Scalar = Bool
+    public typealias Dimensions = VectorDimensions<count>
+    public typealias Encoding = [Bool].TursoBytesRepresentation
+    public typealias VectorBytesRepresentation = Self
+    /// The logical vector value bound to or decoded from a query.
+    ///
+    /// ```swift
+    /// let storedBytes: [UInt8] = [0x05, 13, 3]
+    /// let decoded = try BinaryEmbeddingVector<3>.TursoBytesRepresentation(vectorBytes: storedBytes)
+    /// let components = Array(decoded.queryOutput) // [true, false, true]
+    /// ```
+    public var queryOutput: BinaryEmbeddingVector<count>
+
+    /// Wraps the logical vector value for blob storage and query binding.
     ///
     /// ```swift
     /// @Table("documents")
@@ -111,85 +142,51 @@ extension Array.TursoBytesRepresentation: ExpressibleByArrayLiteral {
     ///   var embedding: BinaryEmbeddingVector<3>
     /// }
     ///
-    /// let components: BinaryEmbeddingVector<3> = BinaryEmbeddingVector<3>([true, false, true])
+    /// let vector = BinaryEmbeddingVector<3>
+    ///   .TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
     /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-    ///   (1, components)
+    ///   (1, vector)
     /// }
     /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
     /// ```
-    public struct TursoBytesRepresentation:
-      Hashable, Sendable, QueryBindable, VectorBytesRepresentable
-    {
-      public typealias Scalar = Bool
-      public typealias Dimensions = VectorDimensions<count>
-      public typealias Encoding = [Bool].TursoBytesRepresentation
-      public typealias VectorBytesRepresentation = Self
-      /// The logical vector value bound to or decoded from a query.
-      ///
-      /// ```swift
-      /// let storedBytes: [UInt8] = [0x05, 13, 3]
-      /// let decoded = try BinaryEmbeddingVector<3>.TursoBytesRepresentation(vectorBytes: storedBytes)
-      /// let components = Array(decoded.queryOutput) // [true, false, true]
-      /// ```
-      public var queryOutput: BinaryEmbeddingVector<count>
+    public init(queryOutput: BinaryEmbeddingVector<count>) {
+      self.queryOutput = queryOutput
+    }
 
-      /// Wraps the logical vector value for blob storage and query binding.
-      ///
-      /// ```swift
-      /// @Table("documents")
-      /// struct Document {
-      ///   var id: Int
-      ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
-      ///   var embedding: BinaryEmbeddingVector<3>
-      /// }
-      ///
-      /// let vector = BinaryEmbeddingVector<3>
-      ///   .TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
-      /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-      ///   (1, vector)
-      /// }
-      /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
-      /// ```
-      public init(queryOutput: BinaryEmbeddingVector<count>) {
-        self.queryOutput = queryOutput
-      }
+    /// The serialized blob, including any metadata required by this encoding.
+    ///
+    /// ```swift
+    /// let vector = BinaryEmbeddingVector<3>
+    ///   .TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
+    /// let vectorBytes = vector.vectorBytes
+    /// // [0x05, 13, 3]: packed bits, trailing-bit count, and type byte.
+    /// ```
+    public var vectorBytes: [UInt8] {
+      encodeTursoBitsPayload(
+        self.queryOutput.packedBytes,
+        dimensions: self.queryOutput.dimensions
+      )
+    }
 
-      /// The serialized blob, including any metadata required by this encoding.
-      ///
-      /// ```swift
-      /// let vector = BinaryEmbeddingVector<3>
-      ///   .TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
-      /// let vectorBytes = vector.vectorBytes
-      /// // [0x05, 13, 3]: packed bits, trailing-bit count, and type byte.
-      /// ```
-      public var vectorBytes: [UInt8] {
-        encodeTursoBitsPayload(
-          self.queryOutput.packedBytes,
-          dimensions: self.queryOutput.dimensions
+    /// Decodes a vector blob, validating its encoding and dimensions.
+    ///
+    /// ```swift
+    /// let storedBytes: [UInt8] = [0x05, 13, 3]
+    /// let decoded = try BinaryEmbeddingVector<3>.TursoBytesRepresentation(vectorBytes: storedBytes)
+    /// let components = Array(decoded.queryOutput) // [true, false, true]
+    /// ```
+    public init(vectorBytes: [UInt8]) throws {
+      let payload = try decodeTursoBitsPayload(vectorBytes)
+      guard payload.dimensions == BinaryEmbeddingVector<count>.count else {
+        throw VectorDecodingError.dimensionMismatch(
+          expected: BinaryEmbeddingVector<count>.count,
+          actual: payload.dimensions
         )
       }
-
-      /// Decodes a vector blob, validating its encoding and dimensions.
-      ///
-      /// ```swift
-      /// let storedBytes: [UInt8] = [0x05, 13, 3]
-      /// let decoded = try BinaryEmbeddingVector<3>.TursoBytesRepresentation(vectorBytes: storedBytes)
-      /// let components = Array(decoded.queryOutput) // [true, false, true]
-      /// ```
-      public init(vectorBytes: [UInt8]) throws {
-        let payload = try decodeTursoBitsPayload(vectorBytes)
-        guard payload.dimensions == BinaryEmbeddingVector<count>.count else {
-          throw VectorDecodingError.dimensionMismatch(
-            expected: BinaryEmbeddingVector<count>.count,
-            actual: payload.dimensions
-          )
-        }
-        try self.init(queryOutput: BinaryEmbeddingVector<count>(packedBytes: Array(payload.bytes)))
-      }
+      try self.init(queryOutput: BinaryEmbeddingVector<count>(packedBytes: Array(payload.bytes)))
     }
   }
-
-#endif
+}
 
 /// Turso's packed binary vector format, including padding and dimension metadata.
 ///

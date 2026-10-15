@@ -2957,39 +2957,37 @@ public enum Vec {
   {
     SQLQueryExpression("vec_quantize_int8(\(expression), 'unit')")
   }
-  #if swift(>=6.2)
-    /// Converts a fixed-size vector while preserving its logical dimension count.
-    ///
-    /// ```swift
-    /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
-    /// @Table("Embeddings")
-    /// struct Embedding: Vec0 {
-    ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
-    ///   var embedding: EmbeddingVector<8>
-    ///   var label: String
-    /// }
-    ///
-    /// let query = Embedding.select {
-    ///   ($0.label, Vec.quantizeInt8($0.embedding))
-    /// }
-    /// // SELECT "Embeddings"."label", vec_quantize_int8("Embeddings"."embedding", 'unit')
-    /// // FROM "Embeddings"
-    /// // The result retains eight logical dimensions.
-    /// ```
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    public static func quantizeInt8<let count: Int, V: VectorBytesRepresentable>(
-      _ expression: some QueryExpression<V>
-    ) -> some QueryExpression<FixedEmbeddingVector<count, Int8>.Int8BytesRepresentation>
-    where
-      V.Encoding: SQLiteVecFloat32Encoding,
-      V.Dimensions == VectorDimensions<count>
-    {
-      Self.quantizeInt8(
-        expression,
-        as: FixedEmbeddingVector<count, Int8>.Int8BytesRepresentation.self
-      )
-    }
-  #endif
+  /// Converts a fixed-size vector while preserving its logical dimension count.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.quantizeInt8($0.embedding))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_quantize_int8("Embeddings"."embedding", 'unit')
+  /// // FROM "Embeddings"
+  /// // The result retains eight logical dimensions.
+  /// ```
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  public static func quantizeInt8<let count: Int, V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<FixedEmbeddingVector<count, Int8>.Int8BytesRepresentation>
+  where
+    V.Encoding: SQLiteVecFloat32Encoding,
+    V.Dimensions == VectorDimensions<count>
+  {
+    Self.quantizeInt8(
+      expression,
+      as: FixedEmbeddingVector<count, Int8>.Int8BytesRepresentation.self
+    )
+  }
   /// Quantizes Float32 components in [-1, 1] to signed Int8 codes, clamping out-of-range values.
   ///
   /// ```swift
@@ -3176,56 +3174,54 @@ public enum Vec {
       "vec_quantize_binary(\(V.Encoding.sqliteVecExpression(expression.queryFragment)))"
     )
   }
-  #if swift(>=6.2)
-    /// Converts a fixed-size vector while preserving its logical dimension count.
-    ///
-    /// ```swift
-    /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
-    /// @Table("Embeddings")
-    /// struct Embedding: Vec0 {
-    ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
-    ///   var embedding: EmbeddingVector<8>
-    ///   var label: String
-    /// }
-    ///
-    /// let query = Embedding.select {
-    ///   ($0.label, Vec.quantizeBinary($0.embedding))
-    /// }
-    /// // SELECT "Embeddings"."label", vec_quantize_binary("Embeddings"."embedding")
-    /// // FROM "Embeddings"
-    /// // The result retains eight logical dimensions.
-    /// ```
-    ///
-    /// ```swift
-    /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
-    /// @Table("Embeddings")
-    /// struct Embedding: Vec0 {
-    ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
-    ///   var embedding: FixedEmbeddingVector<8, Int8>
-    ///   var label: String
-    /// }
-    ///
-    /// let query = Embedding.select {
-    ///   ($0.label, Vec.quantizeBinary($0.embedding))
-    /// }
-    /// // SELECT "Embeddings"."label", vec_quantize_binary(vec_int8("Embeddings"."embedding"))
-    /// // FROM "Embeddings"
-    /// // The result retains eight logical dimensions.
-    /// ```
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    public static func quantizeBinary<let count: Int, V: VectorBytesRepresentable>(
-      _ expression: some QueryExpression<V>
-    ) -> some QueryExpression<BinaryEmbeddingVector<count>.PackedBitsRepresentation>
-    where
-      V.Encoding: SQLiteVecNumericEncoding,
-      V.Dimensions == VectorDimensions<count>
-    {
-      Self.quantizeBinary(
-        expression,
-        as: BinaryEmbeddingVector<count>.PackedBitsRepresentation.self
-      )
-    }
-  #endif
+  /// Converts a fixed-size vector while preserving its logical dimension count.
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: EmbeddingVector<8>.VectorBytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.quantizeBinary($0.embedding))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_quantize_binary("Embeddings"."embedding")
+  /// // FROM "Embeddings"
+  /// // The result retains eight logical dimensions.
+  /// ```
+  ///
+  /// ```swift
+  /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding int8[8], label text);
+  /// @Table("Embeddings")
+  /// struct Embedding: Vec0 {
+  ///   @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
+  ///   var embedding: FixedEmbeddingVector<8, Int8>
+  ///   var label: String
+  /// }
+  ///
+  /// let query = Embedding.select {
+  ///   ($0.label, Vec.quantizeBinary($0.embedding))
+  /// }
+  /// // SELECT "Embeddings"."label", vec_quantize_binary(vec_int8("Embeddings"."embedding"))
+  /// // FROM "Embeddings"
+  /// // The result retains eight logical dimensions.
+  /// ```
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  public static func quantizeBinary<let count: Int, V: VectorBytesRepresentable>(
+    _ expression: some QueryExpression<V>
+  ) -> some QueryExpression<BinaryEmbeddingVector<count>.PackedBitsRepresentation>
+  where
+    V.Encoding: SQLiteVecNumericEncoding,
+    V.Dimensions == VectorDimensions<count>
+  {
+    Self.quantizeBinary(
+      expression,
+      as: BinaryEmbeddingVector<count>.PackedBitsRepresentation.self
+    )
+  }
   /// Quantizes a vector expression to a binary representation and returns logical bits.
   /// This calls sqlite-vec's `vec_quantize_binary` function. Dimensions must be divisible by eight.
   ///

@@ -9,9 +9,7 @@
 ///   print("Expected \(expected) components, received \(actual).")
 /// }
 /// ```
-#if compiler(>=6.2.3)
-  @nonexhaustive
-#endif
+@nonexhaustive
 public enum VectorDecodingError: Error, Hashable, Sendable {
   /// The blob does not match the expected encoding.
   ///

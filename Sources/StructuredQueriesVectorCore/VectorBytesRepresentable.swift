@@ -133,37 +133,35 @@ extension Array: VectorBytesRepresentable where Element: VectorScalar {
   }
 }
 
-#if swift(>=6.2)
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension InlineArray: VectorBytesRepresentable where Element: VectorScalar {
-    public typealias Scalar = Element
-    public typealias Dimensions = VectorDimensions<count>
-    public typealias Encoding = [Element].VectorBytesRepresentation
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+extension InlineArray: VectorBytesRepresentable where Element: VectorScalar {
+  public typealias Scalar = Element
+  public typealias Dimensions = VectorDimensions<count>
+  public typealias Encoding = [Element].VectorBytesRepresentation
 
-    /// The serialized blob, including any metadata required by this encoding.
-    ///
-    /// ```swift
-    /// let values: InlineArray<3, Float> = [1, 2, 3]
-    /// let bytes = values.vectorBytes
-    /// let payloadSize = bytes.count // 12 bytes for three Float32 components.
-    /// ```
-    public var vectorBytes: [UInt8] {
-      Element.encodeVector((0..<Self.count).map { self[$0] })
-    }
-
-    /// Decodes a vector blob, validating its encoding and dimensions.
-    ///
-    /// ```swift
-    /// let cachedBytes: [UInt8] = [0, 0, 0x80, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0]
-    /// let embedding = try InlineArray<3, Float>(vectorBytes: cachedBytes)
-    /// let components = (0..<3).map { embedding[$0] } // [1, 0, 0]
-    /// ```
-    public init(vectorBytes: [UInt8]) throws {
-      let elements = try Element.decodeVector(vectorBytes)
-      guard elements.count == Self.count else {
-        throw VectorDecodingError.dimensionMismatch(expected: Self.count, actual: elements.count)
-      }
-      self.init { elements[$0] }
-    }
+  /// The serialized blob, including any metadata required by this encoding.
+  ///
+  /// ```swift
+  /// let values: InlineArray<3, Float> = [1, 2, 3]
+  /// let bytes = values.vectorBytes
+  /// let payloadSize = bytes.count // 12 bytes for three Float32 components.
+  /// ```
+  public var vectorBytes: [UInt8] {
+    Element.encodeVector((0..<Self.count).map { self[$0] })
   }
-#endif
+
+  /// Decodes a vector blob, validating its encoding and dimensions.
+  ///
+  /// ```swift
+  /// let cachedBytes: [UInt8] = [0, 0, 0x80, 0x3f, 0, 0, 0, 0, 0, 0, 0, 0]
+  /// let embedding = try InlineArray<3, Float>(vectorBytes: cachedBytes)
+  /// let components = (0..<3).map { embedding[$0] } // [1, 0, 0]
+  /// ```
+  public init(vectorBytes: [UInt8]) throws {
+    let elements = try Element.decodeVector(vectorBytes)
+    guard elements.count == Self.count else {
+      throw VectorDecodingError.dimensionMismatch(expected: Self.count, actual: elements.count)
+    }
+    self.init { elements[$0] }
+  }
+}

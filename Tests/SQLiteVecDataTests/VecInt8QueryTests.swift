@@ -175,80 +175,78 @@ struct `Vec Int8 Query tests` {
     }
   }
 
-  #if swift(>=6.2)
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Fixed Int8 Strategies Validate Quantized And Sliced Dimensions`() async throws {
-      let floats = EmbeddingVector<4>([-1, 0, 0.5, 2])
-      let quantized = Vec.quantizeInt8(
-        floats,
-        as: FixedEmbeddingVector<4, Int8>.Int8BytesRepresentation.self
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Fixed Int8 Strategies Validate Quantized And Sliced Dimensions`() async throws {
+    let floats = EmbeddingVector<4>([-1, 0, 0.5, 2])
+    let quantized = Vec.quantizeInt8(
+      floats,
+      as: FixedEmbeddingVector<4, Int8>.Int8BytesRepresentation.self
+    )
+    let query = #sql(
+      "SELECT \(quantized)",
+      as: FixedEmbeddingVector<4, Int8>.Int8BytesRepresentation.self
+    )
+    let slice = Vec.slice(
+      quantized,
+      range: 1..<3,
+      as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
+    )
+    let sliceQuery = #sql(
+      "SELECT \(slice)",
+      as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
+    )
+    let wrongDimensionQuery = #sql(
+      "SELECT \(slice)",
+      as: FixedEmbeddingVector<3, Int8>.Int8BytesRepresentation.self
+    )
+    try await self.database.write { db in
+      let result = try #require(try query.fetchOne(db))
+      expectNoDifference(result, FixedEmbeddingVector<4, Int8>([-128, 0, 63, 127]))
+      expectNoDifference(
+        try sliceQuery.fetchOne(db),
+        FixedEmbeddingVector<2, Int8>([0, 63])
       )
-      let query = #sql(
-        "SELECT \(quantized)",
-        as: FixedEmbeddingVector<4, Int8>.Int8BytesRepresentation.self
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
+        try wrongDimensionQuery.fetchOne(db)
+      }
+      let record = FixedInt8Embedding(
+        embedding: try FixedEmbeddingVector<8, Int8>(validating: Self.vector.queryOutput),
+        label: "fixed"
       )
-      let slice = Vec.slice(
-        quantized,
-        range: 1..<3,
-        as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
-      )
-      let sliceQuery = #sql(
-        "SELECT \(slice)",
-        as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
-      )
-      let wrongDimensionQuery = #sql(
-        "SELECT \(slice)",
-        as: FixedEmbeddingVector<3, Int8>.Int8BytesRepresentation.self
-      )
-      try await self.database.write { db in
-        let result = try #require(try query.fetchOne(db))
-        expectNoDifference(result, FixedEmbeddingVector<4, Int8>([-128, 0, 63, 127]))
-        expectNoDifference(
-          try sliceQuery.fetchOne(db),
-          FixedEmbeddingVector<2, Int8>([0, 63])
+      let binding = FixedEmbeddingVector<8, Int8>
+        .Int8BytesRepresentation(
+          queryOutput: record.embedding
         )
-        #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
-          try wrongDimensionQuery.fetchOne(db)
-        }
-        let record = FixedInt8Embedding(
-          embedding: try FixedEmbeddingVector<8, Int8>(validating: Self.vector.queryOutput),
-          label: "fixed"
-        )
-        let binding = FixedEmbeddingVector<8, Int8>
-          .Int8BytesRepresentation(
-            queryOutput: record.embedding
-          )
-        try FixedInt8Embedding.insert {
-          ($0.embedding, $0.label)
-        } values: {
-          (
-            Vec.int8(binding, as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self),
-            record.label
-          )
-        }
-        .execute(db)
-        expectNoDifference(
-          try FixedInt8Embedding.where { $0.label.eq("fixed") }.fetchOne(db),
-          record
-        )
-        let slicedColumn =
-          FixedInt8Embedding
-          .where { $0.label.eq("fixed") }
-          .select {
-            $0.embedding.slice(
-              start: 0,
-              length: 2,
-              as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
-            )
-          }
-        expectNoDifference(
-          try slicedColumn.fetchOne(db),
-          FixedEmbeddingVector<2, Int8>([-128, -64])
+      try FixedInt8Embedding.insert {
+        ($0.embedding, $0.label)
+      } values: {
+        (
+          Vec.int8(binding, as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self),
+          record.label
         )
       }
+      .execute(db)
+      expectNoDifference(
+        try FixedInt8Embedding.where { $0.label.eq("fixed") }.fetchOne(db),
+        record
+      )
+      let slicedColumn =
+        FixedInt8Embedding
+        .where { $0.label.eq("fixed") }
+        .select {
+          $0.embedding.slice(
+            start: 0,
+            length: 2,
+            as: FixedEmbeddingVector<2, Int8>.Int8BytesRepresentation.self
+          )
+        }
+      expectNoDifference(
+        try slicedColumn.fetchOne(db),
+        FixedEmbeddingVector<2, Int8>([-128, -64])
+      )
     }
-  #endif
+  }
 }
 
 @Table("VecInt8Embeddings")
@@ -258,12 +256,10 @@ private struct VecInt8Embedding: Vec0 {
   var label: String
 }
 
-#if swift(>=6.2)
-  @Table("VecInt8Embeddings")
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  private struct FixedInt8Embedding: Hashable, Sendable, Vec0 {
-    @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
-    var embedding: FixedEmbeddingVector<8, Int8>
-    var label: String
-  }
-#endif
+@Table("VecInt8Embeddings")
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+private struct FixedInt8Embedding: Hashable, Sendable, Vec0 {
+  @Column(as: FixedEmbeddingVector<8, Int8>.Int8BytesRepresentation.self)
+  var embedding: FixedEmbeddingVector<8, Int8>
+  var label: String
+}

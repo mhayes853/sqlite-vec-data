@@ -1,3 +1,6 @@
+#ifndef SQLITE_VEC_DATA_PLATFORM_H
+#define SQLITE_VEC_DATA_PLATFORM_H
+
 #if defined(SQLITE_VEC_ENABLE_NEON) &&                                         \
     !(defined(__ARM_NEON) || defined(__aarch64__))
 #undef SQLITE_VEC_ENABLE_NEON
@@ -16,4 +19,4 @@ static int sqlite_vec_cpu_supports_avx(void) {
 }
 #endif
 
-#include "sqlite-vec.c"
+#endif

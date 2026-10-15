@@ -39,7 +39,7 @@ qualified names. Existing imports need no extra product for `EmbeddingVector` or
 Use `StructuredQueriesVectorCore` for database-independent values; use `StructuredQueriesTursoVecCore`
 for Rust-based Turso Database, excluding libSQL DiskANN and `vector_top_k`.
 
-Fixed values require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
+The package requires Swift 6.3. Fixed values require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 Variable-size strategies support earlier package platforms.
 
 ### Keep existing Float32 values and tables
@@ -388,7 +388,7 @@ conformances supply `sqliteVecExpression`. `TursoVectorEncoding` now inherits
 Float32 equality and hashing now follow scalar semantics: signed zeros compare equal; NaNs compare
 unequal, even to themselves. Compare `vectorBytes` for bit identity; persist values, not Swift hashes.
 
-`VectorDecodingError` is nonexhaustive on Swift 6.2.3 and later; include `@unknown default` in switches.
+`VectorDecodingError` is nonexhaustive; include `@unknown default` in switches.
 
 Decoding throws `VectorDecodingError.invalidBytes` for lengths or metadata and
 `dimensionMismatch(expected:actual:)` for fixed counts. Handle these alongside corrupt database data.

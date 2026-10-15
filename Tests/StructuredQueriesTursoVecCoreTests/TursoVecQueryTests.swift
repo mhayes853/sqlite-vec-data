@@ -19,28 +19,26 @@ struct `TursoVec Query tests` {
     )
   }
 
-  #if swift(>=6.2)
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Format Conversion Chains Retain Fixed Dimensions`() {
-      // https://docs.turso.tech/sql-reference/functions/vector#vector-creation
-      let source = EmbeddingVector<3>([0, 1, 0])
-      let precise = TursoVec.vector64(source)
-      let compressed = TursoVec.vector8(source)
-      let sparse = TursoVec.vector32Sparse(source)
-      let binary = TursoVec.vector1bit(source)
-      let restored = TursoVec.vector(TursoVec.vector32(precise))
-      requireThreeDimensions(precise)
-      requireThreeDimensions(compressed)
-      requireThreeDimensions(sparse)
-      requireThreeDimensions(binary)
-      requireThreeDimensions(restored)
-      expectNoDifference(
-        TursoVec.distanceL2(restored, to: source).queryFragment.prepare { "?\($0)" }.sql,
-        "vector_distance_l2(vector(vector32(vector64(?1))), ?2)"
-      )
-    }
-  #endif
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Format Conversion Chains Retain Fixed Dimensions`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector-creation
+    let source = EmbeddingVector<3>([0, 1, 0])
+    let precise = TursoVec.vector64(source)
+    let compressed = TursoVec.vector8(source)
+    let sparse = TursoVec.vector32Sparse(source)
+    let binary = TursoVec.vector1bit(source)
+    let restored = TursoVec.vector(TursoVec.vector32(precise))
+    requireThreeDimensions(precise)
+    requireThreeDimensions(compressed)
+    requireThreeDimensions(sparse)
+    requireThreeDimensions(binary)
+    requireThreeDimensions(restored)
+    expectNoDifference(
+      TursoVec.distanceL2(restored, to: source).queryFragment.prepare { "?\($0)" }.sql,
+      "vector_distance_l2(vector(vector32(vector64(?1))), ?2)"
+    )
+  }
 
   @Test
   func `Inserts The Documented Float32 Embedding`() {
@@ -292,105 +290,99 @@ struct `TursoVec Query tests` {
     expectNoDifference(tursoPrepared.bindings, [vector.queryBinding])
   }
 
-  #if swift(>=6.2)
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Binary Hamming Uses Documented Cosine SQL With Packed Bindings`() throws {
-      // https://docs.turso.tech/guides/vector-search#limitations
-      // Turso's vector_distance_cos returns Hamming distance for binary inputs.
-      let vector = try BinaryEmbeddingVector<9>(packedBytes: [133, 1])
-      let binding = BinaryEmbeddingVector<9>.TursoBytesRepresentation(queryOutput: vector)
-      let query = BinaryDocument.select {
-        TursoVec.distanceHamming($0.embedding, to: binding)
-      }
-      let prepared = query.query.prepare { "?\($0)" }
-      expectNoDifference(
-        prepared.sql,
-        """
-        SELECT vector_distance_cos("binary_documents"."embedding", ?1)
-        FROM "binary_documents"
-        """
-      )
-      expectNoDifference(prepared.bindings, [.blob([133, 1, 0, 23, 3])])
-      expectNoDifference(
-        TursoVec.distanceHamming(
-          TursoVec.vector1bit("[1,-1,1]"),
-          to: TursoVec.vector1bit("[1,1,-1]")
-        )
-        .queryFragment.prepare { "?\($0)" }.sql,
-        "vector_distance_cos(vector1bit(?1), vector1bit(?2))"
-      )
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Binary Hamming Uses Documented Cosine SQL With Packed Bindings`() throws {
+    // https://docs.turso.tech/guides/vector-search#limitations
+    // Turso's vector_distance_cos returns Hamming distance for binary inputs.
+    let vector = try BinaryEmbeddingVector<9>(packedBytes: [133, 1])
+    let binding = BinaryEmbeddingVector<9>.TursoBytesRepresentation(queryOutput: vector)
+    let query = BinaryDocument.select {
+      TursoVec.distanceHamming($0.embedding, to: binding)
     }
+    let prepared = query.query.prepare { "?\($0)" }
+    expectNoDifference(
+      prepared.sql,
+      """
+      SELECT vector_distance_cos("binary_documents"."embedding", ?1)
+      FROM "binary_documents"
+      """
+    )
+    expectNoDifference(prepared.bindings, [.blob([133, 1, 0, 23, 3])])
+    expectNoDifference(
+      TursoVec.distanceHamming(
+        TursoVec.vector1bit("[1,-1,1]"),
+        to: TursoVec.vector1bit("[1,1,-1]")
+      )
+      .queryFragment.prepare { "?\($0)" }.sql,
+      "vector_distance_cos(vector1bit(?1), vector1bit(?2))"
+    )
+  }
 
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Uses Encoded Vector Values Directly In Columns`() throws {
-      // https://docs.turso.tech/sql-reference/functions/vector#vector8
-      // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
-      let quantized = try InlineQuantized8Vector<4>(codes: [1, 2, 3, 4], scale: 0.5, shift: 1)
-      let sparse = try SizedSparseFloat32Vector<4>(indices: [1, 3], values: [2, 4])
-      let query = SizedFormats.select {
-        (
-          TursoVec.distanceCosine($0.quantized, to: quantized),
-          TursoVec.distanceL2($0.sparse, to: sparse),
-          TursoVec.vector8("[1,2,3,4]", as: InlineQuantized8Vector<4>.self),
-          TursoVec.slice($0.sparse, from: 1, to: 3, as: SizedSparseFloat32Vector<2>.self)
-        )
-      }
-      let prepared = query.query.prepare { "?\($0)" }
-      expectNoDifference(
-        prepared.sql,
-        """
-        SELECT vector_distance_cos("sized_formats"."quantized", ?1), vector_distance_l2("sized_formats"."sparse", ?2), vector8(?3), vector_slice("sized_formats"."sparse", ?4, ?5)
-        FROM "sized_formats"
-        """
-      )
-      expectNoDifference(
-        prepared.bindings,
-        [quantized.queryBinding, sparse.queryBinding, .text("[1,2,3,4]"), .int(1), .int(3)]
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Uses Encoded Vector Values Directly In Columns`() throws {
+    // https://docs.turso.tech/sql-reference/functions/vector#vector8
+    // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
+    let quantized = try InlineQuantized8Vector<4>(codes: [1, 2, 3, 4], scale: 0.5, shift: 1)
+    let sparse = try SizedSparseFloat32Vector<4>(indices: [1, 3], values: [2, 4])
+    let query = SizedFormats.select {
+      (
+        TursoVec.distanceCosine($0.quantized, to: quantized),
+        TursoVec.distanceL2($0.sparse, to: sparse),
+        TursoVec.vector8("[1,2,3,4]", as: InlineQuantized8Vector<4>.self),
+        TursoVec.slice($0.sparse, from: 1, to: 3, as: SizedSparseFloat32Vector<2>.self)
       )
     }
+    let prepared = query.query.prepare { "?\($0)" }
+    expectNoDifference(
+      prepared.sql,
+      """
+      SELECT vector_distance_cos("sized_formats"."quantized", ?1), vector_distance_l2("sized_formats"."sparse", ?2), vector8(?3), vector_slice("sized_formats"."sparse", ?4, ?5)
+      FROM "sized_formats"
+      """
+    )
+    expectNoDifference(
+      prepared.bindings,
+      [quantized.queryBinding, sparse.queryBinding, .text("[1,2,3,4]"), .int(1), .int(3)]
+    )
+  }
 
-    @Test
-    @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-    func `Requests Fixed Dimensions After Concatenation And Slicing`() {
-      // https://docs.turso.tech/sql-reference/functions/vector#utility-functions
-      let left = EmbeddingVector<2>([1, 2])
-      let right = EmbeddingVector<2>([3, 4])
-      let joined = TursoVec.concat(left, right, as: EmbeddingVector<4>.self)
-      let sliced = TursoVec.slice(joined, from: 1, to: 3, as: EmbeddingVector<2>.self)
-      let prepared = sliced.queryFragment.prepare { "?\($0)" }
-      expectNoDifference(prepared.sql, "vector_slice(vector_concat(?1, ?2), ?3, ?4)")
-      expectNoDifference(
-        prepared.bindings,
-        [left.queryBinding, right.queryBinding, .int(1), .int(3)]
-      )
-    }
-  #endif
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Requests Fixed Dimensions After Concatenation And Slicing`() {
+    // https://docs.turso.tech/sql-reference/functions/vector#utility-functions
+    let left = EmbeddingVector<2>([1, 2])
+    let right = EmbeddingVector<2>([3, 4])
+    let joined = TursoVec.concat(left, right, as: EmbeddingVector<4>.self)
+    let sliced = TursoVec.slice(joined, from: 1, to: 3, as: EmbeddingVector<2>.self)
+    let prepared = sliced.queryFragment.prepare { "?\($0)" }
+    expectNoDifference(prepared.sql, "vector_slice(vector_concat(?1, ?2), ?3, ?4)")
+    expectNoDifference(
+      prepared.bindings,
+      [left.queryBinding, right.queryBinding, .int(1), .int(3)]
+    )
+  }
 }
 
-#if swift(>=6.2)
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  @Table("binary_documents")
-  private struct BinaryDocument: Hashable, Sendable {
-    @Column(as: BinaryEmbeddingVector<9>.TursoBytesRepresentation.self)
-    var embedding: BinaryEmbeddingVector<9>
-  }
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+@Table("binary_documents")
+private struct BinaryDocument: Hashable, Sendable {
+  @Column(as: BinaryEmbeddingVector<9>.TursoBytesRepresentation.self)
+  var embedding: BinaryEmbeddingVector<9>
+}
 
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  @Table("sized_formats")
-  private struct SizedFormats: Hashable, Sendable {
-    var quantized: InlineQuantized8Vector<4>
-    var sparse: SizedSparseFloat32Vector<4>
-  }
-#endif
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+@Table("sized_formats")
+private struct SizedFormats: Hashable, Sendable {
+  var quantized: InlineQuantized8Vector<4>
+  var sparse: SizedSparseFloat32Vector<4>
+}
 
-#if swift(>=6.2)
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  private func requireThreeDimensions<V: VectorBytesRepresentable>(
-    _ expression: some QueryExpression<V>
-  ) where V.Dimensions == VectorDimensions<3> {}
-#endif
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+private func requireThreeDimensions<V: VectorBytesRepresentable>(
+  _ expression: some QueryExpression<V>
+) where V.Dimensions == VectorDimensions<3> {}
 
 @Table("documents")
 private struct Document: Hashable, Sendable {

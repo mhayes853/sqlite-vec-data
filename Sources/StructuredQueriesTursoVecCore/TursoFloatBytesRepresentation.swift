@@ -270,101 +270,98 @@ extension Array where Element == Double {
     .TursoFloat64BytesRepresentation<VectorBytesRepresentation>
 }
 
-#if swift(>=6.2)
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+extension InlineArray where Element == Float {
+  /// The Turso Float32 strategy with fixed-dimension validation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: InlineArray<3, Float>.TursoFloat32BytesRepresentation.self)
+  ///   var embedding: InlineArray<3, Float>
+  /// }
+  ///
+  /// let components: InlineArray<3, Float> = [0.1, 0.2, 0.3]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, components)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// ```
+  public typealias TursoFloat32BytesRepresentation = StructuredQueriesTursoVecCore
+    .TursoFloat32BytesRepresentation<
+      VectorBytesRepresentation
+    >
+}
 
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension InlineArray where Element == Float {
-    /// The Turso Float32 strategy with fixed-dimension validation.
-    ///
-    /// ```swift
-    /// @Table("documents")
-    /// struct Document {
-    ///   var id: Int
-    ///   @Column(as: InlineArray<3, Float>.TursoFloat32BytesRepresentation.self)
-    ///   var embedding: InlineArray<3, Float>
-    /// }
-    ///
-    /// let components: InlineArray<3, Float> = [0.1, 0.2, 0.3]
-    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-    ///   (1, components)
-    /// }
-    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
-    /// ```
-    public typealias TursoFloat32BytesRepresentation = StructuredQueriesTursoVecCore
-      .TursoFloat32BytesRepresentation<
-        VectorBytesRepresentation
-      >
-  }
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+extension FixedEmbeddingVector where Scalar == Float {
+  /// The Turso Float32 strategy with fixed-dimension validation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: EmbeddingVector<3>.TursoFloat32BytesRepresentation.self)
+  ///   var embedding: EmbeddingVector<3>
+  /// }
+  ///
+  /// let components: EmbeddingVector<3> = EmbeddingVector<3>([0.1, 0.2, 0.3])
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, components)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// ```
+  public typealias TursoFloat32BytesRepresentation = StructuredQueriesTursoVecCore
+    .TursoFloat32BytesRepresentation<
+      VectorBytesRepresentation
+    >
+}
 
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension FixedEmbeddingVector where Scalar == Float {
-    /// The Turso Float32 strategy with fixed-dimension validation.
-    ///
-    /// ```swift
-    /// @Table("documents")
-    /// struct Document {
-    ///   var id: Int
-    ///   @Column(as: EmbeddingVector<3>.TursoFloat32BytesRepresentation.self)
-    ///   var embedding: EmbeddingVector<3>
-    /// }
-    ///
-    /// let components: EmbeddingVector<3> = EmbeddingVector<3>([0.1, 0.2, 0.3])
-    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-    ///   (1, components)
-    /// }
-    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
-    /// ```
-    public typealias TursoFloat32BytesRepresentation = StructuredQueriesTursoVecCore
-      .TursoFloat32BytesRepresentation<
-        VectorBytesRepresentation
-      >
-  }
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+extension InlineArray where Element == Double {
+  /// The Turso Float64 strategy with fixed-dimension validation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: InlineArray<3, Double>.TursoFloat64BytesRepresentation.self)
+  ///   var embedding: InlineArray<3, Double>
+  /// }
+  ///
+  /// let components: InlineArray<3, Double> = [0.1, 0.2, 0.3]
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, components)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// ```
+  public typealias TursoFloat64BytesRepresentation = StructuredQueriesTursoVecCore
+    .TursoFloat64BytesRepresentation<
+      VectorBytesRepresentation
+    >
+}
 
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension InlineArray where Element == Double {
-    /// The Turso Float64 strategy with fixed-dimension validation.
-    ///
-    /// ```swift
-    /// @Table("documents")
-    /// struct Document {
-    ///   var id: Int
-    ///   @Column(as: InlineArray<3, Double>.TursoFloat64BytesRepresentation.self)
-    ///   var embedding: InlineArray<3, Double>
-    /// }
-    ///
-    /// let components: InlineArray<3, Double> = [0.1, 0.2, 0.3]
-    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-    ///   (1, components)
-    /// }
-    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
-    /// ```
-    public typealias TursoFloat64BytesRepresentation = StructuredQueriesTursoVecCore
-      .TursoFloat64BytesRepresentation<
-        VectorBytesRepresentation
-      >
-  }
-
-  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
-  extension FixedEmbeddingVector where Scalar == Double {
-    /// The Turso Float64 strategy with fixed-dimension validation.
-    ///
-    /// ```swift
-    /// @Table("documents")
-    /// struct Document {
-    ///   var id: Int
-    ///   @Column(as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self)
-    ///   var embedding: EmbeddingVector64<3>
-    /// }
-    ///
-    /// let components: EmbeddingVector64<3> = EmbeddingVector64<3>([0.1, 0.2, 0.3])
-    /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
-    ///   (1, components)
-    /// }
-    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
-    /// ```
-    public typealias TursoFloat64BytesRepresentation = StructuredQueriesTursoVecCore
-      .TursoFloat64BytesRepresentation<
-        VectorBytesRepresentation
-      >
-  }
-#endif
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+extension FixedEmbeddingVector where Scalar == Double {
+  /// The Turso Float64 strategy with fixed-dimension validation.
+  ///
+  /// ```swift
+  /// @Table("documents")
+  /// struct Document {
+  ///   var id: Int
+  ///   @Column(as: EmbeddingVector64<3>.TursoFloat64BytesRepresentation.self)
+  ///   var embedding: EmbeddingVector64<3>
+  /// }
+  ///
+  /// let components: EmbeddingVector64<3> = EmbeddingVector64<3>([0.1, 0.2, 0.3])
+  /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
+  ///   (1, components)
+  /// }
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// ```
+  public typealias TursoFloat64BytesRepresentation = StructuredQueriesTursoVecCore
+    .TursoFloat64BytesRepresentation<
+      VectorBytesRepresentation
+    >
+}

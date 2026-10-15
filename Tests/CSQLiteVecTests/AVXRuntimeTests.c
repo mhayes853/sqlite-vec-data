@@ -1,6 +1,6 @@
-// Compile the package's entry point to test the private feature probe and SQL
-// dispatch together.
-#include "../../Sources/CSQLiteVec/sqlite-vec-arch.c"
+// Include the build script's output to test the private feature probe and SQL
+// dispatch together. The generated directory must precede the source directory.
+#include "sqlite-vec.c"
 
 #include <stdio.h>
 

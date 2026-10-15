@@ -326,7 +326,7 @@ fixed values provide mutable collections, hashing, Codable, and dimension-checke
 | `InlineQuantized8Vector<N>` | Direct binding for Turso |
 | `SizedSparseFloat32Vector<N>` | Direct binding for Turso |
 
-Fixed-size types require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
+Fixed-size types require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
 ```swift
 let dense = EmbeddingVector<8>([1, -1, 0, 2, -3, 4, 0, 5])
@@ -421,9 +421,11 @@ Disable it for custom SQLite builds that require the extension API table; use
 - [Turso query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/)
 - [Shared vector types](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
 - [Migration guide](Sources/SQLiteVecData/Documentation.docc/VectorMigration.md)
-- [Maintaining sqlite-vec](Vendor/sqlite-vec/README.md)
+- [Maintaining sqlite-vec](Documentation/SQLiteVecMaintenance.md)
 
 ## Installation
+
+Requires Swift 6.3. SwiftPM patches and compiles the bundled sqlite-vec source during the build.
 
 Add the package to your Xcode project or `Package.swift`:
 

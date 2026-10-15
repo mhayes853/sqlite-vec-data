@@ -45,7 +45,7 @@ scalar arrays:
 | `FixedEmbeddingVector<N, Int8>` | `Int8` | Strategy supplied by a database integration |
 | `BinaryEmbeddingVector<N>` | `Bool` | Explicit binary strategy |
 
-Fixed-size types require Swift 6.2 and iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
+Fixed-size types require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 `InlineArray` also exposes floating-point `VectorBytesRepresentation` strategies.
 
 ```swift
