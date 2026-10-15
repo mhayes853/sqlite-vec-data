@@ -9,13 +9,14 @@ import StructuredQueriesCore
 /// // FROM "vec_each"
 /// // WHERE ("vec_each"."vector" = ?)
 /// ```
-public typealias VecEach = VecEachOf<Float>
+public typealias VecEach = VecEachOf<Float?>
 
 /// A table representation for `vec_each`.
 ///
 /// The element type matches the storage class SQLiteVec reports for each encoding: Float32
-/// vectors yield ``VecEach`` (`VecEachOf<Float>`), Int8 vectors yield `VecEachOf<Int8>`, and
-/// packed-bit vectors yield `VecEachOf<Bool>`.
+/// vectors yield ``VecEach`` (`VecEachOf<Float?>`), Int8 vectors yield `VecEachOf<Int8>`, and
+/// packed-bit vectors yield `VecEachOf<Bool>`. Float32 NaN components become SQL NULL; keep their
+/// rowids to preserve dimensions, or fetch the vector BLOB to retain the original bits.
 ///
 /// ```swift
 /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
@@ -59,16 +60,16 @@ where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOu
   ///
   /// ```swift
   /// func negativePositions(in rows: [VecEach]) -> [Int] {
-  ///   rows.filter { $0.value < 0 }.map(\.rowid)
+  ///   rows.filter { $0.value.map { $0 < 0 } ?? false }.map(\.rowid)
   /// }
   /// // Use with fetched vec_each rows to locate negative components.
   /// ```
   public let rowid: Int
 
-  /// The current vector element.
+  /// The current vector element; Float32 NaN is exposed as nil.
   ///
   /// ```swift
-  /// func orderedComponents(in rows: [VecEach]) -> [Float] {
+  /// func orderedComponents(in rows: [VecEach]) -> [Float?] {
   ///   rows.sorted { $0.rowid < $1.rowid }.map(\.value)
   /// }
   /// // Reconstruct the scalar array from fetched rows, independent of their order.
@@ -89,7 +90,7 @@ where Value: QueryBindable & QueryDecodable & Hashable & Sendable, Value.QueryOu
     ///
     /// ```swift
     /// let vector: [Float].VectorBytesRepresentation = [1, -2, 3]
-    /// let query = Vec.each(vector).where { $0.value.lt(Float(0)) }.select { $0.rowid }
+    /// let query = Vec.each(vector).where { $0.value.lt(Float?(0)) }.select { $0.rowid }
     /// // SELECT "vec_each"."rowid"
     /// // FROM "vec_each"
     /// // WHERE ("vec_each"."vector" = ?) AND (("vec_each"."value") < (?))
@@ -183,7 +184,7 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding: SQLiteVecFloat3
   ///   Embedding
   ///   .where {
   ///     $0.embedding.vecEach()
-  ///       .where { $0.value.lt(Float(0)) }
+  ///       .where { $0.value.lt(Float?(0)) }
   ///       .exists()
   ///   }
   ///   .select(\.label)

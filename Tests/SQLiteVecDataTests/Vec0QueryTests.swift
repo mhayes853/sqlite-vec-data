@@ -2362,7 +2362,8 @@ struct Vec0QueryTests {
       let result = try #require(try query.fetchOne(db))
       expectNoDifference(result.0, [0, 1])
       expectNoDifference(result.1, EmbeddingVector<2>([0, 1]))
-      #expect(abs(result.2 - (Double(5).squareRoot() - 1)) < 0.000001)
+      let distance = try #require(result.2)
+      #expect(abs(distance - (Double(5).squareRoot() - 1)) < 0.000001)
       #expect(throws: VectorDecodingError.dimensionMismatch(expected: 3, actual: 2)) {
         try invalid.fetchOne(db)
       }

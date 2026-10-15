@@ -82,8 +82,9 @@ let sliced = Vec.slice(vector, start: 0, end: 2)
 Scalar helpers accept bound values, computed expressions, and BLOB columns. Slices default to
 variable-size results; `as:` selects a fixed result with dimension-checked decoding.
 
-Distances return `Double` (SQL REAL); Int8 L1 is cast from integer to REAL. Length returns `Int`.
-Iteration yields `VecEachOf<Float>` (also ``VecEach``), `VecEachOf<Int8>`, or `VecEachOf<Bool>`.
+Float32 distances and cosine return `Double?`; Int8 L1/L2 and Hamming return `Double`.
+Int8 L1 is cast to REAL. Length returns `Int`.
+Iteration yields `VecEachOf<Float?>` (also ``VecEach``), `VecEachOf<Int8>`, or `VecEachOf<Bool>`.
 
 Column and namespace helpers support these encodings:
 
@@ -125,7 +126,7 @@ let joined = Embedding
 let withNegativeElements = Embedding
   .where {
     $0.embedding.vecEach()
-      .where { $0.value.lt(Float(0)) }
+      .where { $0.value.lt(Float?(0)) }
       .exists()
   }
   .select(\.label)
@@ -263,7 +264,7 @@ Float32 and Int8 numeric operations; ``SQLiteVecFloat32Encoding``, ``SQLiteVecIn
 ```swift
 func numericDistance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
   _ left: some QueryExpression<L>, to right: some QueryExpression<R>
-) -> some QueryExpression<Double>
+) -> some QueryExpression<Double?>
 where L.Encoding: SQLiteVecNumericEncoding, L.Encoding == R.Encoding,
   L.Dimensions == R.Dimensions {
   Vec.distanceL2(left, to: right)
@@ -288,3 +289,27 @@ macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/),
 [sqlite-vec API reference](https://alexgarcia.xyz/sqlite-vec/api-reference.html), and
 [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).
+
+### Missing vectors and undefined scores
+
+Float32 distances and cosine can return `nil` for undefined numerical results, even with nonnull
+vectors. Filter scores before ranking; ascending SQL order otherwise puts NULL first:
+
+```swift
+let ranked = Embedding
+  .where { $0.embedding.distanceCosine(to: vector).isNot(nil) }
+  .order { $0.embedding.distanceCosine(to: vector) }
+  .select { ($0.label, $0.embedding.distanceCosine(to: vector)) }
+// SELECT "Embeddings"."label", vec_distance_cosine("Embeddings"."embedding", ?)
+// FROM "Embeddings"
+// WHERE (vec_distance_cosine("Embeddings"."embedding", ?) IS NOT NULL)
+// ORDER BY vec_distance_cosine("Embeddings"."embedding", ?)
+
+let score = Vec.distanceCosine(vector, to: vector).ifnull(2)
+// ifnull(vec_distance_cosine(?, ?), ?)
+```
+
+Choose fallbacks deliberately: replacing a missing distance with zero would rank it as an exact match.
+`vec0.distance` is also nil outside KNN; `k` is a query constraint and returns NULL when selected.
+Float32 iteration yields `(Int, Float?)`: keep nil positions to preserve dimensions. Fetch the vector
+BLOB when NaN bit patterns matter.

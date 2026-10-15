@@ -28,7 +28,7 @@ public protocol TursoVectorEncoding: VectorBytesRepresentable, QueryBindable {}
 /// func numericDistance<L: VectorBytesRepresentable & QueryBindable,
 ///   R: VectorBytesRepresentable & QueryBindable>(
 ///   _ left: some QueryExpression<L>, to right: some QueryExpression<R>
-/// ) -> some QueryExpression<Double>
+/// ) -> some QueryExpression<Double?>
 /// where L.Encoding: TursoNumericVectorEncoding, L.Encoding == R.Encoding,
 ///   L.Dimensions == R.Dimensions {
 ///   TursoVec.distanceL2(left, to: right)

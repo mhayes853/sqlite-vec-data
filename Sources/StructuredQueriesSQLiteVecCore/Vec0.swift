@@ -28,7 +28,7 @@ public protocol Vec0: Table {}
 // MARK: - Column Helpers
 
 extension TableDefinition where QueryValue: Vec0 {
-  /// The distance value produced by a vec0 `match` query.
+  /// The distance produced by a vec0 `match` query, or nil for an undefined score or a non-KNN scan.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
@@ -52,7 +52,7 @@ extension TableDefinition where QueryValue: Vec0 {
   /// // ORDER BY "Embeddings"."distance" ASC
   /// // LIMIT ?
   /// ```
-  public var distance: some QueryExpression<Double> {
+  public var distance: some QueryExpression<Double?> {
     SQLQueryExpression(
       """
       \(QueryValue.self)."distance"
@@ -60,7 +60,8 @@ extension TableDefinition where QueryValue: Vec0 {
     )
   }
 
-  /// The number of nearest neighbors requested by a vec0 `match` query.
+  /// Constrains the number of nearest neighbors in a vec0 `match` query.
+  /// Selecting this hidden column returns SQL NULL, including in KNN queries.
   ///
   /// ```swift
   /// // CREATE VIRTUAL TABLE Embeddings USING vec0(embedding float[3], label text);
@@ -75,12 +76,12 @@ extension TableDefinition where QueryValue: Vec0 {
   /// let query =
   ///   Embedding
   ///   .where { $0.embedding.match(queryVector) && $0.k.eq(5) }
-  ///   .select { ($0.label, $0.k) }
-  /// // SELECT "Embeddings"."label", "Embeddings"."k"
+  ///   .select { ($0.label, $0.distance) }
+  /// // SELECT "Embeddings"."label", "Embeddings"."distance"
   /// // FROM "Embeddings"
   /// // WHERE ((("Embeddings"."embedding" MATCH ?)) AND (("Embeddings"."k") = (?)))
   /// ```
-  public var k: some QueryExpression<Int> {
+  public var k: some QueryExpression<Int?> {
     SQLQueryExpression(
       """
       \(QueryValue.self)."k"
@@ -372,7 +373,7 @@ where
   /// ```
   public func distanceL2<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     QueryValue.Dimensions == V.Dimensions,
@@ -419,7 +420,7 @@ where
   @_disfavoredOverload
   public func distanceL2<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     QueryValue.Dimensions == Void,
@@ -466,7 +467,7 @@ where
   @_disfavoredOverload
   public func distanceL2<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     V.Dimensions == Void,
@@ -495,7 +496,7 @@ where
   /// ```
   public func distanceL1<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     QueryValue.Dimensions == V.Dimensions,
@@ -525,7 +526,7 @@ where
   @_disfavoredOverload
   public func distanceL1<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     QueryValue.Dimensions == Void,
@@ -555,7 +556,7 @@ where
   @_disfavoredOverload
   public func distanceL1<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     V.Dimensions == Void,
@@ -602,7 +603,7 @@ where
   /// ```
   public func distanceCosine<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     QueryValue.Dimensions == V.Dimensions,
@@ -650,7 +651,7 @@ where
   @_disfavoredOverload
   public func distanceCosine<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     QueryValue.Dimensions == Void,
@@ -698,7 +699,7 @@ where
   @_disfavoredOverload
   public func distanceCosine<V: VectorBytesRepresentable>(
     to vector: some QueryExpression<V>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding == QueryValue.Encoding,
     V.Dimensions == Void,
@@ -2437,4 +2438,62 @@ where
     Vec.bit(self, as: result)
   }
 
+  /// Returns the nonnullable L2 distance between signed Int8 vectors.
+  ///
+  /// ```swift
+  /// let left: [Int8].Int8BytesRepresentation = [3, 4]
+  /// let right: [Int8].Int8BytesRepresentation = [0, 0]
+  /// let distance = left.distanceL2(to: right)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  public func distanceL2<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == V.Dimensions,
+    QueryValue.Encoding: SQLiteVecInt8Encoding
+  {
+    Vec.distanceL2(self, to: vector)
+  }
+
+  /// Returns the nonnullable L2 distance between signed Int8 vectors.
+  ///
+  /// ```swift
+  /// let left: [Int8].Int8BytesRepresentation = [3, 4]
+  /// let right: [Int8].Int8BytesRepresentation = [0, 0]
+  /// let distance = left.distanceL2(to: right)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func distanceL2<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    QueryValue.Dimensions == Void,
+    QueryValue.Encoding: SQLiteVecInt8Encoding
+  {
+    Vec.distanceL2(self, to: vector)
+  }
+
+  /// Returns the nonnullable L2 distance between signed Int8 vectors.
+  ///
+  /// ```swift
+  /// let left: [Int8].Int8BytesRepresentation = [3, 4]
+  /// let right: [Int8].Int8BytesRepresentation = [0, 0]
+  /// let distance = left.distanceL2(to: right)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public func distanceL2<V: VectorBytesRepresentable>(
+    to vector: some QueryExpression<V>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding == QueryValue.Encoding,
+    V.Dimensions == Void,
+    QueryValue.Encoding: SQLiteVecInt8Encoding
+  {
+    Vec.distanceL2(self, to: vector)
+  }
 }

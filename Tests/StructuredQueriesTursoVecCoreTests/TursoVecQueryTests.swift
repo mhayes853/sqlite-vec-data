@@ -195,15 +195,17 @@ struct `TursoVec Query tests` {
     let bits: [Bool].TursoBytesRepresentation = [true, false]
     let quantized = try Quantized8Vector(quantizing: [1, 2])
     let doubles: [Double].TursoFloat64BytesRepresentation = [1, 2]
-    let query = Formats.select {
-      (
-        TursoVec.distanceCosine($0.bits, to: bits),
-        TursoVec.distanceJaccard($0.bits, to: bits),
-        TursoVec.distanceDot($0.bits, to: bits),
-        TursoVec.distanceL2($0.quantized, to: quantized),
-        TursoVec.distanceCosine($0.doubles, to: TursoVec.vector64("[1,2]")),
-        TursoVec.distanceDot($0.doubles, to: doubles)
-      )
+    let binaryCosine = TursoVec.distanceCosine(Formats.columns.bits, to: bits)
+    let binaryJaccard = TursoVec.distanceJaccard(Formats.columns.bits, to: bits)
+    let binaryDot = TursoVec.distanceDot(Formats.columns.bits, to: bits)
+    let quantizedL2 = TursoVec.distanceL2(Formats.columns.quantized, to: quantized)
+    let doubleCosine = TursoVec.distanceCosine(
+      Formats.columns.doubles,
+      to: TursoVec.vector64("[1,2]")
+    )
+    let doubleDot = TursoVec.distanceDot(Formats.columns.doubles, to: doubles)
+    let query = Formats.select { _ in
+      (binaryCosine, binaryJaccard, binaryDot, quantizedL2, doubleCosine, doubleDot)
     }
     let prepared = query.query.prepare { "?\($0)" }
     expectNoDifference(

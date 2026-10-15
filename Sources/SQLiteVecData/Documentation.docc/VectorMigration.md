@@ -23,7 +23,7 @@ This release changes SQLiteVec APIs and behavior and adds Turso Database support
 | `quantizeInt8(scale:)` passes an unsupported numeric argument | `quantizeInt8()` emits SQLiteVec's supported `'unit'` argument and returns signed Int8 codes |
 | `int8()` exposes Int8 bytes as Float32 values | `Vec.int8` accepts signed-byte expressions or integer JSON and returns an Int8 representation |
 | `length()` and `Vec.length` return `Double` | They return `Int`, matching the integer SQLiteVec's `vec_length` produces |
-| `vecEach()` and `Vec.each` always return `SelectOf<VecEach>` with `Float` values | `VecEach` aliases `VecEachOf<Float>` for Float32 vectors; Int8 and packed bits return `VecEachOf<Int8>` and `VecEachOf<Bool>` |
+| `vecEach()` and `Vec.each` always return `SelectOf<VecEach>` with `Float` values | `VecEach` aliases `VecEachOf<Float?>` for Float32 vectors; Int8 and packed bits return `VecEachOf<Int8>` and `VecEachOf<Bool>` |
 | Float32 and binary column slices preserve the original vector type | Slices return variable-size representations; use `as:` to select a matching fixed-size result |
 
 ### Imports and package products
@@ -210,7 +210,7 @@ in generic helpers:
 ```swift
 func distance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
   _ left: some QueryExpression<L>, to right: some QueryExpression<R>
-) -> some QueryExpression<Double>
+) -> some QueryExpression<Double?>
 where L.Encoding == [Float].VectorBytesRepresentation, L.Encoding == R.Encoding,
   L.Dimensions == R.Dimensions
 {
@@ -275,7 +275,7 @@ let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2
 
 `length()` and `Vec.length` now return `QueryExpression<Int>`. Update decoded and compared lengths.
 
-`vec_each` returns REAL for Float32 and integers for Int8/bits. Use `VecEach` (`VecEachOf<Float>`),
+`vec_each` returns REAL for Float32 and integers for Int8/bits. Use `VecEach` (`VecEachOf<Float?>`),
 `VecEachOf<Int8>`, or `VecEachOf<Bool>` accordingly. Compare values with matching literals and
 update explicit Int8/binary table types.
 
@@ -368,7 +368,7 @@ and dimension relationships remain enforced:
 ```swift
 func numericDistance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
   _ left: some QueryExpression<L>, to right: some QueryExpression<R>
-) -> some QueryExpression<Double>
+) -> some QueryExpression<Double?>
 where L.Encoding: SQLiteVecNumericEncoding, L.Encoding == R.Encoding,
   L.Dimensions == R.Dimensions {
   Vec.distanceL2(left, to: right)
@@ -392,3 +392,31 @@ unequal, even to themselves. Compare `vectorBytes` for bit identity; persist val
 
 Decoding throws `VectorDecodingError.invalidBytes` for lengths or metadata and
 `dimensionMismatch(expected:actual:)` for fixed counts. Handle these alongside corrupt database data.
+
+### Handle nullable results and inputs
+
+Float32 distances, all cosine/Jaccard distances, and Turso floating L2/dot return `Double?`.
+SQLiteVec Int8 L1/L2, Turso quantized8 L2/dot, and binary dot/Hamming retain `Double`.
+`vec0.distance` is nullable outside KNN or for undefined scores; `k` returns NULL when selected.
+Float32 iteration is now `VecEachOf<Float?>`; preserve nil positions instead of dropping components.
+
+Scalar helpers accept nullable vectors and JSON and propagate NULL with CASE. Existing nonoptional
+calls retain their SQL. Use `.isNot(nil)` to exclude missing scores or `.ifnull(...)` for an explicit
+fallback; ascending SQL ordering places NULL first.
+
+For nullable columns, wrap the strategy in Optional:
+
+```swift
+@Table("optional_documents")
+struct OptionalDocument {
+  @Column(as: [Float].VectorBytesRepresentation?.self)
+  var embedding: [Float]?
+}
+let lengths = OptionalDocument.select { Vec.length($0.embedding) }
+// SELECT CASE WHEN ("optional_documents"."embedding") IS NULL THEN NULL ELSE vec_length("optional_documents"."embedding") END
+// FROM "optional_documents"
+```
+
+`VectorBytesRepresentable` stays nonoptional. Optional strategies decode SQL NULL as nil; corrupt
+BLOBs still throw. NaN inside a valid vector remains a component, not a missing vector. Raw BLOB
+round trips preserve its bits; SQL scalar extraction can expose it as NULL.

@@ -59,7 +59,8 @@ let neighbors = try database.read { db in
 ```
 
 See [sqlite-vec query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriessqliteveccore/)
-for Float32, Int8, binary vectors, and scalar functions.
+for Float32, Int8, binary vectors, and scalar functions. Distance scores can be nil for undefined
+results; filter them with `.isNot(nil)` or choose an explicit `.ifnull(...)` fallback.
 
 ### Testing
 

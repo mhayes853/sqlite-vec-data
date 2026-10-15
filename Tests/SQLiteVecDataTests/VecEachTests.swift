@@ -107,7 +107,7 @@ struct `VecEach tests` {
       VecEachEmbedding
       .where {
         Vec.each($0.embedding)
-          .where { $0.value.lt(Float(0)) }
+          .where { $0.value.lt(Float?(0)) }
           .exists()
       }
       .select(\.label)

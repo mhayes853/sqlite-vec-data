@@ -89,8 +89,9 @@ Helpers support bound values, computed expressions, and BLOB columns. Use arithm
 inspection, and `.vecEach()` in joins or subqueries. Float32 and Int8 support L1, L2, and cosine;
 Float32 supports normalization; binary vectors support Hamming distance.
 
-Distances return `Double` (SQL REAL); Int8 L1 is cast to REAL. `length()` returns `Int`.
-Iteration returns `VecEachOf<Float>` (also called `VecEach`), `VecEachOf<Int8>`, or `VecEachOf<Bool>`.
+Float32 distances and cosine return `Double?`; Int8 L1/L2 and Hamming return `Double`.
+`length()` returns `Int`.
+Iteration returns `VecEachOf<Float?>` (also called `VecEach`), `VecEachOf<Int8>`, or `VecEachOf<Bool>`.
 
 Construct Float32 from JSON; `as:` selects a fixed-size result:
 
@@ -109,6 +110,30 @@ variable-size results. `Vec.bit` tags packed bits; `quantizeBinary()` converts n
 
 `Encoding` capability protocols identify supported layouts and operations for both fixed and
 variable-size values. `SQLiteVecNumericEncoding` covers Float32 and signed Int8.
+
+### Missing vectors and undefined scores
+
+Float32 distances and cosine can return `nil` for undefined numerical results, even with nonnull
+vectors. Filter scores before ranking; ascending SQL order otherwise puts NULL first:
+
+```swift
+let ranked = Embedding
+  .where { $0.embedding.distanceCosine(to: vector).isNot(nil) }
+  .order { $0.embedding.distanceCosine(to: vector) }
+  .select { ($0.label, $0.embedding.distanceCosine(to: vector)) }
+// SELECT "Embeddings"."label", vec_distance_cosine("Embeddings"."embedding", ?)
+// FROM "Embeddings"
+// WHERE (vec_distance_cosine("Embeddings"."embedding", ?) IS NOT NULL)
+// ORDER BY vec_distance_cosine("Embeddings"."embedding", ?)
+
+let score = Vec.distanceCosine(vector, to: vector).ifnull(2)
+// ifnull(vec_distance_cosine(?, ?), ?)
+```
+
+Choose fallbacks deliberately: replacing a missing distance with zero would rank it as an exact match.
+`vec0.distance` is also nil outside KNN; `k` is a query constraint and returns NULL when selected.
+Float32 iteration yields `(Int, Float?)`: keep nil positions to preserve dimensions. Fetch the vector
+BLOB when NaN bit patterns matter.
 
 ### Signed Int8 vectors
 
@@ -234,6 +259,26 @@ let prepared = query.query.prepare { "?\($0)" }
 
 Distance ordering searches candidate rows exactly; narrow them with `where`. Experimental sparse
 indexing uses separate DDL.
+
+### Missing vectors and undefined scores
+
+Floating L2/dot, cosine, and Jaccard return `Double?`; undefined results can become SQL NULL.
+Quantized8 L2/dot and binary dot/Hamming retain `Double` for nonoptional inputs.
+
+Nullable inputs propagate NULL without calling the native function. This also applies to JSON
+constructors, conversions, extraction, concatenation, and slicing:
+
+```swift
+let candidate: [Float].VectorBytesRepresentation? = nil
+let score = TursoVec.distanceCosine(Document.columns.embedding, to: candidate)
+// CASE WHEN (?) IS NULL THEN NULL ELSE vector_distance_cos("documents"."embedding", ?) END
+let fallback = score.ifnull(2)
+// ifnull(CASE WHEN (?) IS NULL THEN NULL ELSE vector_distance_cos("documents"."embedding", ?) END, ?)
+```
+
+Filter scores with `.isNot(nil)` before ranking, or choose a fallback for your metric. Ascending SQL
+order puts NULL first. Missing inputs and undefined scores both decode as nil; inspect the input
+separately when that distinction matters. Malformed bytes and mismatched dimensions still throw.
 
 ### Formats and functions
 

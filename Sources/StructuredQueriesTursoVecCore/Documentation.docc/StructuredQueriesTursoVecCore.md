@@ -262,7 +262,7 @@ and ``TursoSparseFloat32Encoding``. ``TursoBinaryEncoding`` refines the base and
 func numericDistance<L: VectorBytesRepresentable & QueryBindable,
   R: VectorBytesRepresentable & QueryBindable>(
   _ left: some QueryExpression<L>, to right: some QueryExpression<R>
-) -> some QueryExpression<Double>
+) -> some QueryExpression<Double?>
 where L.Encoding: TursoNumericVectorEncoding, L.Encoding == R.Encoding,
   L.Dimensions == R.Dimensions {
   TursoVec.distanceL2(left, to: right)
@@ -318,3 +318,23 @@ include a default in code switches. Malformed bytes throw `VectorDecodingError`.
 
 See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
 and [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).
+
+### Missing vectors and undefined scores
+
+Floating L2/dot, cosine, and Jaccard return `Double?`; undefined results can become SQL NULL.
+Quantized8 L2/dot and binary dot/Hamming retain `Double` for nonoptional inputs.
+
+Nullable inputs propagate NULL without calling the native function. This also applies to JSON
+constructors, conversions, extraction, concatenation, and slicing:
+
+```swift
+let candidate: [Float].VectorBytesRepresentation? = nil
+let score = TursoVec.distanceCosine(Document.columns.embedding, to: candidate)
+// CASE WHEN (?) IS NULL THEN NULL ELSE vector_distance_cos("documents"."embedding", ?) END
+let fallback = score.ifnull(2)
+// ifnull(CASE WHEN (?) IS NULL THEN NULL ELSE vector_distance_cos("documents"."embedding", ?) END, ?)
+```
+
+Filter scores with `.isNot(nil)` before ranking, or choose a fallback for your metric. Ascending SQL
+order puts NULL first. Missing inputs and undefined scores both decode as nil; inspect the input
+separately when that distinction matters. Malformed bytes and mismatched dimensions still throw.

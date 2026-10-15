@@ -20,6 +20,10 @@ import StructuredQueriesCore
 /// // SELECT "Embeddings"."label", vec_length("Embeddings"."embedding")
 /// // FROM "Embeddings"
 /// ```
+/// Float32 distances and cosine may yield SQL NULL for undefined numerical results. Int8 L1/L2
+/// and Hamming are nonnullable. Nullable scalar-function inputs propagate NULL through a CASE
+/// expression; malformed vectors and dimension mismatches still produce errors.
+/// Use `.isNot(nil)` to filter scores, or `.ifnull(...)` with a deliberate fallback.
 public enum Vec {
   /// Matches a query vector expression against a vec0 column with the same encoding.
   ///
@@ -313,7 +317,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecNumericEncoding, W.Encoding == V.Encoding,
     V.Dimensions == W.Dimensions
@@ -365,7 +369,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecNumericEncoding, W.Encoding == V.Encoding,
     V.Dimensions == Void
@@ -417,7 +421,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecNumericEncoding, W.Encoding == V.Encoding,
     W.Dimensions == Void
@@ -457,7 +461,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecFloat32Encoding, W.Encoding == V.Encoding,
     V.Dimensions == W.Dimensions
@@ -490,7 +494,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecFloat32Encoding, W.Encoding == V.Encoding,
     V.Dimensions == Void
@@ -523,7 +527,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecFloat32Encoding, W.Encoding == V.Encoding,
     W.Dimensions == Void
@@ -579,7 +583,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecNumericEncoding, W.Encoding == V.Encoding,
     V.Dimensions == W.Dimensions
@@ -632,7 +636,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecNumericEncoding, W.Encoding == V.Encoding,
     V.Dimensions == Void
@@ -685,7 +689,7 @@ public enum Vec {
   >(
     _ expression: some QueryExpression<V>,
     to vector: some QueryExpression<W>
-  ) -> some QueryExpression<Double>
+  ) -> some QueryExpression<Double?>
   where
     V.Encoding: SQLiteVecNumericEncoding, W.Encoding == V.Encoding,
     W.Dimensions == Void
@@ -3509,5 +3513,83 @@ public enum Vec {
   ) -> some QueryExpression<V.VectorBytesRepresentation>
   where V.Encoding: SQLiteVecBinaryEncoding {
     Self.bit(expression, as: V.VectorBytesRepresentation.self)
+  }
+}
+
+// MARK: - Signed Int8 L2
+
+extension Vec {
+  /// Returns the nonnullable L2 distance between signed Int8 vectors.
+  ///
+  /// ```swift
+  /// let left: [Int8].Int8BytesRepresentation = [3, 4]
+  /// let right: [Int8].Int8BytesRepresentation = [0, 0]
+  /// let distance = Vec.distanceL2(left, to: right)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  public static func distanceL2<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding: SQLiteVecInt8Encoding, W.Encoding == V.Encoding,
+    V.Dimensions == W.Dimensions
+  {
+    SQLQueryExpression(
+      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+    )
+  }
+
+  /// Returns the nonnullable L2 distance between signed Int8 vectors.
+  ///
+  /// ```swift
+  /// let left: [Int8].Int8BytesRepresentation = [3, 4]
+  /// let right: [Int8].Int8BytesRepresentation = [0, 0]
+  /// let distance = Vec.distanceL2(left, to: right)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding: SQLiteVecInt8Encoding, W.Encoding == V.Encoding,
+    V.Dimensions == Void
+  {
+    SQLQueryExpression(
+      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+    )
+  }
+
+  /// Returns the nonnullable L2 distance between signed Int8 vectors.
+  ///
+  /// ```swift
+  /// let left: [Int8].Int8BytesRepresentation = [3, 4]
+  /// let right: [Int8].Int8BytesRepresentation = [0, 0]
+  /// let distance = Vec.distanceL2(left, to: right)
+  /// // vec_distance_l2(vec_int8(?), vec_int8(?))
+  /// ```
+  @_disfavoredOverload
+  public static func distanceL2<
+    V: VectorBytesRepresentable,
+    W: VectorBytesRepresentable
+  >(
+    _ expression: some QueryExpression<V>,
+    to vector: some QueryExpression<W>
+  ) -> some QueryExpression<Double>
+  where
+    V.Encoding: SQLiteVecInt8Encoding, W.Encoding == V.Encoding,
+    W.Dimensions == Void
+  {
+    SQLQueryExpression(
+      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+    )
   }
 }

@@ -73,8 +73,10 @@ struct `Vec Int8 Query tests` {
       expectNoDifference(rows.map(\.2), [0, 1])
       expectNoDifference(scalarRows.map(\.0), rows.map(\.2))
       expectNoDifference(scalarRows.map(\.1), [0, 1])
-      #expect(abs(scalarRows[0].2) < 0.000001)
-      #expect(scalarRows[1].2 > scalarRows[0].2)
+      let cosine = try #require(scalarRows[0].2)
+      #expect(abs(cosine) < 0.000001)
+      let nextCosine = try #require(scalarRows[1].2)
+      #expect(nextCosine > cosine)
     }
   }
 

@@ -34,7 +34,7 @@ public protocol SQLiteVecVectorEncoding: VectorBytesRepresentable, QueryBindable
 /// ```swift
 /// func numericDistance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(
 ///   _ left: some QueryExpression<L>, to right: some QueryExpression<R>
-/// ) -> some QueryExpression<Double>
+/// ) -> some QueryExpression<Double?>
 /// where L.Encoding: SQLiteVecNumericEncoding, L.Encoding == R.Encoding,
 ///   L.Dimensions == R.Dimensions {
 ///   Vec.distanceL2(left, to: right)
