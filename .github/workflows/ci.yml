@@ -30,7 +30,16 @@ jobs:
       - name: "Install SQLite"
         run: |
           apt-get update
-          apt-get install -y libsqlite3-dev
+          apt-get install -y libsqlite3-dev python3 qemu-user
+      - name: "Verify Vendored SQLiteVec Sources"
+        run: python3 Scripts/update-sqlite-vec.py --check
+      - name: "Test AVX Runtime Dispatch"
+        run: |
+          clang -O2 -DSQLITE_CORE -DSQLITE_VEC_ENABLE_AVX=1 \
+            Tests/CSQLiteVecTests/AVXRuntimeTests.c -lsqlite3 -lm \
+            -o "$RUNNER_TEMP/sqlite-vec-avx-test"
+          qemu-x86_64 -cpu Nehalem "$RUNNER_TEMP/sqlite-vec-avx-test" scalar
+          qemu-x86_64 -cpu Haswell "$RUNNER_TEMP/sqlite-vec-avx-test" avx
       - name: "Test Swift Package on Linux"
         run: swift test
       - name: "Test Without SQLiteVecAVX on Linux"

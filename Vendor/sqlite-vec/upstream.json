@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/asg017/sqlite-vec",
+  "revision": "e9f598abfa0c06b328d8fe5da9c3760cce74be10",
+  "headerDate": "$2026-03-31T22:00:50Z+0000",
+  "sha256": {
+    "sqlite-vec.c": "ba081a47fa02eadc3cf6b16c314b695b84081269349aac722b4efa338fe8fd85",
+    "sqlite-vec.h.tmpl": "259d7a7f7f4b2ada97def925c4d249856a62f073514dbe4aef838ecb284a2a25",
+    "VERSION": "e358d84552808a5c0bd6679d690c283b938ebe15c2bd843c898681d093213107",
+    "LICENSE-MIT": "6ce72bbe12d975bd5286e5ab0a064c069693300c47bccbc57bec18485f1621ea"
+  }
+}

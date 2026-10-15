@@ -1,1 +1,7 @@
-Sources/CSQLiteVec/** linguist-vendored
+# Preserve upstream bytes, including whitespace and line endings.
+Vendor/sqlite-vec/sqlite-vec.* -text linguist-vendored -whitespace
+Vendor/sqlite-vec/LICENSE-MIT -text linguist-vendored
+Vendor/sqlite-vec/VERSION -text linguist-vendored
+Sources/CSQLiteVec/sqlite-vec.c -text linguist-generated -whitespace
+Sources/CSQLiteVec/sqlite-vec.h -text linguist-generated
+Patches/sqlite-vec/*.patch text eol=lf

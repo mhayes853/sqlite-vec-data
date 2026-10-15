@@ -397,7 +397,7 @@ static f32 distance_l2_sqr_float(const void *a, const void *b, const void *d) {
   }
 #endif
 #ifdef SQLITE_VEC_ENABLE_AVX
-  if (((*(const size_t *)d) % 16 == 0)) {
+  if (((*(const size_t *)d) % 16 == 0) && sqlite_vec_cpu_supports_avx()) {
     return l2_sqr_float_avx(a, b, d);
   }
 #endif
@@ -5401,7 +5401,7 @@ typedef enum  {
   VEC0_IDXSTR_KIND_KNN_K = '}',
   VEC0_IDXSTR_KIND_KNN_ROWID_IN = '[',
   // argv[i] is a constraint on a PARTITON KEY column in a KNN query
-  //
+  // 
   VEC0_IDXSTR_KIND_KNN_PARTITON_CONSTRAINT = ']',
 
   // argv[i] is a constraint on the distance column in a KNN query
@@ -5421,19 +5421,19 @@ typedef enum  {
 
   // Equality constraint on a PARTITON KEY column, ex `user_id = 123`
   VEC0_PARTITION_OPERATOR_EQ = 'a',
-
+  
   // "Greater than" constraint on a PARTITON KEY column, ex `year > 2024`
   VEC0_PARTITION_OPERATOR_GT = 'b',
-
+  
   // "Less than or equal to" constraint on a PARTITON KEY column, ex `year <= 2024`
   VEC0_PARTITION_OPERATOR_LE = 'c',
 
   // "Less than" constraint on a PARTITON KEY column, ex `year < 2024`
   VEC0_PARTITION_OPERATOR_LT = 'd',
-
+  
   // "Greater than or equal to" constraint on a PARTITON KEY column, ex `year >= 2024`
   VEC0_PARTITION_OPERATOR_GE = 'e',
-
+  
   // "Not equal to" constraint on a PARTITON KEY column, ex `year != 2024`
   VEC0_PARTITION_OPERATOR_NE = 'f',
 } vec0_partition_operator;
@@ -5803,7 +5803,7 @@ static int vec0BestIndex(sqlite3_vtab *pVTab, sqlite3_index_info *pIdxInfo) {
           // IMP TODO
           rc = SQLITE_ERROR;
           vtab_set_error(
-            pVTab,
+            pVTab, 
             "Illegal WHERE constraint on distance column in a KNN query. "
             "Only one of GT, GE, LT, LE constraints are allowed."
           );

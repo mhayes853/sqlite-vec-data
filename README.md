@@ -407,9 +407,8 @@ Use per-connection preparation on Apple platforms or for isolated registration.
 | `SQLiteVecDataTestSupport` | Cross-platform suite trait; non-Apple auto registration |
 | `CSQLiteVec` | Bundled sqlite-vec C extension |
 
-`SQLiteVecNEON` and `SQLiteVecAVX` are enabled by default for ARM and x86, respectively. AVX
-requires an AVX-capable CPU; for older x86 CPUs, select only `SQLiteVecNEON` and
-`SQLiteVecStaticAPI` traits.
+`SQLiteVecNEON` and `SQLiteVecAVX` are enabled by default. ARM uses NEON; x86 uses AVX when
+available and falls back to scalar code otherwise.
 
 The default `SQLiteVecStaticAPI` calls linked SQLite functions and enables non-Apple per-connection setup.
 Disable it for custom SQLite builds that require the extension API table; use
@@ -422,6 +421,7 @@ Disable it for custom SQLite builds that require the extension API table; use
 - [Turso query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/)
 - [Shared vector types](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
 - [Migration guide](Sources/SQLiteVecData/Documentation.docc/VectorMigration.md)
+- [Maintaining sqlite-vec](Vendor/sqlite-vec/README.md)
 
 ## Installation
 
