@@ -414,6 +414,10 @@ The default `SQLiteVecStaticAPI` calls linked SQLite functions and enables non-A
 Disable it for custom SQLite builds that require the extension API table; use
 `registerSQLiteVecAutoExtension()` on non-Apple platforms in that configuration.
 
+`CSQLiteVec` bundles [sqlite-vec v0.1.9](https://github.com/asg017/sqlite-vec/tree/e9f598abfa0c06b328d8fe5da9c3760cce74be10).
+Its build plugin verifies `Sources/CSQLiteVec/SHA256SUMS` and applies `Patches/sqlite-vec/*.patch`
+to a build-directory copy.
+
 ## Documentation
 
 - [SQLiteVecData](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/sqlitevecdata/)
@@ -421,7 +425,6 @@ Disable it for custom SQLite builds that require the extension API table; use
 - [Turso query helpers](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/)
 - [Shared vector types](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
 - [Migration guide](Sources/SQLiteVecData/Documentation.docc/VectorMigration.md)
-- [Maintaining sqlite-vec](Documentation/SQLiteVecMaintenance.md)
 
 ## Installation
 
