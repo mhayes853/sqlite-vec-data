@@ -4,4 +4,6 @@ Vendor/sqlite-vec/LICENSE-MIT -text linguist-vendored
 Vendor/sqlite-vec/VERSION -text linguist-vendored
 Sources/CSQLiteVec/sqlite-vec.c -text linguist-generated -whitespace
 Sources/CSQLiteVec/sqlite-vec.h -text linguist-generated
-Patches/sqlite-vec/*.patch text eol=lf
+# Blank context lines in unified diffs contain a required leading space.
+# The generator checks whitespace in applied changes with git apply.
+Patches/sqlite-vec/*.patch text eol=lf -whitespace
