@@ -400,9 +400,10 @@ SQLiteVec Int8 L1/L2, Turso quantized8 L2/dot, and binary dot/Hamming retain `Do
 `vec0.distance` is nullable outside KNN or for undefined scores; `k` returns NULL when selected.
 Float32 iteration is now `VecEachOf<Float?>`; preserve nil positions instead of dropping components.
 
-Scalar helpers accept nullable vectors and JSON and propagate NULL with CASE. Existing nonoptional
-calls retain their SQL. Use `.isNot(nil)` to exclude missing scores or `.ifnull(...)` for an explicit
-fallback; ascending SQL ordering places NULL first.
+Use `whenPresent` to call scalar helpers with nullable vectors or JSON. It guards missing inputs
+with CASE and preserves already-nullable results. Pass a second nullable operand as
+`left.whenPresent(right) { left, right in ... }`. Existing nonoptional calls retain their SQL.
+Filter scores with `.isNot(nil)` or choose an `.ifnull(...)` fallback; ascending SQL puts NULL first.
 
 For nullable columns, wrap the strategy in Optional:
 
@@ -412,7 +413,7 @@ struct OptionalDocument {
   @Column(as: [Float].VectorBytesRepresentation?.self)
   var embedding: [Float]?
 }
-let lengths = OptionalDocument.select { Vec.length($0.embedding) }
+let lengths = OptionalDocument.select { $0.embedding.whenPresent { Vec.length($0) } }
 // SELECT CASE WHEN ("optional_documents"."embedding") IS NULL THEN NULL ELSE vec_length("optional_documents"."embedding") END
 // FROM "optional_documents"
 ```

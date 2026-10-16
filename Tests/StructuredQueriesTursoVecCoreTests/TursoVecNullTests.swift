@@ -14,10 +14,10 @@ struct `TursoVec NULL tests` {
     let optionalLeft = SQLQueryExpression<[Float].VectorBytesRepresentation?>("left_vector")
     let optionalRight = SQLQueryExpression<[Float].VectorBytesRepresentation?>("right_vector")
     let expressions = [
-      TursoVec.distanceCosine(optionalLeft, to: right).queryFragment,
-      TursoVec.distanceL2(left, to: optionalRight).queryFragment,
-      TursoVec.distanceDot(optionalLeft, to: optionalRight).queryFragment,
-      TursoVec.distanceJaccard(optionalLeft, to: optionalRight).queryFragment
+      optionalLeft.whenPresent { TursoVec.distanceCosine($0, to: right) }.queryFragment,
+      optionalRight.whenPresent { TursoVec.distanceL2(left, to: $0) }.queryFragment,
+      optionalLeft.whenPresent(optionalRight) { TursoVec.distanceDot($0, to: $1) }.queryFragment,
+      optionalLeft.whenPresent(optionalRight) { TursoVec.distanceJaccard($0, to: $1) }.queryFragment
     ]
     expectNoDifference(
       expressions.map { $0.prepare { "?\($0)" }.sql },
@@ -48,10 +48,11 @@ struct `TursoVec NULL tests` {
     requireNullable(TursoVec.distanceCosine(codes, to: codes))
     requireNullable(TursoVec.distanceJaccard(bits, to: bits))
     let missing: Quantized8Vector? = nil
-    requireNullable(TursoVec.distanceL2(missing, to: codes))
-    requireNullable(TursoVec.distanceDot(codes, to: missing))
+    requireNullable(missing.whenPresent { TursoVec.distanceL2($0, to: codes) })
+    requireNullable(missing.whenPresent { TursoVec.distanceDot(codes, to: $0) })
     expectNoDifference(
-      TursoVec.distanceL2(missing, to: codes).queryFragment.prepare { "?\($0)" }.sql,
+      missing.whenPresent { TursoVec.distanceL2($0, to: codes) }.queryFragment.prepare { "?\($0)" }
+        .sql,
       "CASE WHEN (NULL) IS NULL THEN NULL ELSE vector_distance_l2(NULL, ?1) END"
     )
   }
@@ -61,9 +62,10 @@ struct `TursoVec NULL tests` {
   func `Nullable Conversion Chains Preserve Dimensions And Bindings`() {
     let values = EmbeddingVector<3>([1, 2, 3])
     let source: EmbeddingVector<3>? = values
-    let converted = TursoVec.vector64(source)
+    let converted = source.whenPresent { TursoVec.vector64($0) }
     requireThreeNullableDimensions(converted)
-    let extracted = TursoVec.extract(converted).queryFragment.prepare { "?\($0)" }
+    let extracted = converted.whenPresent { TursoVec.extract($0) }.queryFragment
+      .prepare { "?\($0)" }
     expectNoDifference(
       extracted.sql,
       "CASE WHEN (CASE WHEN (?1) IS NULL THEN NULL ELSE vector64(?2) END) IS NULL THEN NULL ELSE vector_extract(CASE WHEN (?3) IS NULL THEN NULL ELSE vector64(?4) END) END"
@@ -71,16 +73,17 @@ struct `TursoVec NULL tests` {
     expectNoDifference(extracted.bindings, Array(repeating: values.queryBinding, count: 4))
     let column = SQLQueryExpression<[Double].TursoFloat64BytesRepresentation?>("embedding")
     expectNoDifference(
-      TursoVec.slice(column, from: 0, to: 2).queryFragment.prepare { "?\($0)" }.sql,
+      column.whenPresent { TursoVec.slice($0, from: 0, to: 2) }.queryFragment.prepare { "?\($0)" }
+        .sql,
       "CASE WHEN (embedding) IS NULL THEN NULL ELSE vector_slice(embedding, ?1, ?2) END"
     )
     expectNoDifference(
-      TursoVec.concat(column, column).queryFragment.prepare { "?\($0)" }.sql,
+      column.whenPresent(column) { TursoVec.concat($0, $1) }.queryFragment.prepare { "?\($0)" }.sql,
       "CASE WHEN (embedding) IS NULL OR (embedding) IS NULL THEN NULL ELSE vector_concat(embedding, embedding) END"
     )
     let json = SQLQueryExpression<String?>("candidate_json")
     expectNoDifference(
-      TursoVec.vector32Sparse(json).queryFragment.prepare { "?\($0)" }.sql,
+      json.whenPresent { TursoVec.vector32Sparse($0) }.queryFragment.prepare { "?\($0)" }.sql,
       "CASE WHEN (candidate_json) IS NULL THEN NULL ELSE vector32_sparse(candidate_json) END"
     )
   }

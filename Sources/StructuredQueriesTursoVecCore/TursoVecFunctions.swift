@@ -7,7 +7,7 @@ import StructuredQueriesCore
 /// The database checks dimensions and value-dependent restrictions.
 ///
 /// Floating distances, cosine, and Jaccard may yield SQL NULL. Quantized8 L2/dot and binary
-/// dot/Hamming are nonnullable for valid vectors. Nullable inputs propagate NULL through CASE;
+/// dot/Hamming are nonnullable for valid vectors. Use `whenPresent` for nullable inputs;
 /// malformed vectors and dimension mismatches still produce errors. Filter scores with
 /// `.isNot(nil)` or choose a deliberate `.ifnull(...)` fallback.
 ///
@@ -1155,10 +1155,7 @@ public enum TursoVec {
   /// Both operands must use the same supported Turso encoding.
   /// The database checks dimensions and value-dependent restrictions.
   ///
-  /// Floating distances, cosine, and Jaccard may yield SQL NULL. Quantized8 L2/dot and binary
-  /// dot/Hamming are nonnullable for valid vectors. Nullable inputs propagate NULL through CASE;
-  /// malformed vectors and dimension mismatches still produce errors. Filter scores with
-  /// `.isNot(nil)` or choose a deliberate `.ifnull(...)` fallback.
+  /// Undefined numerical results may return SQL NULL. Use `whenPresent` for nullable inputs.
   ///
   /// ```swift
   /// @Table("documents")
@@ -1618,10 +1615,7 @@ public enum TursoVec {
   /// Both operands must use the same supported Turso encoding.
   /// The database checks dimensions and value-dependent restrictions.
   ///
-  /// Floating distances, cosine, and Jaccard may yield SQL NULL. Quantized8 L2/dot and binary
-  /// dot/Hamming are nonnullable for valid vectors. Nullable inputs propagate NULL through CASE;
-  /// malformed vectors and dimension mismatches still produce errors. Filter scores with
-  /// `.isNot(nil)` or choose a deliberate `.ifnull(...)` fallback.
+  /// Undefined numerical results may return SQL NULL. Use `whenPresent` for nullable inputs.
   ///
   /// ```swift
   /// @Table("documents")
@@ -1805,10 +1799,7 @@ public enum TursoVec {
   /// Both operands must use the same supported Turso encoding.
   /// The database checks dimensions and value-dependent restrictions.
   ///
-  /// Floating distances, cosine, and Jaccard may yield SQL NULL. Quantized8 L2/dot and binary
-  /// dot/Hamming are nonnullable for valid vectors. Nullable inputs propagate NULL through CASE;
-  /// malformed vectors and dimension mismatches still produce errors. Filter scores with
-  /// `.isNot(nil)` or choose a deliberate `.ifnull(...)` fallback.
+  /// Undefined numerical results may return SQL NULL. Use `whenPresent` for nullable inputs.
   ///
   /// ```swift
   /// @Table("documents")

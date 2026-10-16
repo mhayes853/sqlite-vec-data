@@ -131,6 +131,14 @@ let score = Vec.distanceCosine(vector, to: vector).ifnull(2)
 ```
 
 Choose fallbacks deliberately: replacing a missing distance with zero would rank it as an exact match.
+Use `whenPresent` for nullable inputs; its closure receives a nonoptional expression:
+
+```swift
+let candidate: [Float].VectorBytesRepresentation? = [0.1, 0.2, 0.3]
+let normalized = candidate.whenPresent { Vec.normalize($0) }
+// CASE WHEN (?) IS NULL THEN NULL ELSE vec_normalize(?) END
+```
+
 `vec0.distance` is also nil outside KNN; `k` is a query constraint and returns NULL when selected.
 Float32 iteration yields `(Int, Float?)`: keep nil positions to preserve dimensions. Fetch the vector
 BLOB when NaN bit patterns matter.
@@ -265,12 +273,14 @@ indexing uses separate DDL.
 Floating L2/dot, cosine, and Jaccard return `Double?`; undefined results can become SQL NULL.
 Quantized8 L2/dot and binary dot/Hamming retain `Double` for nonoptional inputs.
 
-Nullable inputs propagate NULL without calling the native function. This also applies to JSON
-constructors, conversions, extraction, concatenation, and slicing:
+Use `whenPresent` with nullable inputs. Its CASE guard skips the native function for missing
+values, and its closure retains encoding and dimension checks:
 
 ```swift
-let candidate: [Float].VectorBytesRepresentation? = nil
-let score = TursoVec.distanceCosine(Document.columns.embedding, to: candidate)
+let candidate: [Float].VectorBytesRepresentation? = [0.2, 0.4, 0.6, 0.8]
+let score = candidate.whenPresent {
+  TursoVec.distanceCosine(Document.columns.embedding, to: $0)
+}
 // CASE WHEN (?) IS NULL THEN NULL ELSE vector_distance_cos("documents"."embedding", ?) END
 let fallback = score.ifnull(2)
 // ifnull(CASE WHEN (?) IS NULL THEN NULL ELSE vector_distance_cos("documents"."embedding", ?) END, ?)

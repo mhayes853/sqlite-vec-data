@@ -97,6 +97,32 @@ let validated = try EmbeddingVector<3>(validating: values)
 counts. Failures throw ``VectorDecodingError``. Queries bind these bytes as BLOBs and decode
 through the same initializer.
 
+### Nullable query expressions
+
+`whenPresent` works with any nullable query value. Its closure receives nonoptional expressions;
+a CASE guard returns NULL if an input is missing. Nonoptional and already-optional results both
+produce one optional layer. Use it with strings, numbers, JSON constructors, or vector operations:
+
+```swift
+@Table("people")
+struct Person {
+  var firstName: String?
+  var lastName: String?
+}
+let names = Person.select {
+  $0.firstName.whenPresent($0.lastName) { first, last in
+    SQLQueryExpression<String>("(\(first) || ' ' || \(last))")
+  }
+}
+// SELECT CASE WHEN ("people"."firstName") IS NULL OR ("people"."lastName") IS NULL THEN NULL ELSE ("people"."firstName" || ' ' || "people"."lastName") END
+// FROM "people"
+```
+
+For one nullable input, use `expression.whenPresent { value in ... }`. Capture nonoptional operands
+in the closure. Keep related operations inside one closure to avoid redundant guards. The closure
+builds SQL; the database evaluates its result only for present inputs. Encoding and fixed-dimension
+checks remain active, and database or decoding errors still surface.
+
 ### Codecs and encoding identity
 
 ``VectorScalar`` supplies Float16, Float, and Double bit patterns through an unsigned `BitPattern`,

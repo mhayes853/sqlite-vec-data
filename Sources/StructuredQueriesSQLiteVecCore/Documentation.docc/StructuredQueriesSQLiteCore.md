@@ -310,6 +310,14 @@ let score = Vec.distanceCosine(vector, to: vector).ifnull(2)
 ```
 
 Choose fallbacks deliberately: replacing a missing distance with zero would rank it as an exact match.
+Use `whenPresent` for nullable inputs; its closure receives a nonoptional expression:
+
+```swift
+let candidate: [Float].VectorBytesRepresentation? = [0.1, 0.2, 0.3]
+let normalized = candidate.whenPresent { Vec.normalize($0) }
+// CASE WHEN (?) IS NULL THEN NULL ELSE vec_normalize(?) END
+```
+
 `vec0.distance` is also nil outside KNN; `k` is a query constraint and returns NULL when selected.
 Float32 iteration yields `(Int, Float?)`: keep nil positions to preserve dimensions. Fetch the vector
 BLOB when NaN bit patterns matter.

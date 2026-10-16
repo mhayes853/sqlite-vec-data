@@ -21,8 +21,8 @@ import StructuredQueriesCore
 /// // FROM "Embeddings"
 /// ```
 /// Float32 distances and cosine may yield SQL NULL for undefined numerical results. Int8 L1/L2
-/// and Hamming are nonnullable. Nullable scalar-function inputs propagate NULL through a CASE
-/// expression; malformed vectors and dimension mismatches still produce errors.
+/// and Hamming are nonnullable. Use `whenPresent` for nullable inputs; its CASE guard skips native
+/// functions for missing values. Malformed vectors and dimension mismatches still produce errors.
 /// Use `.isNot(nil)` to filter scores, or `.ifnull(...)` with a deliberate fallback.
 public enum Vec {
   /// Matches a query vector expression against a vec0 column with the same encoding.
