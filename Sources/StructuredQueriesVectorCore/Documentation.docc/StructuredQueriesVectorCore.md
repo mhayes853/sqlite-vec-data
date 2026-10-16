@@ -111,10 +111,10 @@ struct Person {
 }
 let names = Person.select {
   $0.firstName.whenPresent($0.lastName) { first, last in
-    SQLQueryExpression<String>("(\(first) || ' ' || \(last))")
+    first + " " + last
   }
 }
-// SELECT CASE WHEN ("people"."firstName") IS NULL OR ("people"."lastName") IS NULL THEN NULL ELSE ("people"."firstName" || ' ' || "people"."lastName") END
+// SELECT CASE WHEN ("people"."firstName") IS NULL OR ("people"."lastName") IS NULL THEN NULL ELSE (("people"."firstName") || (?)) || ("people"."lastName") END
 // FROM "people"
 ```
 

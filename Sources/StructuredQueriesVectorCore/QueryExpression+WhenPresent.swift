@@ -14,7 +14,7 @@ extension QueryExpression {
   ///   var title: String?
   /// }
   /// let query = Document.select {
-  ///   $0.title.whenPresent { title in SQLQueryExpression<Int>("length(\(title))") }
+  ///   $0.title.whenPresent { $0.length() }
   /// }
   /// // SELECT CASE WHEN ("documents"."title") IS NULL THEN NULL ELSE length("documents"."title") END
   /// // FROM "documents"
@@ -43,11 +43,9 @@ extension QueryExpression {
   ///   var title: String?
   /// }
   /// let query = Document.select {
-  ///   $0.title.whenPresent { title in
-  ///     SQLQueryExpression<Int?>("nullif(length(\(title)), 0)")
-  ///   }
+  ///   $0.title.whenPresent { $0.length().nullif(0) }
   /// }
-  /// // SELECT CASE WHEN ("documents"."title") IS NULL THEN NULL ELSE nullif(length("documents"."title"), 0) END
+  /// // SELECT CASE WHEN ("documents"."title") IS NULL THEN NULL ELSE nullif(length("documents"."title"), ?) END
   /// // FROM "documents"
   /// ```
   @inlinable
@@ -72,10 +70,10 @@ extension QueryExpression {
   /// }
   /// let query = Person.select {
   ///   $0.firstName.whenPresent($0.lastName) { first, last in
-  ///     SQLQueryExpression<String>("(\(first) || ' ' || \(last))")
+  ///     first + " " + last
   ///   }
   /// }
-  /// // SELECT CASE WHEN ("people"."firstName") IS NULL OR ("people"."lastName") IS NULL THEN NULL ELSE ("people"."firstName" || ' ' || "people"."lastName") END
+  /// // SELECT CASE WHEN ("people"."firstName") IS NULL OR ("people"."lastName") IS NULL THEN NULL ELSE (("people"."firstName") || (?)) || ("people"."lastName") END
   /// // FROM "people"
   /// ```
   @inlinable
@@ -96,18 +94,20 @@ extension QueryExpression {
 
   /// Transforms two nullable expressions, preserving an already-nullable result.
   ///
+  /// Use `#sql` when an operation needs an explicit result type, such as nullable division.
+  ///
   /// ```swift
   /// @Table("ratios")
   /// struct Ratio {
-  ///   var numerator: Int?
-  ///   var denominator: Int?
+  ///   var numerator: Double?
+  ///   var denominator: Double?
   /// }
   /// let query = Ratio.select {
   ///   $0.numerator.whenPresent($0.denominator) { numerator, denominator in
-  ///     SQLQueryExpression<Double?>("(CAST(\(numerator) AS REAL) / nullif(\(denominator), 0))")
+  ///     #sql("\(numerator) / \(denominator.nullif(0))", as: Double?.self)
   ///   }
   /// }
-  /// // SELECT CASE WHEN ("ratios"."numerator") IS NULL OR ("ratios"."denominator") IS NULL THEN NULL ELSE (CAST("ratios"."numerator" AS REAL) / nullif("ratios"."denominator", 0)) END
+  /// // SELECT CASE WHEN ("ratios"."numerator") IS NULL OR ("ratios"."denominator") IS NULL THEN NULL ELSE "ratios"."numerator" / nullif("ratios"."denominator", ?) END
   /// // FROM "ratios"
   /// ```
   @inlinable

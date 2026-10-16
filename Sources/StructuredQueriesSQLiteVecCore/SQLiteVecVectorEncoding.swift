@@ -18,11 +18,13 @@ import StructuredQueriesVectorCore
 /// ```
 public protocol SQLiteVecVectorEncoding: VectorBytesRepresentable, QueryBindable {
   /// Attaches the encoding's SQLiteVec subtype to a vector expression.
+  /// Ordinary queries use `Vec` helpers; custom encodings use this fragment hook.
   ///
   /// ```swift
   /// let codes: [Int8].Int8BytesRepresentation = [1, -2, 3]
-  /// let expression = SQLQueryExpression<[Int8].Int8BytesRepresentation>(
-  ///   [Int8].Int8BytesRepresentation.sqliteVecExpression(codes.queryFragment)
+  /// let expression = #sql(
+  ///   "\([Int8].Int8BytesRepresentation.sqliteVecExpression(codes.queryFragment))",
+  ///   as: [Int8].Int8BytesRepresentation.self
   /// )
   /// // vec_int8(?)
   /// ```
@@ -97,8 +99,9 @@ extension SQLiteVecFloat32Encoding {
   ///
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-  /// let expression = SQLQueryExpression<[Float].VectorBytesRepresentation>(
-  ///   [Float].VectorBytesRepresentation.sqliteVecExpression(vector.queryFragment)
+  /// let expression = #sql(
+  ///   "\([Float].VectorBytesRepresentation.sqliteVecExpression(vector.queryFragment))",
+  ///   as: [Float].VectorBytesRepresentation.self
   /// )
   /// // ?
   /// ```
@@ -112,8 +115,9 @@ extension SQLiteVecInt8Encoding {
   ///
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3]
-  /// let expression = SQLQueryExpression<[Int8].Int8BytesRepresentation>(
-  ///   [Int8].Int8BytesRepresentation.sqliteVecExpression(vector.queryFragment)
+  /// let expression = #sql(
+  ///   "\([Int8].Int8BytesRepresentation.sqliteVecExpression(vector.queryFragment))",
+  ///   as: [Int8].Int8BytesRepresentation.self
   /// )
   /// // vec_int8(?)
   /// ```
@@ -127,8 +131,9 @@ extension SQLiteVecBinaryEncoding {
   ///
   /// ```swift
   /// let vector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
-  /// let expression = SQLQueryExpression<[Bool].PackedBitsRepresentation>(
-  ///   [Bool].PackedBitsRepresentation.sqliteVecExpression(vector.queryFragment)
+  /// let expression = #sql(
+  ///   "\([Bool].PackedBitsRepresentation.sqliteVecExpression(vector.queryFragment))",
+  ///   as: [Bool].PackedBitsRepresentation.self
   /// )
   /// // vec_bit(?)
   /// ```
