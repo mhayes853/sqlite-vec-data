@@ -94,7 +94,7 @@ extension QueryExpression {
 
   /// Transforms two nullable expressions, preserving an already-nullable result.
   ///
-  /// Use `#sql` when an operation needs an explicit result type, such as nullable division.
+  /// `Case` returns NULL when no branch matches, so a zero denominator produces nil.
   ///
   /// ```swift
   /// @Table("ratios")
@@ -104,10 +104,11 @@ extension QueryExpression {
   /// }
   /// let query = Ratio.select {
   ///   $0.numerator.whenPresent($0.denominator) { numerator, denominator in
-  ///     #sql("\(numerator) / \(denominator.nullif(0))", as: Double?.self)
+  ///     Case()
+  ///       .when(denominator.neq(0), then: numerator / denominator)
   ///   }
   /// }
-  /// // SELECT CASE WHEN ("ratios"."numerator") IS NULL OR ("ratios"."denominator") IS NULL THEN NULL ELSE "ratios"."numerator" / nullif("ratios"."denominator", ?) END
+  /// // SELECT CASE WHEN ("ratios"."numerator") IS NULL OR ("ratios"."denominator") IS NULL THEN NULL ELSE CASE WHEN ("ratios"."denominator") <> (?) THEN ("ratios"."numerator") / ("ratios"."denominator") END END
   /// // FROM "ratios"
   /// ```
   @inlinable

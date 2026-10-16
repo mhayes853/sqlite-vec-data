@@ -22,10 +22,7 @@ public protocol SQLiteVecVectorEncoding: VectorBytesRepresentable, QueryBindable
   ///
   /// ```swift
   /// let codes: [Int8].Int8BytesRepresentation = [1, -2, 3]
-  /// let expression = #sql(
-  ///   "\([Int8].Int8BytesRepresentation.sqliteVecExpression(codes.queryFragment))",
-  ///   as: [Int8].Int8BytesRepresentation.self
-  /// )
+  /// let fragment = [Int8].Int8BytesRepresentation.sqliteVecExpression(codes.queryFragment)
   /// // vec_int8(?)
   /// ```
   static func sqliteVecExpression(_ expression: QueryFragment) -> QueryFragment
@@ -99,10 +96,7 @@ extension SQLiteVecFloat32Encoding {
   ///
   /// ```swift
   /// let vector: [Float].VectorBytesRepresentation = [0.1, 0.2, 0.3]
-  /// let expression = #sql(
-  ///   "\([Float].VectorBytesRepresentation.sqliteVecExpression(vector.queryFragment))",
-  ///   as: [Float].VectorBytesRepresentation.self
-  /// )
+  /// let fragment = [Float].VectorBytesRepresentation.sqliteVecExpression(vector.queryFragment)
   /// // ?
   /// ```
   public static func sqliteVecExpression(_ expression: QueryFragment) -> QueryFragment {
@@ -115,10 +109,7 @@ extension SQLiteVecInt8Encoding {
   ///
   /// ```swift
   /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3]
-  /// let expression = #sql(
-  ///   "\([Int8].Int8BytesRepresentation.sqliteVecExpression(vector.queryFragment))",
-  ///   as: [Int8].Int8BytesRepresentation.self
-  /// )
+  /// let fragment = [Int8].Int8BytesRepresentation.sqliteVecExpression(vector.queryFragment)
   /// // vec_int8(?)
   /// ```
   public static func sqliteVecExpression(_ expression: QueryFragment) -> QueryFragment {
@@ -131,10 +122,7 @@ extension SQLiteVecBinaryEncoding {
   ///
   /// ```swift
   /// let vector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
-  /// let expression = #sql(
-  ///   "\([Bool].PackedBitsRepresentation.sqliteVecExpression(vector.queryFragment))",
-  ///   as: [Bool].PackedBitsRepresentation.self
-  /// )
+  /// let fragment = [Bool].PackedBitsRepresentation.sqliteVecExpression(vector.queryFragment)
   /// // vec_bit(?)
   /// ```
   public static func sqliteVecExpression(_ expression: QueryFragment) -> QueryFragment {
