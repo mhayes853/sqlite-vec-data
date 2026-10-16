@@ -1,1 +1,7 @@
-Sources/CSQLiteVec/** linguist-vendored
+# Preserve upstream bytes, including whitespace and line endings.
+Sources/CSQLiteVec/sqlite-vec.c -text linguist-vendored -whitespace
+Sources/CSQLiteVec/sqlite-vec.h -text linguist-vendored
+Sources/CSQLiteVec/LICENSE-MIT -text linguist-vendored
+# Blank context lines in unified diffs contain a required leading space.
+# The generator checks whitespace in applied changes with git apply.
+Patches/sqlite-vec/*.patch text eol=lf -whitespace

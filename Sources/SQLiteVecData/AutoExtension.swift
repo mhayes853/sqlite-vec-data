@@ -2,40 +2,49 @@ import CSQLiteVec
 import GRDB
 import GRDBSQLite
 
+/// Registers sqlite-vec as a process-global SQLite auto extension.
+///
+/// On Apple platforms, prepare each connection with `Configuration.prepareSQLiteVecExtension()`.
+///
+/// ```swift
+/// #if !canImport(Darwin)
+///   try registerSQLiteVecAutoExtension()
+///   let database = try DatabaseQueue()
+///   try database.write { db in
+///     try db.execute(sql: "CREATE VIRTUAL TABLE embeddings USING vec0(embedding float[3])")
+///   }
+/// #endif
+/// ```
 @available(
   macOS,
   deprecated,
   message:
-    "Process global auto extensions are not available on macOS. Use ``Database.loadSQLiteVecExtension`` instead."
+    "Process global auto extensions are not available on macOS. Use Configuration.prepareSQLiteVecExtension() instead."
 )
 @available(
   iOS,
   deprecated,
   message:
-    "Process global auto extensions are not available on iOS. Use ``Database.loadSQLiteVecExtension`` instead."
+    "Process global auto extensions are not available on iOS. Use Configuration.prepareSQLiteVecExtension() instead."
 )
 @available(
   tvOS,
   deprecated,
   message:
-    "Process global auto extensions are not available on tvOS. Use ``Database.loadSQLiteVecExtension`` instead."
+    "Process global auto extensions are not available on tvOS. Use Configuration.prepareSQLiteVecExtension() instead."
 )
 @available(
   watchOS,
   deprecated,
   message:
-    "Process global auto extensions are not available on watchOS. Use ``Database.loadSQLiteVecExtension`` instead."
+    "Process global auto extensions are not available on watchOS. Use Configuration.prepareSQLiteVecExtension() instead."
 )
 @available(
   visionOS,
   deprecated,
   message:
-    "Process global auto extensions are not available on visionOS. Use ``Database.loadSQLiteVecExtension`` instead."
+    "Process global auto extensions are not available on visionOS. Use Configuration.prepareSQLiteVecExtension() instead."
 )
-/// Registers sqlite-vec as a process-global SQLite auto extension.
-///
-/// On Apple platforms, use ``Database/loadSQLiteVecExtension()`` to load sqlite-vec into each
-/// database connection instead.
 public func registerSQLiteVecAutoExtension() throws {
   let vecInit:
     @convention(c) (

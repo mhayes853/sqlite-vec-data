@@ -15,12 +15,15 @@ package struct Lock<Value: ~Copyable>: ~Copyable {
     self.value.initialize(to: value)
   }
 
-  deinit { self.value.deallocate() }
+  deinit {
+    self.value.deinitialize(count: 1)
+    self.value.deallocate()
+  }
 }
 
 // MARK: - WithLock
 
-extension Lock {
+extension Lock where Value: ~Copyable {
   /// Calls the specified closure with the lock acquired and gives up ownership of the value.
   ///
   /// - Parameter body: A closure with mutable access to the underlying value.

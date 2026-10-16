@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.3;(experimentalCGen)
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -10,14 +10,26 @@ let package = Package(
     .library(name: "SQLiteVecData", targets: ["SQLiteVecData"]),
     .library(name: "CSQLiteVec", targets: ["CSQLiteVec"]),
     .library(name: "StructuredQueriesSQLiteVecCore", targets: ["StructuredQueriesSQLiteVecCore"]),
+    .library(name: "StructuredQueriesTursoVecCore", targets: ["StructuredQueriesTursoVecCore"]),
+    .library(name: "StructuredQueriesVectorCore", targets: ["StructuredQueriesVectorCore"]),
     .library(name: "SQLiteVecDataTestSupport", targets: ["SQLiteVecDataTestSupport"])
   ],
   traits: [
-    .default(enabledTraits: ["NEON"]),
-    .trait(name: "NEON", description: "Enable NEON vector implementations on ARM."),
+    .default(enabledTraits: ["SQLiteVecNEON", "SQLiteVecAVX", "SQLiteVecStaticAPI"]),
     .trait(
-      name: "AVX",
-      description: "Enable AVX vector implementations on AVX-capable x86 processors."
+      name: "SQLiteVecNEON",
+      description: "Enable sqlite-vec NEON vector implementations on ARM."
+    ),
+    .trait(
+      name: "SQLiteVecAVX",
+      description: "Enable sqlite-vec AVX vector implementations on AVX-capable x86 processors."
+    ),
+    .trait(
+      name: "SQLiteVecStaticAPI",
+      description: """
+        Compile sqlite-vec against the linked SQLite's functions instead of the API table SQLite \
+        passes to extensions. Required for per-connection setup on non-Apple platforms.
+        """
     )
   ],
   dependencies: [
@@ -38,17 +50,36 @@ let package = Package(
   targets: [
     .target(
       name: "CSQLiteVec",
-      // sqlite-vec.c is included in sqlite-vec-arch.c, which adds architecture checks
-      // we cannot declare here.
-      exclude: ["sqlite-vec.c"],
+      exclude: ["sqlite-vec.c", "SHA256SUMS", "LICENSE-MIT"],
       cSettings: [
-        .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["NEON"])),
-        .define("SQLITE_VEC_ENABLE_AVX", to: "1", .when(traits: ["AVX"]))
+        .headerSearchPath("."),
+        // Use SQLite's static extension API for per-connection initialization. Without it,
+        // sqlite-vec only uses the API table passed to its entry point, so it works with SQLite
+        // builds that do not export every `sqlite3_*` function.
+        .define("SQLITE_CORE", .when(traits: ["SQLiteVecStaticAPI"])),
+        .define("SQLITE_VEC_ENABLE_NEON", to: "1", .when(traits: ["SQLiteVecNEON"])),
+        .define("SQLITE_VEC_ENABLE_AVX", to: "1", .when(traits: ["SQLiteVecAVX"]))
+      ],
+      linkerSettings: [.linkedLibrary("m", .when(platforms: [.linux]))],
+      plugins: [.plugin(name: "PatchSQLiteVec")]
+    ),
+    .target(
+      name: "StructuredQueriesVectorCore",
+      dependencies: [
+        .product(name: "StructuredQueriesCore", package: "swift-structured-queries")
       ]
     ),
     .target(
       name: "StructuredQueriesSQLiteVecCore",
       dependencies: [
+        "StructuredQueriesVectorCore",
+        .product(name: "StructuredQueriesSQLiteCore", package: "swift-structured-queries")
+      ]
+    ),
+    .target(
+      name: "StructuredQueriesTursoVecCore",
+      dependencies: [
+        "StructuredQueriesVectorCore",
         .product(name: "StructuredQueriesSQLiteCore", package: "swift-structured-queries")
       ]
     ),
@@ -58,12 +89,31 @@ let package = Package(
         "CSQLiteVec",
         "StructuredQueriesSQLiteVecCore",
         .product(name: "SQLiteData", package: "sqlite-data")
+      ],
+      swiftSettings: [
+        .define("SQLITE_VEC_STATIC_API", .when(traits: ["SQLiteVecStaticAPI"]))
       ]
     ),
     .target(
       name: "SQLiteVecDataTestSupport",
       dependencies: [
         "SQLiteVecData"
+      ]
+    ),
+    .testTarget(
+      name: "StructuredQueriesVectorCoreTests",
+      dependencies: [
+        "StructuredQueriesVectorCore",
+        .product(name: "StructuredQueriesTestSupport", package: "swift-structured-queries")
+      ]
+    ),
+    .testTarget(
+      name: "StructuredQueriesTursoVecCoreTests",
+      dependencies: [
+        "StructuredQueriesTursoVecCore",
+        "StructuredQueriesSQLiteVecCore",
+        .product(name: "StructuredQueriesSQLite", package: "swift-structured-queries"),
+        .product(name: "StructuredQueriesTestSupport", package: "swift-structured-queries")
       ]
     ),
     .testTarget(
@@ -75,8 +125,9 @@ let package = Package(
         .product(name: "IssueReportingTestSupport", package: "xctest-dynamic-overlay")
       ],
       swiftSettings: [
-        .define("SQLITE_VEC_AVX_ENABLED", .when(traits: ["AVX"]))
+        .define("SQLITE_VEC_AVX_ENABLED", .when(traits: ["SQLiteVecAVX"]))
       ]
-    )
+    ),
+    .plugin(name: "PatchSQLiteVec", capability: .buildTool())
   ]
 )
