@@ -9,7 +9,7 @@ creating vec0 tables, and executing queries.
 
 ### Load the extension
 
-Prepare each database connection, including database pool readers:
+Per-connection preparation is recommended on every platform, including database pool readers:
 
 ```swift
 import SQLiteVecData
@@ -19,7 +19,8 @@ configuration.prepareSQLiteVecExtension()
 let database = try SQLiteData.defaultDatabase(configuration: configuration)
 ```
 
-On non-Apple platforms, call ``registerSQLiteVecAutoExtension()`` before opening connections:
+On non-Apple platforms, ``registerSQLiteVecAutoExtension()`` is an alternative process-wide
+setup. Choose it instead of per-connection preparation and call it before opening connections:
 
 ```swift
 import SQLiteVecData
