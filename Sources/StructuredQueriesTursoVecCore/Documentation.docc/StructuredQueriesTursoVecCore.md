@@ -51,21 +51,26 @@ let insert = Document.insert { ($0.id, $0.content, $0.embedding) } values: {
 
 let vector = EmbeddingVector<4>([0.2, 0.4, 0.6, 0.8])
 let query = Document
+  .where { TursoVec.distanceCosine($0.embedding, to: vector).isNot(nil) }
   .order { TursoVec.distanceCosine($0.embedding, to: vector).asc() }
   .limit(5)
   .select { ($0.content, TursoVec.extract($0.embedding)) }
 // SELECT "documents"."content", vector_extract("documents"."embedding")
 // FROM "documents"
+// WHERE ((vector_distance_cos("documents"."embedding", ?)) IS NOT (NULL))
 // ORDER BY vector_distance_cos("documents"."embedding", ?) ASC
 // LIMIT ?
 
 let prepared = query.query.prepare { "?\($0)" }
 // SELECT "documents"."content", vector_extract("documents"."embedding")
 // FROM "documents"
-// ORDER BY vector_distance_cos("documents"."embedding", ?1) ASC
-// LIMIT ?2
+// WHERE ((vector_distance_cos("documents"."embedding", ?1)) IS NOT (NULL))
+// ORDER BY vector_distance_cos("documents"."embedding", ?2) ASC
+// LIMIT ?3
 // Pass prepared.sql and prepared.bindings to your driver.
 ```
+
+The query excludes undefined cosine distances before ranking.
 
 For variable-size values, use `[Float].VectorBytesRepresentation` with `@Column(as:)`. Distance
 ordering searches candidate rows exactly; narrow them with `where`. Experimental sparse indexing
@@ -151,7 +156,7 @@ hashing to the shared strategy. Raw and Turso Float64 have distinct encoding ide
 ```swift
 // CREATE TABLE compressed_documents (id INTEGER PRIMARY KEY, embedding BLOB NOT NULL);
 @Table("compressed_documents")
-struct CompressedDocument {
+struct QuantizedDocument {
   var id: Int
   var embedding: Quantized8Vector
 }
@@ -160,7 +165,7 @@ let compressed = try Quantized8Vector(quantizing: [0, 127.5, 255])
 // codes: [0, 128, 255], scale: 1, shift: 0
 let values = compressed.decodedValues() // [0, 128, 255]
 let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
-let insert = CompressedDocument.insert { ($0.id, $0.embedding) } values: {
+let insert = QuantizedDocument.insert { ($0.id, $0.embedding) } values: {
   (1, compressed)
 }
 // INSERT INTO "compressed_documents" ("id", "embedding") VALUES (?, ?)
@@ -345,15 +350,29 @@ Keep the nullable score to preserve undefined results in fetched rows. For neare
 ranking, exclude undefined scores with `.isNot(nil)` or choose an explicit large fallback:
 
 ```swift
+// CREATE TABLE compressed_documents (id INTEGER PRIMARY KEY, embedding BLOB NOT NULL);
+@Table("compressed_documents")
+struct CompressedDocument {
+  var id: Int
+  var embedding: Quantized8Vector
+}
+
 let queryVector = try Quantized8Vector(quantizing: [1, 2, 3])
-let score = TursoVec.distanceL2(queryVector, to: queryVector)
-let defined = score.isNot(nil)
-// (vector_distance_l2(?, ?)) IS NOT (NULL)
-let sortable = score.ifnull(Double.greatestFiniteMagnitude)
-// ifnull(vector_distance_l2(?, ?), ?)
+let score = TursoVec.distanceL2(CompressedDocument.columns.embedding, to: queryVector)
+let definedMatches = CompressedDocument
+  .where { _ in score.isNot(nil) }
+  .order { _ in score.asc() }
+  .limit(5)
+  .select { ($0.id, score) }
+
+let matchesWithFallback = CompressedDocument
+  .order { _ in score.ifnull(Double.greatestFiniteMagnitude).asc() }
+  .limit(5)
+  .select { ($0.id, score) }
 ```
 
-Use `defined` in a query's `where` clause, or `sortable` in its ascending `order` clause. Avoid a
-zero fallback for L2: zero represents a perfect match. Ascending SQL order puts NULL first.
+`definedMatches` excludes undefined distances. `matchesWithFallback` keeps those rows and uses
+a large score for ordering; its selected score remains nullable. Avoid a zero fallback for L2:
+zero represents a perfect match. Ascending SQL order puts NULL first.
 Missing inputs and undefined scores both decode as nil; inspect the input separately when that
 distinction matters. Malformed bytes and mismatched dimensions still throw.

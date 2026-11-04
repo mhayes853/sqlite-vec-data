@@ -19,11 +19,13 @@ import StructuredQueriesCore
 /// }
 /// let queryVector = EmbeddingVector<3>([0.2, 0.4, 0.6])
 /// let neighbors = Document
+///   .where { TursoVec.distanceCosine($0.embedding, to: queryVector).isNot(nil) }
 ///   .order { TursoVec.distanceCosine($0.embedding, to: queryVector) }
 ///   .limit(5)
 ///   .select(\.content)
 /// // SELECT "documents"."content"
 /// // FROM "documents"
+/// // WHERE ((vector_distance_cos("documents"."embedding", ?)) IS NOT (NULL))
 /// // ORDER BY vector_distance_cos("documents"."embedding", ?)
 /// // LIMIT ?
 /// ```
