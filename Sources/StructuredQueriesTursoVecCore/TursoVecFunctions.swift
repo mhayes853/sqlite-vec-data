@@ -1338,6 +1338,11 @@ public enum TursoVec {
   /// Returns Euclidean distance between matching vectors.
   /// Both operands must use the same supported numeric encoding and have equal dimensions.
   ///
+  /// Returns SQL NULL when the computation produces NaN, including when SQL quantization
+  /// produces nonfinite parameters. Use `whenPresent` for nullable inputs. For nearest-neighbor
+  /// ranking, exclude undefined scores with `.isNot(nil)` or choose an explicit large fallback
+  /// with `.ifnull(Double.greatestFiniteMagnitude)`. Zero is a valid distance, not a missing score.
+  ///
   /// ```swift
   /// @Table("documents")
   /// struct Document {
@@ -1615,7 +1620,10 @@ public enum TursoVec {
   /// Both operands must use the same supported Turso encoding.
   /// The database checks dimensions and value-dependent restrictions.
   ///
-  /// Undefined numerical results may return SQL NULL. Use `whenPresent` for nullable inputs.
+  /// Returns SQL NULL when the computation produces NaN, including when SQL quantization
+  /// produces nonfinite parameters. Use `whenPresent` for nullable inputs. For nearest-neighbor
+  /// ranking, exclude undefined scores with `.isNot(nil)` or choose an explicit large fallback
+  /// with `.ifnull(Double.greatestFiniteMagnitude)`. Zero is a valid distance, not a missing score.
   ///
   /// ```swift
   /// @Table("documents")
@@ -2213,73 +2221,9 @@ public enum TursoVec {
   }
 }
 
-// MARK: - Finite encoded distances
+// MARK: - Binary dot distances
 
 extension TursoVec {
-  /// Returns the nonnullable distance for this finite encoded format.
-  ///
-  /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let distance = TursoVec.distanceL2(vector, to: vector)
-  /// // vector_distance_l2(?, ?)
-  /// ```
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding: TursoQuantized8Encoding, L.Encoding == R.Encoding,
-    L.Dimensions == R.Dimensions
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Returns the nonnullable distance for this finite encoded format.
-  ///
-  /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let distance = TursoVec.distanceL2(vector, to: vector)
-  /// // vector_distance_l2(?, ?)
-  /// ```
-  @_disfavoredOverload
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding: TursoQuantized8Encoding, L.Encoding == R.Encoding,
-    L.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
-
-  /// Returns the nonnullable distance for this finite encoded format.
-  ///
-  /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let distance = TursoVec.distanceL2(vector, to: vector)
-  /// // vector_distance_l2(?, ?)
-  /// ```
-  @_disfavoredOverload
-  public static func distanceL2<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding: TursoQuantized8Encoding, L.Encoding == R.Encoding,
-    R.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_l2(\(expression), \(vector))")
-  }
 
   /// Returns the nonnullable distance for this finite encoded format.
   ///
@@ -2297,27 +2241,6 @@ extension TursoVec {
   ) -> some QueryExpression<Double>
   where
     L.Encoding: TursoBinaryEncoding, L.Encoding == R.Encoding,
-    L.Dimensions == R.Dimensions
-  {
-    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
-  }
-
-  /// Returns the nonnullable distance for this finite encoded format.
-  ///
-  /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let distance = TursoVec.distanceDot(vector, to: vector)
-  /// // vector_distance_dot(?, ?)
-  /// ```
-  public static func distanceDot<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding: TursoQuantized8Encoding, L.Encoding == R.Encoding,
     L.Dimensions == R.Dimensions
   {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
@@ -2348,28 +2271,6 @@ extension TursoVec {
   /// Returns the nonnullable distance for this finite encoded format.
   ///
   /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let distance = TursoVec.distanceDot(vector, to: vector)
-  /// // vector_distance_dot(?, ?)
-  /// ```
-  @_disfavoredOverload
-  public static func distanceDot<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding: TursoQuantized8Encoding, L.Encoding == R.Encoding,
-    L.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
-  }
-
-  /// Returns the nonnullable distance for this finite encoded format.
-  ///
-  /// ```swift
   /// let vector: [Bool].TursoBytesRepresentation = [true, false, true]
   /// let distance = TursoVec.distanceDot(vector, to: vector)
   /// // vector_distance_dot(?, ?)
@@ -2389,25 +2290,4 @@ extension TursoVec {
     SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
   }
 
-  /// Returns the nonnullable distance for this finite encoded format.
-  ///
-  /// ```swift
-  /// let vector = try Quantized8Vector(quantizing: [1, 2, 3])
-  /// let distance = TursoVec.distanceDot(vector, to: vector)
-  /// // vector_distance_dot(?, ?)
-  /// ```
-  @_disfavoredOverload
-  public static func distanceDot<
-    L: VectorBytesRepresentable & QueryBindable,
-    R: VectorBytesRepresentable & QueryBindable
-  >(
-    _ expression: some QueryExpression<L>,
-    to vector: some QueryExpression<R>
-  ) -> some QueryExpression<Double>
-  where
-    L.Encoding: TursoQuantized8Encoding, L.Encoding == R.Encoding,
-    R.Dimensions == Void
-  {
-    SQLQueryExpression("vector_distance_dot(\(expression), \(vector))")
-  }
 }
