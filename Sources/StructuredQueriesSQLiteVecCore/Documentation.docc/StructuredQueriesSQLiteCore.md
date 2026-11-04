@@ -155,6 +155,10 @@ when the other is variable-size. Distances, arithmetic, and `MATCH` reject unequ
 The database checks variable inputs; decoding validates fixed results. Length-preserving `as:`
 results require compatible known counts. Slice bounds and lengths remain runtime checks.
 
+`as:` selects the decoding representation; it does not add SQL validation. Using the expression
+inside another function or an insertion does not invoke its vector decoder. Enforce stored-data
+invariants in the database when needed.
+
 ### Signed Int8 vectors
 
 Use `[Int8].Int8BytesRepresentation` for one signed byte per component:

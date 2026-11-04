@@ -308,7 +308,9 @@ Conversions preserve fixed dimensions through `VectorDimensions<N>`. Length-pres
 results reject conflicting known counts; JSON and variable inputs validate fixed results when
 decoding. Distances reject unequal known counts but allow fixed/variable pairs. Concat accepts
 different counts; slices and concat default to variable results, with `as:` for fixed results
-validated during decoding.
+validated during decoding. `as:` does not add SQL validation: using the expression inside another
+function or an insertion does not invoke its vector decoder. Enforce stored-data invariants in
+the database when needed.
 
 Values expose `vectorBytes` and `init(vectorBytes:)`. Encoded equality compares component bits;
 dense equality follows scalar semantics.
@@ -321,8 +323,10 @@ and [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sou
 
 ### Missing vectors and undefined scores
 
-Floating L2/dot, cosine, and Jaccard return `Double?`; undefined results can become SQL NULL.
-Quantized8 L2/dot and binary dot/Hamming retain `Double` for nonoptional inputs.
+Numeric L2/dot (including Quantized8), cosine, and Jaccard return `Double?`: computations that
+produce NaN become SQL NULL. SQL quantization can produce nonfinite parameters even from finite
+inputs, without invoking Swift constructor validation. Binary dot/Hamming retain `Double` for
+nonoptional inputs.
 
 Use `whenPresent` with nullable inputs. Its CASE guard skips the native function for missing
 values, and its closure retains encoding and dimension checks:
@@ -337,6 +341,19 @@ let fallback = score.ifnull(2)
 // ifnull(CASE WHEN (?) IS NULL THEN NULL ELSE vector_distance_cos("documents"."embedding", ?) END, ?)
 ```
 
-Filter scores with `.isNot(nil)` before ranking, or choose a fallback for your metric. Ascending SQL
-order puts NULL first. Missing inputs and undefined scores both decode as nil; inspect the input
-separately when that distinction matters. Malformed bytes and mismatched dimensions still throw.
+Keep the nullable score to preserve undefined results in fetched rows. For nearest-neighbor
+ranking, exclude undefined scores with `.isNot(nil)` or choose an explicit large fallback:
+
+```swift
+let queryVector = try Quantized8Vector(quantizing: [1, 2, 3])
+let score = TursoVec.distanceL2(queryVector, to: queryVector)
+let defined = score.isNot(nil)
+// (vector_distance_l2(?, ?)) IS NOT (NULL)
+let sortable = score.ifnull(Double.greatestFiniteMagnitude)
+// ifnull(vector_distance_l2(?, ?), ?)
+```
+
+Use `defined` in a query's `where` clause, or `sortable` in its ascending `order` clause. Avoid a
+zero fallback for L2: zero represents a perfect match. Ascending SQL order puts NULL first.
+Missing inputs and undefined scores both decode as nil; inspect the input separately when that
+distinction matters. Malformed bytes and mismatched dimensions still throw.

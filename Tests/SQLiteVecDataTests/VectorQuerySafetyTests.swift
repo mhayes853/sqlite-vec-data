@@ -96,6 +96,36 @@ struct `Vector Query Safety tests` {
 
   @Test
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+  func `Fixed Result Strategies Validate At The Decoding Boundary`() async throws {
+    let converted = Vec.f32("[1,2,3]", as: EmbeddingVector<4>.self)
+    let sliced = Vec.slice(
+      EmbeddingVector<4>([1, 2, 3, 4]),
+      start: 0,
+      end: 3,
+      as: EmbeddingVector<4>.self
+    )
+    let lengths = #sql(
+      "SELECT \(Vec.length(converted)), \(Vec.length(sliced))",
+      as: (Int, Int).self
+    )
+    let convertedVector = #sql("SELECT \(converted)", as: EmbeddingVector<4>.self)
+    let slicedVector = #sql("SELECT \(sliced)", as: EmbeddingVector<4>.self)
+    try await self.database.read { db in
+      // Scalar composition does not decode either intermediate vector.
+      let result = try #require(try lengths.fetchOne(db))
+      expectNoDifference(result.0, 3)
+      expectNoDifference(result.1, 3)
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 4, actual: 3)) {
+        try convertedVector.fetchOne(db)
+      }
+      #expect(throws: VectorDecodingError.dimensionMismatch(expected: 4, actual: 3)) {
+        try slicedVector.fetchOne(db)
+      }
+    }
+  }
+
+  @Test
+  @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   func `Packed Bit Validation Supports Rebinding And Rejects Partial Bytes`() async throws {
     // https://alexgarcia.xyz/sqlite-vec/api-reference.html#vec_bit-vector
     let components = [true, false, true, false, false, false, false, true]

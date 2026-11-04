@@ -395,8 +395,9 @@ Decoding throws `VectorDecodingError.invalidBytes` for lengths or metadata and
 
 ### Handle nullable results and inputs
 
-Float32 distances, all cosine/Jaccard distances, and Turso floating L2/dot return `Double?`.
-SQLiteVec Int8 L1/L2, Turso quantized8 L2/dot, and binary dot/Hamming retain `Double`.
+Float32 distances, all cosine/Jaccard distances, and Turso numeric L2/dot (including Quantized8)
+return `Double?`. SQL quantization can produce nonfinite parameters without invoking Swift
+constructor validation. SQLiteVec Int8 L1/L2 and binary dot/Hamming retain `Double`.
 `vec0.distance` is nullable outside KNN or for undefined scores; `k` returns NULL when selected.
 Float32 iteration is now `VecEachOf<Float?>`; preserve nil positions instead of dropping components.
 

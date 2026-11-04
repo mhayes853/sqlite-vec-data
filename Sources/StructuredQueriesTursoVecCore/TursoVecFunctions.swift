@@ -6,7 +6,7 @@ import StructuredQueriesCore
 /// Convert JSON explicitly before distance comparisons, using the same format on both sides.
 /// The database checks dimensions and value-dependent restrictions.
 ///
-/// Floating distances, cosine, and Jaccard may yield SQL NULL. Quantized8 L2/dot and binary
+/// Numeric L2/dot (including Quantized8), cosine, and Jaccard may yield SQL NULL. Binary
 /// dot/Hamming are nonnullable for valid vectors. Use `whenPresent` for nullable inputs;
 /// malformed vectors and dimension mismatches still produce errors. Filter scores with
 /// `.isNot(nil)` or choose a deliberate `.ifnull(...)` fallback.
