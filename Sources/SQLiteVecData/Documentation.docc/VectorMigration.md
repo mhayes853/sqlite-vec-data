@@ -8,6 +8,7 @@ This release changes SQLiteVec APIs and behavior and adds Turso Database support
 
 | Existing API or behavior | Updated API or behavior |
 | --- | --- |
+| Swift 6.1 or later | Swift 6.3 or later |
 | `.sqliteVecAutoExtension` | Available across platforms; registration is a no-op on Apple. Prepare Apple connections with `Configuration.prepareSQLiteVecExtension()` |
 | `AVX` and `NEON` package traits | `SQLiteVecAVX` and `SQLiteVecNEON`, both enabled by default |
 | sqlite-vec only uses the API table passed to its entry point | The default `SQLiteVecStaticAPI` trait calls the linked SQLite's functions directly; disable it for SQLite builds that do not export them |
@@ -23,6 +24,7 @@ This release changes SQLiteVec APIs and behavior and adds Turso Database support
 | `quantizeInt8(scale:)` passes an unsupported numeric argument | `quantizeInt8()` emits SQLiteVec's supported `'unit'` argument and returns signed Int8 codes |
 | `int8()` exposes Int8 bytes as Float32 values | `Vec.int8` accepts signed-byte expressions or integer JSON and returns an Int8 representation |
 | Int8 and packed-bit values bind as untagged blobs, so vec0 rejects record inserts | They bind as `vec_int8(?)` and `vec_bit(?)`, attaching SQLiteVec's subtype wherever StructuredQueries binds them |
+| Distances return `Double`; vec0 `distance` returns `Double` and `k` returns `Int` | Float32 L1/L2, all cosine distances, and `distance` return `Double?`; `k` returns `Int?`; Int8 L1/L2 and Hamming remain `Double` |
 | `length()` and `Vec.length` return `Double` | They return `Int`, matching the integer SQLiteVec's `vec_length` produces |
 | `vecEach()` and `Vec.each` always return `SelectOf<VecEach>` with `Float` values | `VecEach` aliases `VecEachOf<Float?>` for Float32 vectors; Int8 and packed bits return `VecEachOf<Int8>` and `VecEachOf<Bool>` |
 | Float32 and binary column slices preserve the original vector type | Slices return variable-size representations; use `as:` to select a matching fixed-size result |
@@ -40,7 +42,7 @@ qualified names. Existing imports need no extra product for `EmbeddingVector` or
 Use `StructuredQueriesVectorCore` for database-independent values; use `StructuredQueriesTursoVecCore`
 for Rust-based Turso Database, excluding libSQL DiskANN and `vector_top_k`.
 
-The package requires Swift 6.3. Fixed values require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
+The package now requires Swift 6.3, up from 6.1. Fixed values require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 Variable-size strategies support earlier package platforms.
 
 ### Keep existing Float32 values and tables
@@ -280,7 +282,9 @@ let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2
 `VecEachOf<Int8>`, or `VecEachOf<Bool>` accordingly. Compare values with matching literals and
 update explicit Int8/binary table types.
 
-Distances remain `Double`; Int8 L1 now uses `CAST(... AS REAL)`.
+Float32 L1/L2 and all cosine distances now return `Double?`, as described in "Handle nullable
+results and inputs" below. Int8 L1/L2 and Hamming remain `Double`, and Int8 L1 now uses
+`CAST(... AS REAL)`.
 
 ### Decode binary results as bits
 
