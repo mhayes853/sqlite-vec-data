@@ -1,5 +1,26 @@
 #!/bin/sh
 # Prepare one translation unit in the build directory; never modify upstream sources.
+#
+# The PatchSQLiteVec build plugin runs this script for the CSQLiteVec target. It verifies
+# Sources/CSQLiteVec/SHA256SUMS, applies Patches/sqlite-vec/*.patch in filename order, and prepends
+# the package's sqlite-vec-platform.h include. Each patch begins with a line describing its change.
+# Checksum mismatches and patch conflicts fail the build.
+#
+# Updating sqlite-vec
+#   The pinned release and commit are SQLITE_VEC_VERSION and SQLITE_VEC_SOURCE in
+#   Sources/CSQLiteVec/sqlite-vec.h.
+#   1. Replace sqlite-vec.c and LICENSE-MIT with the new upstream commit's files, and render its
+#      sqlite-vec.h.tmpl into sqlite-vec.h with that version, date, and commit.
+#   2. Regenerate the checksums:
+#        cd Sources/CSQLiteVec && shasum -a 256 sqlite-vec.c sqlite-vec.h LICENSE-MIT > SHA256SUMS
+#   3. Run `swift test`. Refresh conflicting patches against the new source, preserving upstream
+#      whitespace; .gitattributes keeps the vendored files byte-for-byte.
+#   4. Commit the source, header, license, checksums, and patch changes together.
+#
+# Testing AVX dispatch
+#   CI compiles Tests/CSQLiteVecTests/AVXRuntimeTests.c against this script's output and runs it
+#   under QEMU on CPUs with and without AVX. To reproduce locally with Clang, SQLite headers, and
+#   qemu-user installed, run the "Test AVX Runtime Dispatch" step in .github/workflows/ci.yml.
 set -eu
 
 if [ "$#" -lt 2 ]; then

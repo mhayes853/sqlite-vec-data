@@ -509,7 +509,8 @@ Disable it for custom SQLite builds that require the extension API table; use
 
 `CSQLiteVec` bundles [sqlite-vec v0.1.9](https://github.com/asg017/sqlite-vec/tree/e9f598abfa0c06b328d8fe5da9c3760cce74be10).
 Its build plugin verifies `Sources/CSQLiteVec/SHA256SUMS` and applies `Patches/sqlite-vec/*.patch`
-to a build-directory copy.
+to a build-directory copy. `Scripts/prepare-sqlite-vec.sh` explains how to update the bundled source
+and test AVX dispatch.
 
 ## Documentation
 
