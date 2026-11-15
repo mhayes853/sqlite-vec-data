@@ -166,20 +166,52 @@ struct `Vector Representation tests` {
   }
 
   @Test(arguments: [
-    [9],  // Truncated dimensions.
-    [0, 0, 0, 0, 1],  // Wrong format tag.
-    [0, 0, 0, 0, 0, 9],  // Incomplete value/index pair.
-    [0, 0, 128, 63, 3, 0, 0, 0, 3, 0, 0, 0, 9],
-    [0, 0, 128, 63, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 9],
-    [0, 0, 128, 63, 0, 0, 0, 64, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 9]
+    ([9], Self.sparseHeaderReason(bytes: 1)),  // Truncated dimensions.
+    ([0, 0, 0, 0, 1], Self.sparseHeaderReason(bytes: 5)),  // Wrong format tag.
+    ([0, 0, 0, 0, 0, 9], Self.sparseHeaderReason(bytes: 6)),  // Incomplete value/index pair.
+    ([0, 0, 128, 63, 3, 0, 0, 0, 3, 0, 0, 0, 9], Self.sparseComponentsReason),
+    (
+      [0, 0, 128, 63, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 9],
+      Self.sparseComponentsReason
+    ),
+    (
+      [0, 0, 128, 63, 0, 0, 0, 64, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 9],
+      Self.sparseComponentsReason
+    )
   ])
-  func `Rejects Malformed Sparse Lengths Tags And Indices`(_ fixture: [UInt8]) {
+  func `Rejects Malformed Sparse Lengths Tags And Indices`(_ fixture: [UInt8], reason: String) {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/vector_types.rs#L315
     // Validate the sorted, unique, in-range indices required by sparse operations.
     var decoder = BlobQueryDecoder(bytes: fixture)
-    #expect(throws: VectorDecodingError.invalidBytes) {
+    #expect(throws: VectorDecodingError.invalidBytes(reason: reason)) {
       _ = try SparseFloat32Vector(decoder: &decoder)
     }
+  }
+
+  @Test
+  func `Quantized Decoding Forwards The Validation Reason`() {
+    // Turso stores an infinite scale for components near Float.greatestFiniteMagnitude.
+    let fixture = [UInt8]([0, 0, 0, 0]) + Float.encodeVector([.infinity, 0]) + [0, 0, 4]
+    #expect(
+      throws: VectorDecodingError.invalidBytes(
+        reason: """
+          Invalid Turso Float8 quantization parameters: Scale must be finite and nonnegative; shift \
+          and reconstructed values must be finite.
+          """
+      )
+    ) {
+      _ = try Quantized8Vector(vectorBytes: fixture)
+    }
+  }
+
+  private static let sparseComponentsReason = """
+    Invalid Turso sparse Float32 components: Sparse dimensions must fit in UInt32, indices and \
+    values must have matching lengths, and indices must be strictly increasing and less than the \
+    dimension count.
+    """
+
+  private static func sparseHeaderReason(bytes: Int) -> String {
+    "Expected a Turso sparse Float32 blob of 8n + 5 bytes ending in type byte 9, found \(bytes) bytes."
   }
 
   @Test

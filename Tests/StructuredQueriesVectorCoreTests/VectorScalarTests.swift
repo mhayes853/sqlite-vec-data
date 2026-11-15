@@ -32,8 +32,18 @@ struct `VectorScalar tests` {
 
   @Test
   func `Rejects Incomplete Raw Components`() {
-    #expect(throws: VectorDecodingError.invalidBytes) { try Float.decodeVector([0, 0, 0]) }
-    #expect(throws: VectorDecodingError.invalidBytes) {
+    #expect(
+      throws: VectorDecodingError.invalidBytes(
+        reason: "Expected a multiple of 4 bytes for Float components, found 3."
+      )
+    ) {
+      try Float.decodeVector([0, 0, 0])
+    }
+    #expect(
+      throws: VectorDecodingError.invalidBytes(
+        reason: "Expected a multiple of 8 bytes for Double components, found 7."
+      )
+    ) {
       try Double.decodeVector([UInt8](repeating: 0, count: 7))
     }
   }
@@ -53,7 +63,13 @@ struct `VectorScalar tests` {
 
     @Test
     func `Rejects Incomplete Raw Float16 Components`() {
-      #expect(throws: VectorDecodingError.invalidBytes) { try Float16.decodeVector([0]) }
+      #expect(
+        throws: VectorDecodingError.invalidBytes(
+          reason: "Expected a multiple of 2 bytes for Float16 components, found 1."
+        )
+      ) {
+        try Float16.decodeVector([0])
+      }
     }
   #endif
 }

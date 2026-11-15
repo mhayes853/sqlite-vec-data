@@ -97,10 +97,18 @@ struct `BinaryEmbeddingVector tests` {
   @Test
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   func `Rejects Incorrect Logical And Packed Lengths`() throws {
-    #expect(throws: VectorDecodingError.invalidBytes) {
+    #expect(
+      throws: VectorDecodingError.invalidBytes(
+        reason: "Expected 2 packed bytes for 9 bits, found 1."
+      )
+    ) {
       _ = try BinaryEmbeddingVector<9>(packedBytes: [1])
     }
-    #expect(throws: VectorDecodingError.invalidBytes) {
+    #expect(
+      throws: VectorDecodingError.invalidBytes(
+        reason: "Expected 2 packed bytes for 9 bits, found 3."
+      )
+    ) {
       _ = try BinaryEmbeddingVector<9>(packedBytes: [1, 2, 3])
     }
     #expect(throws: VectorDecodingError.dimensionMismatch(expected: 9, actual: 1)) {

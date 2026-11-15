@@ -392,8 +392,10 @@ unequal, even to themselves. Compare `vectorBytes` for bit identity; persist val
 
 `VectorDecodingError` is nonexhaustive; include `@unknown default` in switches.
 
-Decoding throws `VectorDecodingError.invalidBytes` for lengths or metadata and
+Decoding throws `VectorDecodingError.invalidBytes(reason:)` for lengths or metadata and
 `dimensionMismatch(expected:actual:)` for fixed counts. Handle these alongside corrupt database data.
+`reason` explains the failure, including Turso validation errors encountered while decoding; it is
+diagnostic text, so match the case rather than the reason.
 
 ### Handle nullable results and inputs
 

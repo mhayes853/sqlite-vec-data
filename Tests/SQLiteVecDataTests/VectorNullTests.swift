@@ -195,7 +195,13 @@ struct `Vector NULL tests` {
       expectNoDifference(value[0].isNaN, true)
       expectNoDifference(value.vectorBytes, nan?.vectorBytes)
       expectNoDifference(row.1, nil)
-      #expect(throws: VectorDecodingError.invalidBytes) { try corrupt.fetchOne(db) }
+      #expect(
+        throws: VectorDecodingError.invalidBytes(
+          reason: "Expected a multiple of 4 bytes for Float components, found 1."
+        )
+      ) {
+        try corrupt.fetchOne(db)
+      }
     }
   }
 }

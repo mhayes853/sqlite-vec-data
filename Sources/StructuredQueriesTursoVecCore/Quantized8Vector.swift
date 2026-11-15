@@ -155,11 +155,18 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
   /// ```
   public init(vectorBytes bytes: [UInt8]) throws {
     guard bytes.count >= 11, bytes.count % 4 == 3, bytes.last == 4 else {
-      throw VectorDecodingError.invalidBytes
+      throw VectorDecodingError.invalidBytes(
+        reason: """
+          Expected a Turso Float8 blob of 4n + 3 bytes, at least 11, ending in type byte 4, found \
+          \(bytes.count) bytes.
+          """
+      )
     }
     let alignedCount = bytes.count - 11
     let padding = Int(bytes[bytes.count - 2])
-    guard padding <= 3, padding <= alignedCount else { throw VectorDecodingError.invalidBytes }
+    guard padding <= 3, padding <= alignedCount else {
+      throw VectorDecodingError.invalidBytes(reason: "Invalid Turso Float8 padding \(padding).")
+    }
     let parameters = try Float.decodeVector(Array(bytes[alignedCount..<(alignedCount + 8)]))
     do {
       try self.init(
@@ -168,7 +175,9 @@ public struct Quantized8Vector: Hashable, Sendable, QueryBindable, VectorBytesRe
         shift: parameters[1]
       )
     } catch {
-      throw VectorDecodingError.invalidBytes
+      throw VectorDecodingError.invalidBytes(
+        reason: "Invalid Turso Float8 quantization parameters: \(error)"
+      )
     }
   }
 }

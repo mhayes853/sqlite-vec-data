@@ -57,7 +57,11 @@ extension VectorScalar {
   /// ```
   public static func decodeVector(_ bytes: [UInt8]) throws -> [Self] {
     let size = (Self.BitPattern.bitWidth + 7) / 8
-    guard bytes.count.isMultiple(of: size) else { throw VectorDecodingError.invalidBytes }
+    guard bytes.count.isMultiple(of: size) else {
+      throw VectorDecodingError.invalidBytes(
+        reason: "Expected a multiple of \(size) bytes for \(Self.self) components, found \(bytes.count)."
+      )
+    }
     return stride(from: 0, to: bytes.count, by: size)
       .map { offset in
         let bits = (0..<size)

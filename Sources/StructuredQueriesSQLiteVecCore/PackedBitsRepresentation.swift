@@ -265,7 +265,11 @@ extension BinaryEmbeddingVector {
     /// ```
     public init(vectorBytes: [UInt8]) throws {
       let (dimensions, overflow) = vectorBytes.count.multipliedReportingOverflow(by: 8)
-      guard !overflow else { throw VectorDecodingError.invalidBytes }
+      guard !overflow else {
+        throw VectorDecodingError.invalidBytes(
+          reason: "\(vectorBytes.count) packed bytes overflow the dimension count."
+        )
+      }
       guard dimensions == BinaryEmbeddingVector<count>.count else {
         throw VectorDecodingError.dimensionMismatch(
           expected: BinaryEmbeddingVector<count>.count,

@@ -124,7 +124,12 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
   /// ```
   public init(vectorBytes bytes: [UInt8]) throws {
     guard bytes.count >= 5, (bytes.count - 5).isMultiple(of: 8), bytes.last == 9 else {
-      throw VectorDecodingError.invalidBytes
+      throw VectorDecodingError.invalidBytes(
+        reason: """
+          Expected a Turso sparse Float32 blob of 8n + 5 bytes ending in type byte 9, found \
+          \(bytes.count) bytes.
+          """
+      )
     }
     let entries = (bytes.count - 5) / 8
     let words = try decodeSparseWords(
@@ -138,7 +143,7 @@ public struct SparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorByte
         values: values
       )
     } catch {
-      throw VectorDecodingError.invalidBytes
+      throw VectorDecodingError.invalidBytes(reason: "Invalid Turso sparse Float32 components: \(error)")
     }
   }
 
@@ -173,7 +178,11 @@ private func sparseWordBytes(_ bits: UInt32) -> [UInt8] {
 }
 
 private func decodeSparseWords(_ bytes: [UInt8]) throws -> [UInt32] {
-  guard bytes.count.isMultiple(of: 4) else { throw VectorDecodingError.invalidBytes }
+  guard bytes.count.isMultiple(of: 4) else {
+    throw VectorDecodingError.invalidBytes(
+      reason: "Expected a multiple of 4 bytes for sparse words, found \(bytes.count)."
+    )
+  }
   return stride(from: 0, to: bytes.count, by: 4)
     .map { offset in
       (0..<4).reduce(UInt32.zero) { $0 | (UInt32(bytes[offset + $1]) << ($1 * 8)) }

@@ -220,7 +220,9 @@ where
   /// // The strategy validates format metadata before exposing logical components.
   /// ```
   public init(vectorBytes: [UInt8]) throws {
-    guard vectorBytes.last == 2 else { throw VectorDecodingError.invalidBytes }
+    guard vectorBytes.last == 2 else {
+      throw VectorDecodingError.invalidBytes(reason: "Expected Turso Float64 type byte 2.")
+    }
     let payload = Array(vectorBytes.dropLast())
     try self.init(queryOutput: Representation(vectorBytes: payload).queryOutput)
   }

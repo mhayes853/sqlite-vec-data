@@ -228,12 +228,20 @@ private func decodeTursoBitsPayload(_ bytes: [UInt8]) throws -> (
   bytes: ArraySlice<UInt8>, dimensions: Int
 ) {
   guard bytes.count >= 3, bytes.count % 2 == 1, bytes.last == 3 else {
-    throw VectorDecodingError.invalidBytes
+    throw VectorDecodingError.invalidBytes(
+      reason: "Expected an odd-length Turso 1-bit blob ending in type byte 3, found \(bytes.count) bytes."
+    )
   }
   let trailingBits = Int(bytes[bytes.count - 2])
   // The metadata byte contributes eight omitted bits; padding contributes at most eight more.
-  guard (8...23).contains(trailingBits) else { throw VectorDecodingError.invalidBytes }
+  guard (8...23).contains(trailingBits) else {
+    throw VectorDecodingError.invalidBytes(
+      reason: "Turso 1-bit trailing bit count \(trailingBits) is outside 8...23."
+    )
+  }
   let dimensions = (bytes.count - 1) * 8 - trailingBits
-  guard dimensions >= 0 else { throw VectorDecodingError.invalidBytes }
+  guard dimensions >= 0 else {
+    throw VectorDecodingError.invalidBytes(reason: "Turso 1-bit blob has negative dimensions.")
+  }
   return (bytes.prefix(dimensions / 8 + (dimensions.isMultiple(of: 8) ? 0 : 1)), dimensions)
 }
