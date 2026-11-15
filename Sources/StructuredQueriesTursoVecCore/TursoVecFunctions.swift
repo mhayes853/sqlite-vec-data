@@ -762,7 +762,10 @@ public enum TursoVec {
     V.Encoding: TursoVectorEncoding,
     V.Dimensions == VectorDimensions<count>
   {
-    Self.vector1bit(expression, as: BinaryEmbeddingVector<count>.TursoBinaryBytesRepresentation.self)
+    Self.vector1bit(
+      expression,
+      as: BinaryEmbeddingVector<count>.TursoBinaryBytesRepresentation.self
+    )
   }
 
   /// Converts a supported vector BLOB to a binary vector with `vector1bit`.

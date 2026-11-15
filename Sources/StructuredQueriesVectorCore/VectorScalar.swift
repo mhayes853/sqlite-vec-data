@@ -59,7 +59,8 @@ extension VectorScalar {
     let size = (Self.BitPattern.bitWidth + 7) / 8
     guard bytes.count.isMultiple(of: size) else {
       throw VectorDecodingError.invalidBytes(
-        reason: "Expected a multiple of \(size) bytes for \(Self.self) components, found \(bytes.count)."
+        reason:
+          "Expected a multiple of \(size) bytes for \(Self.self) components, found \(bytes.count)."
       )
     }
     return stride(from: 0, to: bytes.count, by: size)

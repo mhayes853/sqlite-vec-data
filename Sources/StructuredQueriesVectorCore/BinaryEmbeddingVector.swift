@@ -157,7 +157,8 @@ public struct BinaryEmbeddingVector<let count: Int>:
   public init(packedBytes: [UInt8]) throws {
     guard Self.count >= 0, packedBytes.count == Self.byteCount else {
       throw VectorDecodingError.invalidBytes(
-        reason: "Expected \(Self.byteCount) packed bytes for \(Self.count) bits, found \(packedBytes.count)."
+        reason:
+          "Expected \(Self.byteCount) packed bytes for \(Self.count) bits, found \(packedBytes.count)."
       )
     }
     self.storage = packedBytes

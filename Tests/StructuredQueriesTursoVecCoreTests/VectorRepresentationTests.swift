@@ -51,7 +51,9 @@ struct `Vector Representation tests` {
         } ?? false
     }
     #expect {
-      _ = try TursoQuantized8Vector(quantizing: [-.greatestFiniteMagnitude, .greatestFiniteMagnitude])
+      _ = try TursoQuantized8Vector(quantizing: [
+        -.greatestFiniteMagnitude, .greatestFiniteMagnitude
+      ])
     } throws: { error in
       (error as? TursoVectorError)?.code == .invalidQuantization
     }
@@ -98,7 +100,11 @@ struct `Vector Representation tests` {
     ]
     let sparse = try TursoSparseFloat32Vector(vectorBytes: fixture)
     let same = try TursoSparseFloat32Vector(dimensions: 3, indices: [0, 2], values: [-0.0, nan])
-    let differentZero = try TursoSparseFloat32Vector(dimensions: 3, indices: [0, 2], values: [0, nan])
+    let differentZero = try TursoSparseFloat32Vector(
+      dimensions: 3,
+      indices: [0, 2],
+      values: [0, nan]
+    )
     expectNoDifference(sparse == same, true)
     expectNoDifference(sparse.hashValue, same.hashValue)
     expectNoDifference(sparse == differentZero, false)
@@ -108,7 +114,10 @@ struct `Vector Representation tests` {
     let sameQuantized = try TursoQuantized8Vector(codes: [1], scale: 0, shift: -0.0)
     expectNoDifference(quantized, sameQuantized)
     expectNoDifference(quantized.hashValue, sameQuantized.hashValue)
-    expectNoDifference(quantized == (try TursoQuantized8Vector(codes: [1], scale: 0, shift: 0)), false)
+    expectNoDifference(
+      quantized == (try TursoQuantized8Vector(codes: [1], scale: 0, shift: 0)),
+      false
+    )
     expectNoDifference(
       quantized == (try TursoQuantized8Vector(codes: [2], scale: 0, shift: -0.0)),
       false
@@ -144,7 +153,10 @@ struct `Vector Representation tests` {
     let empty = try TursoSparseFloat32Vector(compressing: [Float]())
     expectNoDifference(empty.queryBinding, .blob([0, 0, 0, 0, 9]))
     var emptyDecoder = BlobQueryDecoder(bytes: [0, 0, 0, 0, 9])
-    expectNoDifference(try emptyDecoder.decode(TursoSparseFloat32Vector.self)?.denseValues(), [Float]())
+    expectNoDifference(
+      try emptyDecoder.decode(TursoSparseFloat32Vector.self)?.denseValues(),
+      [Float]()
+    )
   }
 
   @Test
@@ -269,7 +281,10 @@ struct `Vector Representation tests` {
     let fixture: [UInt8] = [0, 128, 255, 0, 0, 0, 128, 63, 0, 0, 0, 0, 0, 1, 4]
     expectNoDifference(vector.queryBinding, .blob(fixture))
     var decoder = BlobQueryDecoder(bytes: fixture)
-    expectNoDifference(try decoder.decode(TursoQuantized8Vector.self)?.decodedValues(), [0, 128, 255])
+    expectNoDifference(
+      try decoder.decode(TursoQuantized8Vector.self)?.decodedValues(),
+      [0, 128, 255]
+    )
   }
 
   @Test(

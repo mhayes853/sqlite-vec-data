@@ -11,7 +11,8 @@ import StructuredQueriesVectorCore
 /// let vector = try TursoSparseFloat32Vector(compressing: [0, 0, 1.5, 0, 0, 2.5])
 /// let dense = vector.denseValues() // [0, 0, 1.5, 0, 0, 2.5]; omitted components become zero.
 /// ```
-public struct TursoSparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable {
+public struct TursoSparseFloat32Vector: Hashable, Sendable, QueryBindable, VectorBytesRepresentable
+{
   public typealias QueryOutput = Self
   public typealias Scalar = Float
   public typealias Dimensions = Void
@@ -143,7 +144,9 @@ public struct TursoSparseFloat32Vector: Hashable, Sendable, QueryBindable, Vecto
         values: values
       )
     } catch {
-      throw VectorDecodingError.invalidBytes(reason: "Invalid Turso sparse Float32 components: \(error)")
+      throw VectorDecodingError.invalidBytes(
+        reason: "Invalid Turso sparse Float32 components: \(error)"
+      )
     }
   }
 

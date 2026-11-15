@@ -229,7 +229,8 @@ private func decodeTursoBitsPayload(_ bytes: [UInt8]) throws -> (
 ) {
   guard bytes.count >= 3, bytes.count % 2 == 1, bytes.last == 3 else {
     throw VectorDecodingError.invalidBytes(
-      reason: "Expected an odd-length Turso 1-bit blob ending in type byte 3, found \(bytes.count) bytes."
+      reason:
+        "Expected an odd-length Turso 1-bit blob ending in type byte 3, found \(bytes.count) bytes."
     )
   }
   let trailingBits = Int(bytes[bytes.count - 2])

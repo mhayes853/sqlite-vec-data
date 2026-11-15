@@ -137,7 +137,8 @@ extension SQLiteVecBinaryEncoding {
 /// drafts, and updates.
 protocol SQLiteVecTaggedBinding: QueryBindable {}
 
-extension SQLiteVecTaggedBinding where Self: VectorBytesRepresentable, Encoding: SQLiteVecVectorEncoding {
+extension SQLiteVecTaggedBinding
+where Self: VectorBytesRepresentable, Encoding: SQLiteVecVectorEncoding {
   var taggedQueryFragment: QueryFragment {
     Self.Encoding.sqliteVecExpression("\(self.queryBinding)")
   }

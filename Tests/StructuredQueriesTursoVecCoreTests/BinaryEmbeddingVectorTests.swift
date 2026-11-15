@@ -164,7 +164,8 @@ struct `BinaryEmbeddingVector tests` {
     expectNoDifference(decoded.queryOutput, vector)
     expectNoDifference(decoded.vectorBytes, [133, 1, 0, 23, 3])
     #expect(throws: VectorDecodingError.dimensionMismatch(expected: 8, actual: 9)) {
-      _ = try BinaryEmbeddingVector<8>.TursoBinaryBytesRepresentation(vectorBytes: turso.vectorBytes)
+      _ = try BinaryEmbeddingVector<8>
+        .TursoBinaryBytesRepresentation(vectorBytes: turso.vectorBytes)
     }
 
     let packed = try BinaryEmbeddingVector<16>.PackedBitsRepresentation(vectorBytes: [133, 129])
