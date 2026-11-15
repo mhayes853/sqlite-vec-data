@@ -15,17 +15,14 @@ SQL comments show generated queries; placeholders represent bound values.
 Requires Swift 6.3. Array-based APIs support iOS 16, macOS 13, tvOS 16, and watchOS 9 or later,
 and Linux. Fixed-size vector types require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
-These examples target the unreleased API. Version 0.6.0 does not include all of these APIs; use
-this pinned revision until a release containing them is available:
-
 ```swift
 dependencies: [
-  .package(
-    url: "https://github.com/mhayes853/sqlite-vec-data",
-    revision: "fdae0bd89caa418a2f564eee05efccd74508cab1"
-  )
+  .package(url: "https://github.com/mhayes853/sqlite-vec-data", from: "1.0.0")
 ]
 ```
+
+Upgrading from 0.x? See the
+[migration guide](Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).
 
 Choose the product for your database:
 
@@ -41,7 +38,10 @@ Standalone query helpers also need `StructuredQueriesSQLite` from
 [swift-structured-queries](https://github.com/pointfreeco/swift-structured-queries) for `@Table`,
 `@Column`, and `#sql`.
 
-SwiftPM patches and compiles the bundled sqlite-vec source when building its integration targets.
+SwiftPM patches and compiles the bundled sqlite-vec source with a build tool plugin when building
+its integration targets. The plugin runs `/bin/sh`, `git`, and `sha256sum` or `shasum`, which
+standard macOS and Linux development environments provide. Xcode asks you to trust the plugin the
+first time you build.
 
 ## sqlite-vec
 
