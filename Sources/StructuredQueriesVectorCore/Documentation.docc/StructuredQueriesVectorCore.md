@@ -128,7 +128,8 @@ checks remain active, and database or decoding errors still surface.
 ``VectorScalar`` supplies Float16, Float, and Double bit patterns through an unsigned `BitPattern`,
 `bitPattern`, and `init(bitPattern:)`. Generic codecs preserve IEEE bits in little-endian order,
 reject incomplete components, and add no tags. They are not customization points; scalar
-conformance alone does not add database support.
+conformance alone does not add database support. The standard library does not provide `Float16`
+on Intel macOS or Mac Catalyst, so its conformance is unavailable there.
 
 ``VectorBytesRepresentable`` uses `Encoding` to identify a layout independently of dimensions:
 `EmbeddingVector<3>` and `[Float].VectorBytesRepresentation` share it. The associated

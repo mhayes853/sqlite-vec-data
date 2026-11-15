@@ -3,6 +3,8 @@
 /// Float16, Float, and Double use raw little-endian payloads. Serialization preserves IEEE
 /// bit patterns and does not add metadata or imply support for database vector operations.
 /// `Float16` is IEEE binary16, not BF16. Framework tensor dtypes are not scalar conformances.
+/// `Float16` conforms on every platform where the standard library provides it, which excludes
+/// Intel macOS and Mac Catalyst.
 ///
 /// ```swift
 /// let values: [Float] = [1, -0.0]
@@ -67,6 +69,9 @@ extension VectorScalar {
   }
 }
 
-extension Float16: VectorScalar {}
+// NB: The standard library does not provide Float16 on Intel macOS or Mac Catalyst.
+#if !((os(macOS) || targetEnvironment(macCatalyst)) && arch(x86_64))
+  extension Float16: VectorScalar {}
+#endif
 extension Float: VectorScalar {}
 extension Double: VectorScalar {}
