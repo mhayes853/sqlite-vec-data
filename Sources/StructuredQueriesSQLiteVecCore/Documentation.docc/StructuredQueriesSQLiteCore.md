@@ -306,7 +306,7 @@ let ranked = Embedding
   .select { ($0.label, $0.embedding.distanceCosine(to: vector)) }
 // SELECT "Embeddings"."label", vec_distance_cosine("Embeddings"."embedding", ?)
 // FROM "Embeddings"
-// WHERE (vec_distance_cosine("Embeddings"."embedding", ?) IS NOT NULL)
+// WHERE ((vec_distance_cosine("Embeddings"."embedding", ?)) IS NOT (NULL))
 // ORDER BY vec_distance_cosine("Embeddings"."embedding", ?)
 
 let score = Vec.distanceCosine(vector, to: vector).ifnull(2)
