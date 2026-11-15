@@ -39,15 +39,15 @@ struct `TursoVec NULL tests` {
     // SQL quantization can produce nonfinite parameters without passing through Swift validation.
     // Binary dot/Hamming cannot produce NaN. Cosine/Jaccard can have a zero denominator.
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/distance_dot.rs
-    let codes = try Quantized8Vector(quantizing: [1, 2, 3])
-    let bits: [Bool].TursoBytesRepresentation = [true, false, true]
+    let codes = try TursoQuantized8Vector(quantizing: [1, 2, 3])
+    let bits: [Bool].TursoBinaryBytesRepresentation = [true, false, true]
     requireNullable(TursoVec.distanceL2(codes, to: codes))
     requireNullable(TursoVec.distanceDot(codes, to: codes))
     requireNonnullable(TursoVec.distanceDot(bits, to: bits))
     requireNonnullable(TursoVec.distanceHamming(bits, to: bits))
     requireNullable(TursoVec.distanceCosine(codes, to: codes))
     requireNullable(TursoVec.distanceJaccard(bits, to: bits))
-    let missing: Quantized8Vector? = nil
+    let missing: TursoQuantized8Vector? = nil
     requireNullable(missing.whenPresent { TursoVec.distanceL2($0, to: codes) })
     requireNullable(missing.whenPresent { TursoVec.distanceDot(codes, to: $0) })
     expectNoDifference(
@@ -87,8 +87,8 @@ struct `TursoVec NULL tests` {
   @Test
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   func `Fixed And Runtime Quantized Distances Remain Nullable`() throws {
-    let fixed = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
-    let variable = try Quantized8Vector(quantizing: [1, 2, 3])
+    let fixed = try FixedTursoQuantized8Vector<3>(quantizing: EmbeddingVector<3>([1, 2, 3]))
+    let variable = try TursoQuantized8Vector(quantizing: [1, 2, 3])
     let converted = TursoVec.vector8(EmbeddingVector<3>([1, 2, 3]))
     requireNullable(TursoVec.distanceL2(fixed, to: fixed))
     requireNullable(TursoVec.distanceL2(fixed, to: variable))
@@ -98,7 +98,7 @@ struct `TursoVec NULL tests` {
     requireNullable(TursoVec.distanceDot(variable, to: fixed))
     requireNullable(TursoVec.distanceL2(converted, to: converted))
     requireNullable(TursoVec.distanceDot(converted, to: converted))
-    let missing: InlineQuantized8Vector<3>? = nil
+    let missing: FixedTursoQuantized8Vector<3>? = nil
     requireNullable(missing.whenPresent { TursoVec.distanceL2($0, to: converted) })
     requireNullable(missing.whenPresent { TursoVec.distanceDot($0, to: converted) })
   }

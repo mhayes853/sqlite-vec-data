@@ -84,9 +84,9 @@ Convert JSON explicitly using the constructor for the column's format:
 | --- | --- | --- |
 | `vector32` / `vector` | `vector32` / `vector` | `[Float].VectorBytesRepresentation` |
 | `vector64` | `vector64` | `[Double].TursoFloat64BytesRepresentation` |
-| `vector8` | `vector8` | `Quantized8Vector` |
-| `vector1bit` | `vector1bit` | `[Bool].TursoBytesRepresentation` |
-| `vector32Sparse` | `vector32_sparse` | `SparseFloat32Vector` |
+| `vector8` | `vector8` | `TursoQuantized8Vector` |
+| `vector1bit` | `vector1bit` | `[Bool].TursoBinaryBytesRepresentation` |
+| `vector32Sparse` | `vector32_sparse` | `TursoSparseFloat32Vector` |
 
 ```swift
 let distances = Document.select {
@@ -116,7 +116,7 @@ let json = TursoVec.extract(precise)
 ```
 
 Raw Double, Float16, SQLiteVec Int8, and packed bits are unsupported. Use
-`.TursoFloat64BytesRepresentation` for Double and `.TursoBytesRepresentation` for binary. Generic
+`.TursoFloat64BytesRepresentation` for Double and `.TursoBinaryBytesRepresentation` for binary. Generic
 forwarding needs `where V.Encoding: TursoVectorEncoding`, plus operation-specific constraints.
 
 `@Column(as:)` can store arbitrary BLOBs; compatibility checks apply to Turso helpers. The database
@@ -150,7 +150,7 @@ hashing to the shared strategy. Raw and Turso Float64 have distinct encoding ide
 
 ### Quantized vectors
 
-``Quantized8Vector`` stores UInt8 `codes`, `scale`, and `shift`, reconstructing
+``TursoQuantized8Vector`` stores UInt8 `codes`, `scale`, and `shift`, reconstructing
 `Float(code) * scale + shift`. This affine format differs from FP8 and sqlite-vec Int8.
 
 ```swift
@@ -158,13 +158,13 @@ hashing to the shared strategy. Raw and Turso Float64 have distinct encoding ide
 @Table("compressed_documents")
 struct QuantizedDocument {
   var id: Int
-  var embedding: Quantized8Vector
+  var embedding: TursoQuantized8Vector
 }
 
-let compressed = try Quantized8Vector(quantizing: [0, 127.5, 255])
+let compressed = try TursoQuantized8Vector(quantizing: [0, 127.5, 255])
 // codes: [0, 128, 255], scale: 1, shift: 0
 let values = compressed.decodedValues() // [0, 128, 255]
-let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+let supplied = try TursoQuantized8Vector(codes: [10, 20], scale: 2, shift: 1)
 let insert = QuantizedDocument.insert { ($0.id, $0.embedding) } values: {
   (1, compressed)
 }
@@ -177,7 +177,7 @@ reconstructs floats. Values bind directly without `@Column(as:)`.
 
 ### Sparse vectors
 
-``SparseFloat32Vector`` stores logical dimensions, sorted unique indices, and Float32 values,
+``TursoSparseFloat32Vector`` stores logical dimensions, sorted unique indices, and Float32 values,
 suited to TF-IDF, bag-of-words, and mostly zero features:
 
 ```swift
@@ -185,12 +185,12 @@ suited to TF-IDF, bag-of-words, and mostly zero features:
 @Table("sparse_documents")
 struct SparseDocument {
   var id: Int
-  var embedding: SparseFloat32Vector
+  var embedding: TursoSparseFloat32Vector
 }
 
-let sparse = try SparseFloat32Vector(compressing: [0, 0, 1.5, 0, 0, 2.5])
+let sparse = try TursoSparseFloat32Vector(compressing: [0, 0, 1.5, 0, 0, 2.5])
 // dimensions: 6, indices: [2, 5], values: [1.5, 2.5]
-let supplied = try SparseFloat32Vector(dimensions: 6, indices: [2, 5], values: [1.5, 2.5])
+let supplied = try TursoSparseFloat32Vector(dimensions: 6, indices: [2, 5], values: [1.5, 2.5])
 let dense = sparse.denseValues() // [0, 0, 1.5, 0, 0, 2.5]
 let query = SparseDocument.select { TursoVec.distanceJaccard($0.embedding, to: sparse) }
 // SELECT vector_distance_jaccard("sparse_documents"."embedding", ?)
@@ -203,7 +203,7 @@ plus five per vector, so dense embeddings can grow. Sparse storage creates no in
 
 ### Binary vectors
 
-`.TursoBytesRepresentation` on `[Bool]` and `BinaryEmbeddingVector<N>` preserves exact counts,
+`.TursoBinaryBytesRepresentation` on `[Bool]` and `BinaryEmbeddingVector<N>` preserves exact counts,
 including partial bytes:
 
 ```swift
@@ -211,12 +211,12 @@ including partial bytes:
 @Table("binary_documents")
 struct BinaryDocument {
   var id: Int
-  @Column(as: BinaryEmbeddingVector<9>.TursoBytesRepresentation.self)
+  @Column(as: BinaryEmbeddingVector<9>.TursoBinaryBytesRepresentation.self)
   var embedding: BinaryEmbeddingVector<9>
 }
 
 let binary = BinaryEmbeddingVector<9>(quantizing: EmbeddingVector<9>([1, -1, 1, -1, -1, -1, -1, 1, 1]))
-let binding = BinaryEmbeddingVector<9>.TursoBytesRepresentation(queryOutput: binary)
+let binding = BinaryEmbeddingVector<9>.TursoBinaryBytesRepresentation(queryOutput: binary)
 let query = BinaryDocument.select { TursoVec.distanceHamming($0.embedding, to: binding) }
 // SELECT vector_distance_cos("binary_documents"."embedding", ?)
 // FROM "binary_documents"
@@ -225,7 +225,7 @@ let query = BinaryDocument.select { TursoVec.distanceHamming($0.embedding, to: b
 Binary cosine is Hamming distance: `distanceHamming` returns `Double` (SQL REAL); local Hamming
 returns `Int`. Extraction and dot distance use true = +1, false = -1; Jaccard compares true-bit sets.
 
-`packedBytes` exposes raw payload only; `.TursoBytesRepresentation` adds padding and format
+`packedBytes` exposes raw payload only; `.TursoBinaryBytesRepresentation` adds padding and format
 metadata. SQLiteVec's `.PackedBitsRepresentation` uses a different layout.
 
 ### Concatenate and slice
@@ -283,22 +283,22 @@ variable values. Slice and concat retain their format restrictions.
 
 ### Fixed-size results and bytes
 
-``InlineQuantized8Vector`` stores inline UInt8 codes, scale, and shift. ``SizedSparseFloat32Vector``
+``FixedTursoQuantized8Vector`` stores inline UInt8 codes, scale, and shift. ``FixedTursoSparseFloat32Vector``
 fixes logical dimensions with variable entries. Both bind directly; `init(validating:)` and decoding
 check counts while preserving encoded components:
 
 ```swift
-let supplied = try Quantized8Vector(codes: [10, 20], scale: 2, shift: 1)
-let inline = try InlineQuantized8Vector<2>(validating: supplied)
-let sparseComponents = try SparseFloat32Vector(dimensions: 4, indices: [1, 3], values: [2, 5])
-let sized = try SizedSparseFloat32Vector<4>(validating: sparseComponents)
+let supplied = try TursoQuantized8Vector(codes: [10, 20], scale: 2, shift: 1)
+let inline = try FixedTursoQuantized8Vector<2>(validating: supplied)
+let sparseComponents = try TursoSparseFloat32Vector(dimensions: 4, indices: [1, 3], values: [2, 5])
+let sized = try FixedTursoSparseFloat32Vector<4>(validating: sparseComponents)
 
 let quantized = try EmbeddingVector<3>([0, 127.5, 255]).quantized8()
 let sparse = try EmbeddingVector<6>([0, 0, 1.5, 0, 0, 2.5]).sparseFloat32()
 
-let converted = TursoVec.vector8("[1, 2, 3, 4]", as: InlineQuantized8Vector<4>.self)
+let converted = TursoVec.vector8("[1, 2, 3, 4]", as: FixedTursoQuantized8Vector<4>.self)
 // vector8(?)
-let sparseResult = TursoVec.vector32Sparse("[0, 1, 0, 2]", as: SizedSparseFloat32Vector<4>.self)
+let sparseResult = TursoVec.vector32Sparse("[0, 1, 0, 2]", as: FixedTursoSparseFloat32Vector<4>.self)
 // vector32_sparse(?)
 let doubles = TursoVec.vector64("[1, 2, 3, 4]", as: EmbeddingVector64<4>.TursoFloat64BytesRepresentation.self)
 // vector64(?)
@@ -354,10 +354,10 @@ ranking, exclude undefined scores with `.isNot(nil)` or choose an explicit large
 @Table("compressed_documents")
 struct CompressedDocument {
   var id: Int
-  var embedding: Quantized8Vector
+  var embedding: TursoQuantized8Vector
 }
 
-let queryVector = try Quantized8Vector(quantizing: [1, 2, 3])
+let queryVector = try TursoQuantized8Vector(quantizing: [1, 2, 3])
 let score = TursoVec.distanceL2(CompressedDocument.columns.embedding, to: queryVector)
 let definedMatches = CompressedDocument
   .where { _ in score.isNot(nil) }

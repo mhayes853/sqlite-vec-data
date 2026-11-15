@@ -192,8 +192,8 @@ struct `TursoVec Query tests` {
   func `Compares Binary And Quantized Vectors Without JSON Overloads`() throws {
     // https://docs.turso.tech/sql-reference/functions/vector#distance-functions
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/distance_cos.rs#L40
-    let bits: [Bool].TursoBytesRepresentation = [true, false]
-    let quantized = try Quantized8Vector(quantizing: [1, 2])
+    let bits: [Bool].TursoBinaryBytesRepresentation = [true, false]
+    let quantized = try TursoQuantized8Vector(quantizing: [1, 2])
     let doubles: [Double].TursoFloat64BytesRepresentation = [1, 2]
     let binaryCosine = TursoVec.distanceCosine(Formats.columns.bits, to: bits)
     let binaryJaccard = TursoVec.distanceJaccard(Formats.columns.bits, to: bits)
@@ -298,7 +298,7 @@ struct `TursoVec Query tests` {
     // https://docs.turso.tech/guides/vector-search#limitations
     // Turso's vector_distance_cos returns Hamming distance for binary inputs.
     let vector = try BinaryEmbeddingVector<9>(packedBytes: [133, 1])
-    let binding = BinaryEmbeddingVector<9>.TursoBytesRepresentation(queryOutput: vector)
+    let binding = BinaryEmbeddingVector<9>.TursoBinaryBytesRepresentation(queryOutput: vector)
     let query = BinaryDocument.select {
       TursoVec.distanceHamming($0.embedding, to: binding)
     }
@@ -326,14 +326,14 @@ struct `TursoVec Query tests` {
   func `Uses Encoded Vector Values Directly In Columns`() throws {
     // https://docs.turso.tech/sql-reference/functions/vector#vector8
     // https://docs.turso.tech/sql-reference/functions/vector#vector32-sparse
-    let quantized = try InlineQuantized8Vector<4>(codes: [1, 2, 3, 4], scale: 0.5, shift: 1)
-    let sparse = try SizedSparseFloat32Vector<4>(indices: [1, 3], values: [2, 4])
+    let quantized = try FixedTursoQuantized8Vector<4>(codes: [1, 2, 3, 4], scale: 0.5, shift: 1)
+    let sparse = try FixedTursoSparseFloat32Vector<4>(indices: [1, 3], values: [2, 4])
     let query = SizedFormats.select {
       (
         TursoVec.distanceCosine($0.quantized, to: quantized),
         TursoVec.distanceL2($0.sparse, to: sparse),
-        TursoVec.vector8("[1,2,3,4]", as: InlineQuantized8Vector<4>.self),
-        TursoVec.slice($0.sparse, from: 1, to: 3, as: SizedSparseFloat32Vector<2>.self)
+        TursoVec.vector8("[1,2,3,4]", as: FixedTursoQuantized8Vector<4>.self),
+        TursoVec.slice($0.sparse, from: 1, to: 3, as: FixedTursoSparseFloat32Vector<2>.self)
       )
     }
     let prepared = query.query.prepare { "?\($0)" }
@@ -370,15 +370,15 @@ struct `TursoVec Query tests` {
 @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
 @Table("binary_documents")
 private struct BinaryDocument: Hashable, Sendable {
-  @Column(as: BinaryEmbeddingVector<9>.TursoBytesRepresentation.self)
+  @Column(as: BinaryEmbeddingVector<9>.TursoBinaryBytesRepresentation.self)
   var embedding: BinaryEmbeddingVector<9>
 }
 
 @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
 @Table("sized_formats")
 private struct SizedFormats: Hashable, Sendable {
-  var quantized: InlineQuantized8Vector<4>
-  var sparse: SizedSparseFloat32Vector<4>
+  var quantized: FixedTursoQuantized8Vector<4>
+  var sparse: FixedTursoSparseFloat32Vector<4>
 }
 
 @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
@@ -398,10 +398,10 @@ private struct Document: Hashable, Sendable {
 private struct Formats: Hashable, Sendable {
   @Column(as: [Double].TursoFloat64BytesRepresentation.self)
   var doubles: [Double]
-  var quantized: Quantized8Vector
-  @Column(as: [Bool].TursoBytesRepresentation.self)
+  var quantized: TursoQuantized8Vector
+  @Column(as: [Bool].TursoBinaryBytesRepresentation.self)
   var bits: [Bool]
-  var sparse: SparseFloat32Vector
+  var sparse: TursoSparseFloat32Vector
 }
 
 @Table("sqlite_embeddings")

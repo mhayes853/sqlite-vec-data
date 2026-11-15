@@ -5,7 +5,7 @@
 ///
 /// ```swift
 /// do {
-///   _ = try Quantized8Vector(quantizing: [.infinity])
+///   _ = try TursoQuantized8Vector(quantizing: [.infinity])
 /// } catch let error as TursoVectorError {
 ///   switch error.code {
 ///   case .invalidQuantization: print(error.reason)
@@ -18,7 +18,7 @@ public struct TursoVectorError: Error, Hashable, Sendable, CustomStringConvertib
   ///
   /// ```swift
   /// do {
-  ///   _ = try Quantized8Vector(quantizing: [.infinity])
+  ///   _ = try TursoQuantized8Vector(quantizing: [.infinity])
   /// } catch let error as TursoVectorError {
   ///   switch error.code {
   ///   case .invalidQuantization: print(error.reason)
@@ -92,7 +92,7 @@ public struct TursoVectorError: Error, Hashable, Sendable, CustomStringConvertib
     ///
     /// ```swift
     /// do {
-    ///   _ = try Quantized8Vector(codes: [0], scale: -1, shift: 0)
+    ///   _ = try TursoQuantized8Vector(codes: [0], scale: -1, shift: 0)
     /// } catch let error as TursoVectorError {
     ///   if error.code == .invalidQuantization { print(error.reason) }
     /// }
@@ -104,7 +104,7 @@ public struct TursoVectorError: Error, Hashable, Sendable, CustomStringConvertib
     ///
     /// ```swift
     /// do {
-    ///   _ = try SparseFloat32Vector(dimensions: 3, indices: [3], values: [1])
+    ///   _ = try TursoSparseFloat32Vector(dimensions: 3, indices: [3], values: [1])
     /// } catch let error as TursoVectorError {
     ///   if error.code == .invalidSparseComponents { print(error.reason) }
     /// }

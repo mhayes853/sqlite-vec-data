@@ -5,7 +5,7 @@ extension Array where Element == Int8 {
   ///
   /// Bound values render as `vec_int8(?)` so that SQLiteVec reads them as Int8 rather than Float32,
   /// including in record inserts. This format has no scale, shift, or type metadata and differs from
-  /// Turso's `Quantized8Vector`.
+  /// Turso's `TursoQuantized8Vector`.
   ///
   /// ```swift
   /// @Table("documents")

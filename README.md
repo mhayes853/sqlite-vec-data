@@ -353,10 +353,10 @@ ranking, exclude undefined scores with `.isNot(nil)` or choose an explicit large
 @Table("compressed_documents")
 struct CompressedDocument {
   var id: Int
-  var embedding: Quantized8Vector
+  var embedding: TursoQuantized8Vector
 }
 
-let queryVector = try Quantized8Vector(quantizing: [1, 2, 3])
+let queryVector = try TursoQuantized8Vector(quantizing: [1, 2, 3])
 let score = TursoVec.distanceL2(CompressedDocument.columns.embedding, to: queryVector)
 let definedMatches = CompressedDocument
   .where { _ in score.isNot(nil) }
@@ -384,21 +384,21 @@ Convert JSON explicitly with the constructor for the column's format:
 | --- | --- |
 | `TursoVec.vector32` / `vector` | `[Float].VectorBytesRepresentation` |
 | `TursoVec.vector64` | `[Double].TursoFloat64BytesRepresentation` |
-| `TursoVec.vector8` | `Quantized8Vector` |
-| `TursoVec.vector1bit` | `[Bool].TursoBytesRepresentation` |
-| `TursoVec.vector32Sparse` | `SparseFloat32Vector` |
+| `TursoVec.vector8` | `TursoQuantized8Vector` |
+| `TursoVec.vector1bit` | `[Bool].TursoBinaryBytesRepresentation` |
+| `TursoVec.vector32Sparse` | `TursoSparseFloat32Vector` |
 
 Constructors accept JSON strings or vectors with a `TursoVectorEncoding`; `extract` requires a compatible
 vector. Shared Float32 works directly. Double requires `.TursoFloat64BytesRepresentation`, and
-binary requires `.TursoBytesRepresentation`. Raw Double, Float16, SQLiteVec Int8, and packed bits
+binary requires `.TursoBinaryBytesRepresentation`. Raw Double, Float16, SQLiteVec Int8, and packed bits
 are rejected. Numeric encodings support L2; binary encodings use Turso framing.
 
 The table shows JSON and variable-size results. Fixed inputs retain dimensions across conversions.
 Matching numeric formats support cosine, L2, negative dot product, and Jaccard. Binary L2 is
 unavailable; `distanceHamming` calls `vector_distance_cos` and returns a `Double` bit count.
 
-`Quantized8Vector` stores affine UInt8 codes, scale, and shift; it differs from FP8 and sqlite-vec
-Int8. `SparseFloat32Vector` stores indexed features and a logical count. Both bind directly without
+`TursoQuantized8Vector` stores affine UInt8 codes, scale, and shift; it differs from FP8 and sqlite-vec
+Int8. `TursoSparseFloat32Vector` stores indexed features and a logical count. Both bind directly without
 `@Column(as:)`. Turso binary strategies preserve exact counts, including partial bytes.
 
 `concat` accepts dense Float32/Float64; `slice` also accepts sparse Float32. Use `as:` for fixed-size
@@ -414,10 +414,10 @@ fixed values provide mutable collections, hashing, Codable, and dimension-checke
 | --- | --- |
 | `EmbeddingVector<N>` (Float32) | Direct binding or `.VectorBytesRepresentation` |
 | `EmbeddingVector64<N>` (Float64) | `.TursoFloat64BytesRepresentation` for Turso |
-| `BinaryEmbeddingVector<N>` | `.PackedBitsRepresentation` for sqlite-vec; `.TursoBytesRepresentation` for Turso |
+| `BinaryEmbeddingVector<N>` | `.PackedBitsRepresentation` for sqlite-vec; `.TursoBinaryBytesRepresentation` for Turso |
 | `FixedEmbeddingVector<N, Int8>` | `.Int8BytesRepresentation` for sqlite-vec |
-| `InlineQuantized8Vector<N>` | Direct binding for Turso |
-| `SizedSparseFloat32Vector<N>` | Direct binding for Turso |
+| `FixedTursoQuantized8Vector<N>` | Direct binding for Turso |
+| `FixedTursoSparseFloat32Vector<N>` | Direct binding for Turso |
 
 Fixed-size types require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 

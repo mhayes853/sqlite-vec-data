@@ -155,16 +155,16 @@ struct `BinaryEmbeddingVector tests` {
     // https://github.com/tursodatabase/turso/blob/fc98dacd13a047feb7389f3abd67c4a4f0d0edc4/core/vector/operations/serialize.rs
     // SQLiteVec bit order: https://github.com/asg017/sqlite-vec/blob/v0.1.9/sqlite-vec.c
     let vector = try BinaryEmbeddingVector<9>(packedBytes: [133, 1])
-    let turso = BinaryEmbeddingVector<9>.TursoBytesRepresentation(queryOutput: vector)
+    let turso = BinaryEmbeddingVector<9>.TursoBinaryBytesRepresentation(queryOutput: vector)
     expectNoDifference(turso.vectorBytes, [133, 1, 0, 23, 3])
     let decoded = try BinaryEmbeddingVector<9>
-      .TursoBytesRepresentation(
+      .TursoBinaryBytesRepresentation(
         vectorBytes: [133, 255, 0, 23, 3]
       )
     expectNoDifference(decoded.queryOutput, vector)
     expectNoDifference(decoded.vectorBytes, [133, 1, 0, 23, 3])
     #expect(throws: VectorDecodingError.dimensionMismatch(expected: 8, actual: 9)) {
-      _ = try BinaryEmbeddingVector<8>.TursoBytesRepresentation(vectorBytes: turso.vectorBytes)
+      _ = try BinaryEmbeddingVector<8>.TursoBinaryBytesRepresentation(vectorBytes: turso.vectorBytes)
     }
 
     let packed = try BinaryEmbeddingVector<16>.PackedBitsRepresentation(vectorBytes: [133, 129])
@@ -174,10 +174,10 @@ struct `BinaryEmbeddingVector tests` {
       _ = try BinaryEmbeddingVector<9>.PackedBitsRepresentation(vectorBytes: [133, 1])
     }
     let empty = BinaryEmbeddingVector<0>
-      .TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<0>(repeating: false))
+      .TursoBinaryBytesRepresentation(queryOutput: BinaryEmbeddingVector<0>(repeating: false))
     expectNoDifference(empty.vectorBytes, [0, 16, 3])
     expectNoDifference(
-      try BinaryEmbeddingVector<0>.TursoBytesRepresentation(vectorBytes: empty.vectorBytes),
+      try BinaryEmbeddingVector<0>.TursoBinaryBytesRepresentation(vectorBytes: empty.vectorBytes),
       empty
     )
   }

@@ -9,8 +9,8 @@ extension FixedEmbeddingVector where Scalar == Float {
   /// let quantized = try embedding.quantized8()
   /// let reconstructed = quantized.decodedValues() // [0, 128, 255]: quantization is lossy.
   /// ```
-  public func quantized8() throws -> InlineQuantized8Vector<count> {
-    try InlineQuantized8Vector<count>(quantizing: self)
+  public func quantized8() throws -> FixedTursoQuantized8Vector<count> {
+    try FixedTursoQuantized8Vector<count>(quantizing: self)
   }
 
   /// Compresses exact zeros while retaining the logical dimension count.
@@ -20,7 +20,7 @@ extension FixedEmbeddingVector where Scalar == Float {
   /// let sparse = try embedding.sparseFloat32()
   /// let entries = Array(zip(sparse.indices, sparse.values)) // [(2, 1.5), (5, 2.5)]
   /// ```
-  public func sparseFloat32() throws -> SizedSparseFloat32Vector<count> {
-    try SizedSparseFloat32Vector<count>(compressing: self)
+  public func sparseFloat32() throws -> FixedTursoSparseFloat32Vector<count> {
+    try FixedTursoSparseFloat32Vector<count>(compressing: self)
   }
 }

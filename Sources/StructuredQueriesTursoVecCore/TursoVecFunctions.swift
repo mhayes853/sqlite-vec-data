@@ -38,11 +38,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation.self)
   ///   var embedding: BinaryEmbeddingVector<3>
   /// }
   ///
-  /// let queryVector = BinaryEmbeddingVector<3>.TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
+  /// let queryVector = BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceHamming($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -72,11 +72,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: [Bool].TursoBytesRepresentation.self)
+  ///   @Column(as: [Bool].TursoBinaryBytesRepresentation.self)
   ///   var embedding: [Bool]
   /// }
   ///
-  /// let queryVector = BinaryEmbeddingVector<3>.TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
+  /// let queryVector = BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceHamming($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -107,11 +107,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation.self)
   ///   var embedding: BinaryEmbeddingVector<3>
   /// }
   ///
-  /// let queryVector: [Bool].TursoBytesRepresentation = [true, false, true]
+  /// let queryVector: [Bool].TursoBinaryBytesRepresentation = [true, false, true]
   /// let neighbors = Document
   ///   .order { TursoVec.distanceHamming($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -512,8 +512,8 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: Quantized8Vector.self)
-  ///   var embedding: Quantized8Vector
+  ///   @Column(as: TursoQuantized8Vector.self)
+  ///   var embedding: TursoQuantized8Vector
   /// }
   ///
   /// let embedding = TursoVec.vector8("[1,2,3]")
@@ -525,8 +525,8 @@ public enum TursoVec {
   /// ```
   public static func vector8(
     _ expression: some QueryExpression<String>
-  ) -> some QueryExpression<Quantized8Vector> {
-    Self.vector8(expression, as: Quantized8Vector.self)
+  ) -> some QueryExpression<TursoQuantized8Vector> {
+    Self.vector8(expression, as: TursoQuantized8Vector.self)
   }
 
   /// Converts JSON with `vector8`, decoding into the requested matching representation.
@@ -536,11 +536,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: InlineQuantized8Vector<3>.self)
-  ///   var embedding: InlineQuantized8Vector<3>
+  ///   @Column(as: FixedTursoQuantized8Vector<3>.self)
+  ///   var embedding: FixedTursoQuantized8Vector<3>
   /// }
   ///
-  /// let embedding = TursoVec.vector8("[1,2,3]", as: InlineQuantized8Vector<3>.self)
+  /// let embedding = TursoVec.vector8("[1,2,3]", as: FixedTursoQuantized8Vector<3>.self)
   /// // vector8(?)
   /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
   ///   (1, embedding)
@@ -567,12 +567,12 @@ public enum TursoVec {
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public static func vector8<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<InlineQuantized8Vector<count>>
+  ) -> some QueryExpression<FixedTursoQuantized8Vector<count>>
   where
     V.Encoding: TursoVectorEncoding,
     V.Dimensions == VectorDimensions<count>
   {
-    Self.vector8(expression, as: InlineQuantized8Vector<count>.self)
+    Self.vector8(expression, as: FixedTursoQuantized8Vector<count>.self)
   }
 
   /// Converts a supported vector BLOB to a quantized vector with `vector8`.
@@ -581,8 +581,8 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: Quantized8Vector.self)
-  ///   var embedding: Quantized8Vector
+  ///   @Column(as: TursoQuantized8Vector.self)
+  ///   var embedding: TursoQuantized8Vector
   /// }
   ///
   /// let source = TursoVec.vector32("[-0.75, 0, 0.5]")
@@ -597,12 +597,12 @@ public enum TursoVec {
   /// ```
   public static func vector8<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<Quantized8Vector>
+  ) -> some QueryExpression<TursoQuantized8Vector>
   where
     V.Encoding: TursoVectorEncoding,
     V.Dimensions == Void
   {
-    Self.vector8(expression, as: Quantized8Vector.self)
+    Self.vector8(expression, as: TursoQuantized8Vector.self)
   }
 
   /// Preserves matching input and result dimensions.
@@ -614,7 +614,7 @@ public enum TursoVec {
   ///   var embedding: EmbeddingVector<8>
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector8($0.embedding, as: InlineQuantized8Vector<8>.self)
+  ///   TursoVec.vector8($0.embedding, as: FixedTursoQuantized8Vector<8>.self)
   /// }
   /// // SELECT vector8("documents"."embedding")
   /// // FROM "documents"
@@ -642,7 +642,7 @@ public enum TursoVec {
   ///   var embedding: [Float]
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector8($0.embedding, as: InlineQuantized8Vector<8>.self)
+  ///   TursoVec.vector8($0.embedding, as: FixedTursoQuantized8Vector<8>.self)
   /// }
   /// // SELECT vector8("documents"."embedding")
   /// // FROM "documents"
@@ -671,7 +671,7 @@ public enum TursoVec {
   ///   var embedding: EmbeddingVector<8>
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector8($0.embedding, as: Quantized8Vector.self)
+  ///   TursoVec.vector8($0.embedding, as: TursoQuantized8Vector.self)
   /// }
   /// // SELECT vector8("documents"."embedding")
   /// // FROM "documents"
@@ -697,7 +697,7 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: [Bool].TursoBytesRepresentation.self)
+  ///   @Column(as: [Bool].TursoBinaryBytesRepresentation.self)
   ///   var embedding: [Bool]
   /// }
   ///
@@ -711,8 +711,8 @@ public enum TursoVec {
   /// ```
   public static func vector1bit(
     _ expression: some QueryExpression<String>
-  ) -> some QueryExpression<[Bool].TursoBytesRepresentation> {
-    Self.vector1bit(expression, as: [Bool].TursoBytesRepresentation.self)
+  ) -> some QueryExpression<[Bool].TursoBinaryBytesRepresentation> {
+    Self.vector1bit(expression, as: [Bool].TursoBinaryBytesRepresentation.self)
   }
 
   /// Converts JSON with `vector1bit`, decoding into the requested matching representation.
@@ -722,13 +722,13 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation.self)
   ///   var embedding: BinaryEmbeddingVector<3>
   /// }
   ///
   /// let embedding = TursoVec.vector1bit(
   ///   "[-0.75,0,0.5]",
-  ///   as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self
+  ///   as: BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation.self
   /// )
   /// // vector1bit(?)
   /// // Binary components become [false, false, true].
@@ -757,12 +757,12 @@ public enum TursoVec {
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public static func vector1bit<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<BinaryEmbeddingVector<count>.TursoBytesRepresentation>
+  ) -> some QueryExpression<BinaryEmbeddingVector<count>.TursoBinaryBytesRepresentation>
   where
     V.Encoding: TursoVectorEncoding,
     V.Dimensions == VectorDimensions<count>
   {
-    Self.vector1bit(expression, as: BinaryEmbeddingVector<count>.TursoBytesRepresentation.self)
+    Self.vector1bit(expression, as: BinaryEmbeddingVector<count>.TursoBinaryBytesRepresentation.self)
   }
 
   /// Converts a supported vector BLOB to a binary vector with `vector1bit`.
@@ -771,7 +771,7 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: [Bool].TursoBytesRepresentation.self)
+  ///   @Column(as: [Bool].TursoBinaryBytesRepresentation.self)
   ///   var embedding: [Bool]
   /// }
   ///
@@ -787,12 +787,12 @@ public enum TursoVec {
   /// ```
   public static func vector1bit<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<[Bool].TursoBytesRepresentation>
+  ) -> some QueryExpression<[Bool].TursoBinaryBytesRepresentation>
   where
     V.Encoding: TursoVectorEncoding,
     V.Dimensions == Void
   {
-    Self.vector1bit(expression, as: [Bool].TursoBytesRepresentation.self)
+    Self.vector1bit(expression, as: [Bool].TursoBinaryBytesRepresentation.self)
   }
 
   /// Preserves matching input and result dimensions.
@@ -804,7 +804,7 @@ public enum TursoVec {
   ///   var embedding: EmbeddingVector<8>
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector1bit($0.embedding, as: BinaryEmbeddingVector<8>.TursoBytesRepresentation.self)
+  ///   TursoVec.vector1bit($0.embedding, as: BinaryEmbeddingVector<8>.TursoBinaryBytesRepresentation.self)
   /// }
   /// // SELECT vector1bit("documents"."embedding")
   /// // FROM "documents"
@@ -832,7 +832,7 @@ public enum TursoVec {
   ///   var embedding: [Float]
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector1bit($0.embedding, as: BinaryEmbeddingVector<8>.TursoBytesRepresentation.self)
+  ///   TursoVec.vector1bit($0.embedding, as: BinaryEmbeddingVector<8>.TursoBinaryBytesRepresentation.self)
   /// }
   /// // SELECT vector1bit("documents"."embedding")
   /// // FROM "documents"
@@ -861,7 +861,7 @@ public enum TursoVec {
   ///   var embedding: EmbeddingVector<8>
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector1bit($0.embedding, as: [Bool].TursoBytesRepresentation.self)
+  ///   TursoVec.vector1bit($0.embedding, as: [Bool].TursoBinaryBytesRepresentation.self)
   /// }
   /// // SELECT vector1bit("documents"."embedding")
   /// // FROM "documents"
@@ -887,8 +887,8 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: SparseFloat32Vector.self)
-  ///   var embedding: SparseFloat32Vector
+  ///   @Column(as: TursoSparseFloat32Vector.self)
+  ///   var embedding: TursoSparseFloat32Vector
   /// }
   ///
   /// let embedding = TursoVec.vector32Sparse("[0,0.5,0]")
@@ -901,8 +901,8 @@ public enum TursoVec {
   /// ```
   public static func vector32Sparse(
     _ expression: some QueryExpression<String>
-  ) -> some QueryExpression<SparseFloat32Vector> {
-    Self.vector32Sparse(expression, as: SparseFloat32Vector.self)
+  ) -> some QueryExpression<TursoSparseFloat32Vector> {
+    Self.vector32Sparse(expression, as: TursoSparseFloat32Vector.self)
   }
 
   /// Converts JSON with `vector32_sparse`, decoding into the requested matching representation.
@@ -912,11 +912,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: SizedSparseFloat32Vector<3>.self)
-  ///   var embedding: SizedSparseFloat32Vector<3>
+  ///   @Column(as: FixedTursoSparseFloat32Vector<3>.self)
+  ///   var embedding: FixedTursoSparseFloat32Vector<3>
   /// }
   ///
-  /// let embedding = TursoVec.vector32Sparse("[0,0.5,0]", as: SizedSparseFloat32Vector<3>.self)
+  /// let embedding = TursoVec.vector32Sparse("[0,0.5,0]", as: FixedTursoSparseFloat32Vector<3>.self)
   /// // vector32_sparse(?)
   /// // Only the component at index 1 is stored in the sparse result.
   /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
@@ -944,12 +944,12 @@ public enum TursoVec {
   @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
   public static func vector32Sparse<let count: Int, V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<SizedSparseFloat32Vector<count>>
+  ) -> some QueryExpression<FixedTursoSparseFloat32Vector<count>>
   where
     V.Encoding: TursoVectorEncoding,
     V.Dimensions == VectorDimensions<count>
   {
-    Self.vector32Sparse(expression, as: SizedSparseFloat32Vector<count>.self)
+    Self.vector32Sparse(expression, as: FixedTursoSparseFloat32Vector<count>.self)
   }
 
   /// Converts a supported vector BLOB to a sparse Float32 vector with `vector32_sparse`.
@@ -958,8 +958,8 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var id: Int
-  ///   @Column(as: SparseFloat32Vector.self)
-  ///   var embedding: SparseFloat32Vector
+  ///   @Column(as: TursoSparseFloat32Vector.self)
+  ///   var embedding: TursoSparseFloat32Vector
   /// }
   ///
   /// let source = TursoVec.vector32("[0, 0.5, 0]")
@@ -974,12 +974,12 @@ public enum TursoVec {
   /// ```
   public static func vector32Sparse<V: VectorBytesRepresentable & QueryBindable>(
     _ expression: some QueryExpression<V>
-  ) -> some QueryExpression<SparseFloat32Vector>
+  ) -> some QueryExpression<TursoSparseFloat32Vector>
   where
     V.Encoding: TursoVectorEncoding,
     V.Dimensions == Void
   {
-    Self.vector32Sparse(expression, as: SparseFloat32Vector.self)
+    Self.vector32Sparse(expression, as: TursoSparseFloat32Vector.self)
   }
 
   /// Preserves matching input and result dimensions.
@@ -991,7 +991,7 @@ public enum TursoVec {
   ///   var embedding: EmbeddingVector<8>
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector32Sparse($0.embedding, as: SizedSparseFloat32Vector<8>.self)
+  ///   TursoVec.vector32Sparse($0.embedding, as: FixedTursoSparseFloat32Vector<8>.self)
   /// }
   /// // SELECT vector32_sparse("documents"."embedding")
   /// // FROM "documents"
@@ -1019,7 +1019,7 @@ public enum TursoVec {
   ///   var embedding: [Float]
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector32Sparse($0.embedding, as: SizedSparseFloat32Vector<8>.self)
+  ///   TursoVec.vector32Sparse($0.embedding, as: FixedTursoSparseFloat32Vector<8>.self)
   /// }
   /// // SELECT vector32_sparse("documents"."embedding")
   /// // FROM "documents"
@@ -1048,7 +1048,7 @@ public enum TursoVec {
   ///   var embedding: EmbeddingVector<8>
   /// }
   /// let converted = Document.select {
-  ///   TursoVec.vector32Sparse($0.embedding, as: SparseFloat32Vector.self)
+  ///   TursoVec.vector32Sparse($0.embedding, as: TursoSparseFloat32Vector.self)
   /// }
   /// // SELECT vector32_sparse("documents"."embedding")
   /// // FROM "documents"
@@ -1201,11 +1201,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: InlineQuantized8Vector<3>.self)
-  ///   var embedding: InlineQuantized8Vector<3>
+  ///   @Column(as: FixedTursoQuantized8Vector<3>.self)
+  ///   var embedding: FixedTursoQuantized8Vector<3>
   /// }
   ///
-  /// let queryVector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
+  /// let queryVector = try FixedTursoQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceCosine($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1220,11 +1220,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation.self)
   ///   var embedding: BinaryEmbeddingVector<3>
   /// }
   ///
-  /// let queryVector = BinaryEmbeddingVector<3>.TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
+  /// let queryVector = BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceCosine($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1239,11 +1239,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: SizedSparseFloat32Vector<3>.self)
-  ///   var embedding: SizedSparseFloat32Vector<3>
+  ///   @Column(as: FixedTursoSparseFloat32Vector<3>.self)
+  ///   var embedding: FixedTursoSparseFloat32Vector<3>
   /// }
   ///
-  /// let queryVector = try SizedSparseFloat32Vector<3>(indices: [1], values: [0.5])
+  /// let queryVector = try FixedTursoSparseFloat32Vector<3>(indices: [1], values: [0.5])
   /// let neighbors = Document
   ///   .order { TursoVec.distanceCosine($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1387,11 +1387,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: InlineQuantized8Vector<3>.self)
-  ///   var embedding: InlineQuantized8Vector<3>
+  ///   @Column(as: FixedTursoQuantized8Vector<3>.self)
+  ///   var embedding: FixedTursoQuantized8Vector<3>
   /// }
   ///
-  /// let queryVector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
+  /// let queryVector = try FixedTursoQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1406,11 +1406,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: SizedSparseFloat32Vector<3>.self)
-  ///   var embedding: SizedSparseFloat32Vector<3>
+  ///   @Column(as: FixedTursoSparseFloat32Vector<3>.self)
+  ///   var embedding: FixedTursoSparseFloat32Vector<3>
   /// }
   ///
-  /// let queryVector = try SizedSparseFloat32Vector<3>(indices: [1], values: [0.5])
+  /// let queryVector = try FixedTursoSparseFloat32Vector<3>(indices: [1], values: [0.5])
   /// let neighbors = Document
   ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1478,11 +1478,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: Quantized8Vector.self)
-  ///   var embedding: Quantized8Vector
+  ///   @Column(as: TursoQuantized8Vector.self)
+  ///   var embedding: TursoQuantized8Vector
   /// }
   ///
-  /// let queryVector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
+  /// let queryVector = try FixedTursoQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1497,11 +1497,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: SparseFloat32Vector.self)
-  ///   var embedding: SparseFloat32Vector
+  ///   @Column(as: TursoSparseFloat32Vector.self)
+  ///   var embedding: TursoSparseFloat32Vector
   /// }
   ///
-  /// let queryVector = try SizedSparseFloat32Vector<3>(indices: [1], values: [0.5])
+  /// let queryVector = try FixedTursoSparseFloat32Vector<3>(indices: [1], values: [0.5])
   /// let neighbors = Document
   ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1570,11 +1570,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: InlineQuantized8Vector<3>.self)
-  ///   var embedding: InlineQuantized8Vector<3>
+  ///   @Column(as: FixedTursoQuantized8Vector<3>.self)
+  ///   var embedding: FixedTursoQuantized8Vector<3>
   /// }
   ///
-  /// let queryVector = try Quantized8Vector(quantizing: [0.2, 0.4, 0.6])
+  /// let queryVector = try TursoQuantized8Vector(quantizing: [0.2, 0.4, 0.6])
   /// let neighbors = Document
   ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1589,11 +1589,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: SizedSparseFloat32Vector<3>.self)
-  ///   var embedding: SizedSparseFloat32Vector<3>
+  ///   @Column(as: FixedTursoSparseFloat32Vector<3>.self)
+  ///   var embedding: FixedTursoSparseFloat32Vector<3>
   /// }
   ///
-  /// let queryVector = try SparseFloat32Vector(dimensions: 3, indices: [1], values: [0.5])
+  /// let queryVector = try TursoSparseFloat32Vector(dimensions: 3, indices: [1], values: [0.5])
   /// let neighbors = Document
   ///   .order { TursoVec.distanceL2($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1669,11 +1669,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: InlineQuantized8Vector<3>.self)
-  ///   var embedding: InlineQuantized8Vector<3>
+  ///   @Column(as: FixedTursoQuantized8Vector<3>.self)
+  ///   var embedding: FixedTursoQuantized8Vector<3>
   /// }
   ///
-  /// let queryVector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
+  /// let queryVector = try FixedTursoQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceDot($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1688,11 +1688,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation.self)
   ///   var embedding: BinaryEmbeddingVector<3>
   /// }
   ///
-  /// let queryVector = BinaryEmbeddingVector<3>.TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
+  /// let queryVector = BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceDot($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1707,11 +1707,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: SizedSparseFloat32Vector<3>.self)
-  ///   var embedding: SizedSparseFloat32Vector<3>
+  ///   @Column(as: FixedTursoSparseFloat32Vector<3>.self)
+  ///   var embedding: FixedTursoSparseFloat32Vector<3>
   /// }
   ///
-  /// let queryVector = try SizedSparseFloat32Vector<3>(indices: [1], values: [0.5])
+  /// let queryVector = try FixedTursoSparseFloat32Vector<3>(indices: [1], values: [0.5])
   /// let neighbors = Document
   ///   .order { TursoVec.distanceDot($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1853,11 +1853,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: InlineQuantized8Vector<3>.self)
-  ///   var embedding: InlineQuantized8Vector<3>
+  ///   @Column(as: FixedTursoQuantized8Vector<3>.self)
+  ///   var embedding: FixedTursoQuantized8Vector<3>
   /// }
   ///
-  /// let queryVector = try InlineQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
+  /// let queryVector = try FixedTursoQuantized8Vector<3>(quantizing: EmbeddingVector<3>([0.2, 0.4, 0.6]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceJaccard($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1872,11 +1872,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+  ///   @Column(as: BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation.self)
   ///   var embedding: BinaryEmbeddingVector<3>
   /// }
   ///
-  /// let queryVector = BinaryEmbeddingVector<3>.TursoBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
+  /// let queryVector = BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation(queryOutput: BinaryEmbeddingVector<3>([true, false, true]))
   /// let neighbors = Document
   ///   .order { TursoVec.distanceJaccard($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -1891,11 +1891,11 @@ public enum TursoVec {
   /// @Table("documents")
   /// struct Document {
   ///   var content: String
-  ///   @Column(as: SizedSparseFloat32Vector<3>.self)
-  ///   var embedding: SizedSparseFloat32Vector<3>
+  ///   @Column(as: FixedTursoSparseFloat32Vector<3>.self)
+  ///   var embedding: FixedTursoSparseFloat32Vector<3>
   /// }
   ///
-  /// let queryVector = try SizedSparseFloat32Vector<3>(indices: [1], values: [0.5])
+  /// let queryVector = try FixedTursoSparseFloat32Vector<3>(indices: [1], values: [0.5])
   /// let neighbors = Document
   ///   .order { TursoVec.distanceJaccard($0.embedding, to: queryVector) }
   ///   .limit(5)
@@ -2194,7 +2194,7 @@ public enum TursoVec {
     _ expression: some QueryExpression<V>,
     from start: some QueryExpression<Int>,
     to end: some QueryExpression<Int>
-  ) -> some QueryExpression<SparseFloat32Vector>
+  ) -> some QueryExpression<TursoSparseFloat32Vector>
   where V.Encoding: TursoSparseFloat32Encoding {
     SQLQueryExpression("vector_slice(\(expression), \(start), \(end))")
   }
@@ -2205,7 +2205,7 @@ public enum TursoVec {
   /// ```swift
   /// let vector = TursoVec.vector32Sparse("[0.1,0.2,0.3]")
   /// // vector32_sparse(?)
-  /// let prefix = TursoVec.slice(vector, from: 0, to: 2, as: SizedSparseFloat32Vector<2>.self)
+  /// let prefix = TursoVec.slice(vector, from: 0, to: 2, as: FixedTursoSparseFloat32Vector<2>.self)
   /// // vector_slice(vector32_sparse(?), ?, ?)
   /// // Retains the first two logical components.
   /// ```
@@ -2230,7 +2230,7 @@ extension TursoVec {
   /// Returns the nonnullable distance for this finite encoded format.
   ///
   /// ```swift
-  /// let vector: [Bool].TursoBytesRepresentation = [true, false, true]
+  /// let vector: [Bool].TursoBinaryBytesRepresentation = [true, false, true]
   /// let distance = TursoVec.distanceDot(vector, to: vector)
   /// // vector_distance_dot(?, ?)
   /// ```
@@ -2251,7 +2251,7 @@ extension TursoVec {
   /// Returns the nonnullable distance for this finite encoded format.
   ///
   /// ```swift
-  /// let vector: [Bool].TursoBytesRepresentation = [true, false, true]
+  /// let vector: [Bool].TursoBinaryBytesRepresentation = [true, false, true]
   /// let distance = TursoVec.distanceDot(vector, to: vector)
   /// // vector_distance_dot(?, ?)
   /// ```
@@ -2273,7 +2273,7 @@ extension TursoVec {
   /// Returns the nonnullable distance for this finite encoded format.
   ///
   /// ```swift
-  /// let vector: [Bool].TursoBytesRepresentation = [true, false, true]
+  /// let vector: [Bool].TursoBinaryBytesRepresentation = [true, false, true]
   /// let distance = TursoVec.distanceDot(vector, to: vector)
   /// // vector_distance_dot(?, ?)
   /// ```

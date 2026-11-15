@@ -74,7 +74,7 @@ public protocol TursoFloat64Encoding: TursoNumericVectorEncoding where Scalar ==
 /// ) -> some QueryExpression<T> where T.Encoding: TursoQuantized8Encoding {
 ///   TursoVec.vector8(json, as: result)
 /// }
-/// let converted = convert("[1,2,3]", as: InlineQuantized8Vector<3>.self)
+/// let converted = convert("[1,2,3]", as: FixedTursoQuantized8Vector<3>.self)
 /// // vector8(?)
 /// ```
 public protocol TursoQuantized8Encoding: TursoNumericVectorEncoding where Scalar == Float {}
@@ -87,7 +87,7 @@ public protocol TursoQuantized8Encoding: TursoNumericVectorEncoding where Scalar
 /// ) -> some QueryExpression<T> where T.Encoding: TursoSparseFloat32Encoding {
 ///   TursoVec.vector32Sparse(json, as: result)
 /// }
-/// let converted = convert("[0,2,0]", as: SizedSparseFloat32Vector<3>.self)
+/// let converted = convert("[0,2,0]", as: FixedTursoSparseFloat32Vector<3>.self)
 /// // vector32_sparse(?)
 /// ```
 public protocol TursoSparseFloat32Encoding: TursoNumericVectorEncoding where Scalar == Float {}
@@ -100,7 +100,7 @@ public protocol TursoSparseFloat32Encoding: TursoNumericVectorEncoding where Sca
 /// ) -> some QueryExpression<T> where T.Encoding: TursoBinaryEncoding {
 ///   TursoVec.vector1bit(json, as: result)
 /// }
-/// let converted = convert("[1,0,1]", as: BinaryEmbeddingVector<3>.TursoBytesRepresentation.self)
+/// let converted = convert("[1,0,1]", as: BinaryEmbeddingVector<3>.TursoBinaryBytesRepresentation.self)
 /// // vector1bit(?)
 /// ```
 public protocol TursoBinaryEncoding: TursoVectorEncoding, BinaryVectorEncoding {}
@@ -113,8 +113,8 @@ extension TursoFloat64BytesRepresentation:
   TursoVectorEncoding, TursoNumericVectorEncoding, TursoFloat64Encoding
 where Representation == [Double].VectorBytesRepresentation {}
 
-extension Array.TursoBytesRepresentation: TursoBinaryEncoding {}
+extension Array.TursoBinaryBytesRepresentation: TursoBinaryEncoding {}
 
-extension Quantized8Vector: TursoQuantized8Encoding {}
+extension TursoQuantized8Vector: TursoQuantized8Encoding {}
 
-extension SparseFloat32Vector: TursoSparseFloat32Encoding {}
+extension TursoSparseFloat32Vector: TursoSparseFloat32Encoding {}
