@@ -207,9 +207,8 @@ struct Int8Embedding: Vec0 {
   var label: String
 }
 
-let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
-let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
-  (Vec.int8(codes), "example")
+let insert = Int8Embedding.insert {
+  Int8Embedding(embedding: [-128, 0, 127], label: "example")
 }
 // INSERT INTO "Int8Embeddings" ("embedding", "label") VALUES (vec_int8(?), ?)
 
@@ -218,7 +217,8 @@ let quantized = Vec.quantizeInt8(vector)
 ```
 
 `Vec.int8` tags signed bytes or parses integer JSON. `quantizeInt8` maps [-1, 1] to signed codes,
-clamping without normalization. Inserts require either helper; queries attach subtypes automatically.
+clamping without normalization. Bound Int8 values attach SQLiteVec's subtype in inserts and
+queries; use `Vec.int8` to tag other expressions. vec0 cannot update Int8 or binary vectors in place ([sqlite-vec#53](https://github.com/asg017/sqlite-vec/issues/53)); delete and reinsert the row.
 
 ### Binary vectors
 
@@ -242,8 +242,8 @@ struct BinaryEmbedding: Vec0 {
 }
 
 let bits: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
-let insert = BinaryEmbedding.insert { ($0.embedding, $0.label) } values: {
-  (Vec.bit(bits), "example")
+let insert = BinaryEmbedding.insert {
+  BinaryEmbedding(embedding: [true, false, true, false, false, false, false, true], label: "example")
 }
 // INSERT INTO "BinaryEmbeddings" ("embedding", "label") VALUES (vec_bit(?), ?)
 
@@ -259,7 +259,7 @@ let query = BinaryEmbedding
 ```
 
 Binary slices require byte-aligned bounds. `Vec.quantizeBinary` maps positive Float32 or Int8
-components to true. Inserts use `Vec.bit`; queries tag packed bytes automatically.
+components to true. Bound packed bits attach the binary subtype in inserts and queries.
 
 ## Turso
 

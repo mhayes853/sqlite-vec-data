@@ -196,7 +196,7 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding: SQLiteVecFloat3
   ///
   /// - Returns: A select statement over the vector's indexed elements.
   public func vecEach() -> SelectOf<VecEach> {
-    vecEachStatement(vector: QueryValue.Encoding.sqliteVecExpression(self.queryFragment))
+    vecEachStatement(vector: sqliteVecOperand(self))
   }
 }
 
@@ -232,7 +232,7 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding: SQLiteVecBinary
   /// // WHERE ("vec_each"."vector" = vec_bit(?))
   /// ```
   public func vecEach() -> SelectOf<VecEachOf<Bool>> {
-    vecEachStatement(vector: QueryValue.Encoding.sqliteVecExpression(self.queryFragment))
+    vecEachStatement(vector: sqliteVecOperand(self))
   }
 }
 
@@ -266,7 +266,7 @@ where QueryValue: VectorBytesRepresentable, QueryValue.Encoding: SQLiteVecInt8En
   /// // WHERE ("vec_each"."vector" = vec_int8(?))
   /// ```
   public func vecEach() -> SelectOf<VecEachOf<Int8>> {
-    vecEachStatement(vector: QueryValue.Encoding.sqliteVecExpression(self.queryFragment))
+    vecEachStatement(vector: sqliteVecOperand(self))
   }
 }
 

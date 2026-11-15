@@ -16,7 +16,7 @@ extension Array where Element == Bool {
   /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
   ///   (1, components)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_bit(?))
   /// ```
   public struct PackedBitsRepresentation:
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -62,7 +62,7 @@ extension Array where Element == Bool {
     /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
     ///   (1, vector)
     /// }
-    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_bit(?))
     /// ```
     public init(queryOutput: [Bool]) {
       precondition(
@@ -160,7 +160,7 @@ extension Array.PackedBitsRepresentation: ExpressibleByArrayLiteral {
   /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
   ///   (1, vector)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_bit(?))
   /// ```
   public init(arrayLiteral elements: Bool...) {
     self.init(queryOutput: elements)
@@ -183,7 +183,7 @@ extension BinaryEmbeddingVector {
   /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
   ///   (1, components)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_bit(?))
   /// ```
   public struct PackedBitsRepresentation:
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -219,7 +219,7 @@ extension BinaryEmbeddingVector {
     /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
     ///   (1, vector)
     /// }
-    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_bit(?))
     /// ```
     public init(queryOutput: BinaryEmbeddingVector<count>) {
       precondition(
@@ -292,4 +292,29 @@ private func decodePackedBitsVector(_ bytes: [UInt8]) -> [Bool] {
   bytes.withUnsafeBufferPointer { buffer in
     (0..<buffer.count * 8).map { buffer[$0 / 8] & (UInt8(1) << ($0 % 8)) != 0 }
   }
+}
+
+extension Array.PackedBitsRepresentation: SQLiteVecTaggedBinding {
+  /// Binds the vector with SQLiteVec's binary subtype so vec0 columns accept it.
+  ///
+  /// ```swift
+  /// let vector: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
+  /// let fragment = vector.queryFragment
+  /// // vec_bit(?)
+  /// ```
+  public var queryFragment: QueryFragment { self.taggedQueryFragment }
+}
+
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+extension BinaryEmbeddingVector.PackedBitsRepresentation: SQLiteVecTaggedBinding {
+  /// Binds the vector with SQLiteVec's binary subtype so vec0 columns accept it.
+  ///
+  /// ```swift
+  /// let vector = BinaryEmbeddingVector<8>.PackedBitsRepresentation(
+  ///   queryOutput: BinaryEmbeddingVector<8>([true, false, true, false, false, false, false, true])
+  /// )
+  /// let fragment = vector.queryFragment
+  /// // vec_bit(?)
+  /// ```
+  public var queryFragment: QueryFragment { self.taggedQueryFragment }
 }

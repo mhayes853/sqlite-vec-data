@@ -104,7 +104,7 @@ public enum Vec {
     V.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "(\(expression) MATCH \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "(\(expression) MATCH \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -185,7 +185,7 @@ public enum Vec {
     V.Dimensions == Void
   {
     SQLQueryExpression(
-      "(\(expression) MATCH \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "(\(expression) MATCH \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -266,7 +266,7 @@ public enum Vec {
     W.Dimensions == Void
   {
     SQLQueryExpression(
-      "(\(expression) MATCH \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "(\(expression) MATCH \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -323,7 +323,7 @@ public enum Vec {
     V.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_l2(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -375,7 +375,7 @@ public enum Vec {
     V.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_l2(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -427,7 +427,7 @@ public enum Vec {
     W.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_l2(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -589,7 +589,7 @@ public enum Vec {
     V.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "vec_distance_cosine(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_cosine(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -642,7 +642,7 @@ public enum Vec {
     V.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_distance_cosine(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_cosine(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -695,7 +695,7 @@ public enum Vec {
     W.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_distance_cosine(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_cosine(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -735,7 +735,7 @@ public enum Vec {
     V.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "vec_distance_hamming(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_hamming(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -770,7 +770,7 @@ public enum Vec {
     V.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_distance_hamming(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_hamming(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -805,7 +805,7 @@ public enum Vec {
     W.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_distance_hamming(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_hamming(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -865,7 +865,7 @@ public enum Vec {
   public static func length<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<Int> where V.Encoding: SQLiteVecVectorEncoding {
-    SQLQueryExpression("vec_length(\(V.Encoding.sqliteVecExpression(expression.queryFragment)))")
+    SQLQueryExpression("vec_length(\(sqliteVecOperand(expression)))")
   }
 
   /// Returns the sqlite-vec type string for a vector expression.
@@ -924,7 +924,7 @@ public enum Vec {
   public static func type<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<String> where V.Encoding: SQLiteVecVectorEncoding {
-    SQLQueryExpression("vec_type(\(V.Encoding.sqliteVecExpression(expression.queryFragment)))")
+    SQLQueryExpression("vec_type(\(sqliteVecOperand(expression)))")
   }
 
   /// Returns a JSON string for a vector expression.
@@ -983,7 +983,7 @@ public enum Vec {
   public static func toJSON<V: VectorBytesRepresentable>(
     _ expression: some QueryExpression<V>
   ) -> some QueryExpression<String> where V.Encoding: SQLiteVecVectorEncoding {
-    SQLQueryExpression("vec_to_json(\(V.Encoding.sqliteVecExpression(expression.queryFragment)))")
+    SQLQueryExpression("vec_to_json(\(sqliteVecOperand(expression)))")
   }
 
   /// Preserves compatible operand and result dimensions.
@@ -1040,7 +1040,7 @@ public enum Vec {
     V.Dimensions == W.Dimensions, T.Dimensions == V.Dimensions
   {
     SQLQueryExpression(
-      "vec_add(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_add(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1099,7 +1099,7 @@ public enum Vec {
     V.Dimensions == Void, T.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "vec_add(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_add(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1158,7 +1158,7 @@ public enum Vec {
     W.Dimensions == Void, T.Dimensions == V.Dimensions
   {
     SQLQueryExpression(
-      "vec_add(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_add(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1214,7 +1214,7 @@ public enum Vec {
     T.Dimensions == Void, V.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "vec_add(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_add(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1276,7 +1276,7 @@ public enum Vec {
     V.Dimensions == Void, W.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_add(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_add(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1332,7 +1332,7 @@ public enum Vec {
     V.Dimensions == Void, T.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_add(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_add(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1387,7 +1387,7 @@ public enum Vec {
     W.Dimensions == Void, T.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_add(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_add(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1591,7 +1591,7 @@ public enum Vec {
     V.Dimensions == W.Dimensions, T.Dimensions == V.Dimensions
   {
     SQLQueryExpression(
-      "vec_sub(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_sub(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1650,7 +1650,7 @@ public enum Vec {
     V.Dimensions == Void, T.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "vec_sub(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_sub(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1709,7 +1709,7 @@ public enum Vec {
     W.Dimensions == Void, T.Dimensions == V.Dimensions
   {
     SQLQueryExpression(
-      "vec_sub(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_sub(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1765,7 +1765,7 @@ public enum Vec {
     T.Dimensions == Void, V.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "vec_sub(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_sub(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1827,7 +1827,7 @@ public enum Vec {
     V.Dimensions == Void, W.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_sub(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_sub(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1883,7 +1883,7 @@ public enum Vec {
     V.Dimensions == Void, T.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_sub(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_sub(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -1938,7 +1938,7 @@ public enum Vec {
     W.Dimensions == Void, T.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_sub(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_sub(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -2168,7 +2168,7 @@ public enum Vec {
     V.Encoding: SQLiteVecVectorEncoding, T.Encoding == V.Encoding
   {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: start), \(raw: end))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: start), \(raw: end))"
     )
   }
 
@@ -2203,7 +2203,7 @@ public enum Vec {
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
   where V.Encoding: SQLiteVecFloat32Encoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: start), \(raw: end))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: start), \(raw: end))"
     )
   }
 
@@ -2283,7 +2283,7 @@ public enum Vec {
     V.Encoding: SQLiteVecVectorEncoding, T.Encoding == V.Encoding
   {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: range.lowerBound), \(raw: range.upperBound))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: range.lowerBound), \(raw: range.upperBound))"
     )
   }
 
@@ -2316,7 +2316,7 @@ public enum Vec {
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
   where V.Encoding: SQLiteVecFloat32Encoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: range.lowerBound), \(raw: range.upperBound))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: range.lowerBound), \(raw: range.upperBound))"
     )
   }
 
@@ -2396,7 +2396,7 @@ public enum Vec {
     V.Encoding: SQLiteVecVectorEncoding, T.Encoding == V.Encoding
   {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: range.lowerBound), \(raw: range.upperBound + 1))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: range.lowerBound), \(raw: range.upperBound + 1))"
     )
   }
 
@@ -2429,7 +2429,7 @@ public enum Vec {
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
   where V.Encoding: SQLiteVecFloat32Encoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: range.lowerBound), \(raw: range.upperBound + 1))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: range.lowerBound), \(raw: range.upperBound + 1))"
     )
   }
 
@@ -2513,7 +2513,7 @@ public enum Vec {
     V.Encoding: SQLiteVecVectorEncoding, T.Encoding == V.Encoding
   {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: start), \(raw: start + length))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: start), \(raw: start + length))"
     )
   }
 
@@ -2548,7 +2548,7 @@ public enum Vec {
   ) -> some QueryExpression<[Float].VectorBytesRepresentation>
   where V.Encoding: SQLiteVecFloat32Encoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: start), \(raw: start + length))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: start), \(raw: start + length))"
     )
   }
 
@@ -3069,7 +3069,7 @@ public enum Vec {
     V.Dimensions == T.Dimensions
   {
     SQLQueryExpression(
-      "vec_quantize_binary(\(V.Encoding.sqliteVecExpression(expression.queryFragment)))"
+      "vec_quantize_binary(\(sqliteVecOperand(expression)))"
     )
   }
 
@@ -3125,7 +3125,7 @@ public enum Vec {
     V.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_quantize_binary(\(V.Encoding.sqliteVecExpression(expression.queryFragment)))"
+      "vec_quantize_binary(\(sqliteVecOperand(expression)))"
     )
   }
 
@@ -3175,7 +3175,7 @@ public enum Vec {
     T.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_quantize_binary(\(V.Encoding.sqliteVecExpression(expression.queryFragment)))"
+      "vec_quantize_binary(\(sqliteVecOperand(expression)))"
     )
   }
   /// Converts a fixed-size vector while preserving its logical dimension count.
@@ -3298,7 +3298,7 @@ public enum Vec {
   ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
   where V.Encoding: SQLiteVecBinaryEncoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: start), \(raw: end))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: start), \(raw: end))"
     )
   }
 
@@ -3325,7 +3325,7 @@ public enum Vec {
   ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
   where V.Encoding: SQLiteVecBinaryEncoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: range.lowerBound), \(raw: range.upperBound))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: range.lowerBound), \(raw: range.upperBound))"
     )
   }
 
@@ -3352,7 +3352,7 @@ public enum Vec {
   ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
   where V.Encoding: SQLiteVecBinaryEncoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: range.lowerBound), \(raw: range.upperBound + 1))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: range.lowerBound), \(raw: range.upperBound + 1))"
     )
   }
 
@@ -3380,7 +3380,7 @@ public enum Vec {
   ) -> some QueryExpression<[Bool].PackedBitsRepresentation>
   where V.Encoding: SQLiteVecBinaryEncoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: start), \(raw: start + length))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: start), \(raw: start + length))"
     )
   }
 
@@ -3409,7 +3409,7 @@ public enum Vec {
     V.Encoding: SQLiteVecBinaryEncoding, T.Encoding: SQLiteVecBinaryEncoding,
     V.Dimensions == T.Dimensions
   {
-    SQLQueryExpression("vec_bit(\(expression))")
+    SQLQueryExpression(sqliteVecOperand(expression))
   }
 
   /// Decodes a runtime-sized source with a checked result representation.
@@ -3438,7 +3438,7 @@ public enum Vec {
     V.Encoding: SQLiteVecBinaryEncoding, T.Encoding: SQLiteVecBinaryEncoding,
     V.Dimensions == Void
   {
-    SQLQueryExpression("vec_bit(\(expression))")
+    SQLQueryExpression(sqliteVecOperand(expression))
   }
 
   /// Returns a runtime-sized result from a known or runtime-sized source.
@@ -3467,7 +3467,7 @@ public enum Vec {
     V.Encoding: SQLiteVecBinaryEncoding, T.Encoding: SQLiteVecBinaryEncoding,
     T.Dimensions == Void
   {
-    SQLQueryExpression("vec_bit(\(expression))")
+    SQLQueryExpression(sqliteVecOperand(expression))
   }
 
   /// Preserves the source vector type and its dimension count while attaching the SQLiteVec subtype.
@@ -3539,7 +3539,7 @@ extension Vec {
     V.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_l2(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -3564,7 +3564,7 @@ extension Vec {
     V.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_l2(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 
@@ -3589,7 +3589,7 @@ extension Vec {
     W.Dimensions == Void
   {
     SQLQueryExpression(
-      "vec_distance_l2(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(V.Encoding.sqliteVecExpression(vector.queryFragment)))"
+      "vec_distance_l2(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector)))"
     )
   }
 }

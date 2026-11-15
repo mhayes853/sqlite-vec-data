@@ -173,8 +173,8 @@ struct Int8Embedding: Vec0 {
 }
 
 let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
-let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
-  (Vec.int8(codes), "example")
+let insert = Int8Embedding.insert {
+  Int8Embedding(embedding: [-128, 0, 127], label: "example")
 }
 // INSERT INTO "Int8Embeddings" ("embedding", "label") VALUES (vec_int8(?), ?)
 
@@ -189,8 +189,8 @@ let query = Int8Embedding
 // LIMIT ?
 ```
 
-`Vec.int8` tags signed bytes or parses integer JSON. Inserts and updates require the subtype;
-queries attach it automatically.
+`Vec.int8` tags signed bytes or parses integer JSON. Bound Int8 values attach the subtype in
+inserts and queries. vec0 cannot update Int8 or binary vectors in place ([sqlite-vec#53](https://github.com/asg017/sqlite-vec/issues/53)); delete and reinsert the row.
 
 ```swift
 let floats: [Float].VectorBytesRepresentation = [-1, 0, 0.5, 2]
@@ -237,8 +237,8 @@ struct BinaryEmbedding: Vec0 {
 }
 
 let bits: [Bool].PackedBitsRepresentation = [true, false, true, false, false, false, false, true]
-let insert = BinaryEmbedding.insert { ($0.embedding, $0.label) } values: {
-  (Vec.bit(bits), "example")
+let insert = BinaryEmbedding.insert {
+  BinaryEmbedding(embedding: [true, false, true, false, false, false, false, true], label: "example")
 }
 // INSERT INTO "BinaryEmbeddings" ("embedding", "label") VALUES (vec_bit(?), ?)
 
@@ -253,7 +253,7 @@ let query = BinaryEmbedding
 // LIMIT ?
 ```
 
-Use `Vec.bit` for inserts and updates; queries tag automatically. `Vec.quantizeBinary` maps
+Bound packed bits attach the binary subtype in inserts and queries. `Vec.quantizeBinary` maps
 positive Float32 or Int8 components to true bits. `Vec.bit` tags bytes without quantizing.
 
 `Vec.each` iterates most significant bit first; Swift indices and `Vec.toJSON` use least significant

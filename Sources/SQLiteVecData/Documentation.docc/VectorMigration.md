@@ -22,6 +22,7 @@ This release changes SQLiteVec APIs and behavior and adds Turso Database support
 | Binary functions return Float32 representations | Binary functions return packed-bit representations |
 | `quantizeInt8(scale:)` passes an unsupported numeric argument | `quantizeInt8()` emits SQLiteVec's supported `'unit'` argument and returns signed Int8 codes |
 | `int8()` exposes Int8 bytes as Float32 values | `Vec.int8` accepts signed-byte expressions or integer JSON and returns an Int8 representation |
+| Int8 and packed-bit values bind as untagged blobs, so vec0 rejects record inserts | They bind as `vec_int8(?)` and `vec_bit(?)`, attaching SQLiteVec's subtype wherever StructuredQueries binds them |
 | `length()` and `Vec.length` return `Double` | They return `Int`, matching the integer SQLiteVec's `vec_length` produces |
 | `vecEach()` and `Vec.each` always return `SelectOf<VecEach>` with `Float` values | `VecEach` aliases `VecEachOf<Float?>` for Float32 vectors; Int8 and packed bits return `VecEachOf<Int8>` and `VecEachOf<Bool>` |
 | Float32 and binary column slices preserve the original vector type | Slices return variable-size representations; use `as:` to select a matching fixed-size result |
@@ -299,7 +300,7 @@ let fixedBits = Vec.quantizeBinary(
 `Vec.bit` tags existing bytes; `Vec.quantizeBinary` converts Float32 or Int8 signs. Packed counts
 and slice bounds must be byte-aligned.
 
-Inserts require `Vec.bit(binding)`; scalar helpers and `MATCH` tag automatically. Swift indexes bits
+Bound packed bits render as `vec_bit(?)`, so record inserts need no wrapper. Swift indexes bits
 least significant first within a byte; `vec_each` uses most significant first.
 
 Turso's binary strategy adds type and dimension metadata and cannot replace SQLiteVec packed bits.
@@ -339,8 +340,8 @@ struct Int8Embedding: Vec0 {
 
 // CREATE VIRTUAL TABLE Int8Embeddings USING vec0(embedding int8[3], label text);
 let codes: [Int8].Int8BytesRepresentation = [-128, 0, 127]
-let insert = Int8Embedding.insert { ($0.embedding, $0.label) } values: {
-  (Vec.int8(codes), "example")
+let insert = Int8Embedding.insert {
+  Int8Embedding(embedding: [-128, 0, 127], label: "example")
 }
 // INSERT INTO "Int8Embeddings" ("embedding", "label") VALUES (vec_int8(?), ?)
 let neighbors = Int8Embedding
@@ -352,8 +353,9 @@ let neighbors = Int8Embedding
 // LIMIT ?
 ```
 
-SQL subtypes do not survive storage or binding. Helpers and `MATCH` tag Int8 automatically; inserts
-use `Vec.int8` or `Vec.quantizeInt8`. Existing Int8 bytes keep their layout.
+SQL subtypes do not survive storage. Bound Int8 values render as `vec_int8(?)`, so record inserts
+need no wrapper; use `Vec.int8` for other expressions. vec0 cannot update Int8 or binary vectors in place ([sqlite-vec#53](https://github.com/asg017/sqlite-vec/issues/53)); delete and reinsert the row. Existing Int8 bytes
+keep their layout.
 
 Fixed Int8 uses `FixedEmbeddingVector<N, Int8>.Int8BytesRepresentation` for `@Column(as:)` and
 `as:` results. Int8 is not a `VectorScalar`. Its signed codes differ from Turso affine UInt8; migrate

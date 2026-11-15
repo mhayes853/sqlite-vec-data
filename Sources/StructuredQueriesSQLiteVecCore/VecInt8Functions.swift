@@ -27,7 +27,7 @@ extension Vec {
     V.Encoding: SQLiteVecInt8Encoding, T.Encoding: SQLiteVecInt8Encoding,
     V.Dimensions == T.Dimensions
   {
-    SQLQueryExpression("vec_int8(\(expression))")
+    SQLQueryExpression(sqliteVecOperand(expression))
   }
 
   /// Decodes a runtime-sized source with a checked result representation.
@@ -56,7 +56,7 @@ extension Vec {
     V.Encoding: SQLiteVecInt8Encoding, T.Encoding: SQLiteVecInt8Encoding,
     V.Dimensions == Void
   {
-    SQLQueryExpression("vec_int8(\(expression))")
+    SQLQueryExpression(sqliteVecOperand(expression))
   }
 
   /// Returns a runtime-sized result from a known or runtime-sized source.
@@ -85,7 +85,7 @@ extension Vec {
     V.Encoding: SQLiteVecInt8Encoding, T.Encoding: SQLiteVecInt8Encoding,
     T.Dimensions == Void
   {
-    SQLQueryExpression("vec_int8(\(expression))")
+    SQLQueryExpression(sqliteVecOperand(expression))
   }
 
   /// Preserves the source vector type and its dimension count while attaching the SQLiteVec subtype.
@@ -214,7 +214,7 @@ extension Vec {
     V.Dimensions == W.Dimensions
   {
     SQLQueryExpression(
-      "CAST(vec_distance_l1(vec_int8(\(expression)), vec_int8(\(vector))) AS REAL)"
+      "CAST(vec_distance_l1(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector))) AS REAL)"
     )
   }
 
@@ -247,7 +247,7 @@ extension Vec {
     V.Dimensions == Void
   {
     SQLQueryExpression(
-      "CAST(vec_distance_l1(vec_int8(\(expression)), vec_int8(\(vector))) AS REAL)"
+      "CAST(vec_distance_l1(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector))) AS REAL)"
     )
   }
 
@@ -280,7 +280,7 @@ extension Vec {
     W.Dimensions == Void
   {
     SQLQueryExpression(
-      "CAST(vec_distance_l1(vec_int8(\(expression)), vec_int8(\(vector))) AS REAL)"
+      "CAST(vec_distance_l1(\(sqliteVecOperand(expression)), \(sqliteVecOperand(vector))) AS REAL)"
     )
   }
 
@@ -308,7 +308,7 @@ extension Vec {
   ) -> some QueryExpression<[Int8].Int8BytesRepresentation>
   where V.Encoding: SQLiteVecInt8Encoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: start), \(raw: end))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: start), \(raw: end))"
     )
   }
 
@@ -335,7 +335,7 @@ extension Vec {
   ) -> some QueryExpression<[Int8].Int8BytesRepresentation>
   where V.Encoding: SQLiteVecInt8Encoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: range.lowerBound), \(raw: range.upperBound))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: range.lowerBound), \(raw: range.upperBound))"
     )
   }
 
@@ -362,7 +362,7 @@ extension Vec {
   ) -> some QueryExpression<[Int8].Int8BytesRepresentation>
   where V.Encoding: SQLiteVecInt8Encoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: range.lowerBound), \(raw: range.upperBound + 1))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: range.lowerBound), \(raw: range.upperBound + 1))"
     )
   }
 
@@ -390,7 +390,7 @@ extension Vec {
   ) -> some QueryExpression<[Int8].Int8BytesRepresentation>
   where V.Encoding: SQLiteVecInt8Encoding {
     SQLQueryExpression(
-      "vec_slice(\(V.Encoding.sqliteVecExpression(expression.queryFragment)), \(raw: start), \(raw: start + length))"
+      "vec_slice(\(sqliteVecOperand(expression)), \(raw: start), \(raw: start + length))"
     )
   }
 

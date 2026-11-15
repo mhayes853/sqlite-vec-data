@@ -3,9 +3,9 @@ import StructuredQueriesCore
 extension Array where Element == Int8 {
   /// Raw signed bytes for SQLiteVec Int8 columns, with one byte per component.
   ///
-  /// Use `Vec.int8` when inserting or passing a bound blob to SQLiteVec functions so that the
-  /// expression carries SQLiteVec's Int8 subtype. This format has no scale, shift, or type metadata
-  /// and differs from Turso's `Quantized8Vector`.
+  /// Bound values render as `vec_int8(?)` so that SQLiteVec reads them as Int8 rather than Float32,
+  /// including in record inserts. This format has no scale, shift, or type metadata and differs from
+  /// Turso's `Quantized8Vector`.
   ///
   /// ```swift
   /// @Table("documents")
@@ -19,7 +19,7 @@ extension Array where Element == Int8 {
   /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
   ///   (1, components)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_int8(?))
   /// ```
   public struct Int8BytesRepresentation:
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -51,7 +51,7 @@ extension Array where Element == Int8 {
     /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
     ///   (1, vector)
     /// }
-    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_int8(?))
     /// ```
     public init(queryOutput: [Int8]) {
       self.queryOutput = queryOutput
@@ -94,7 +94,7 @@ extension Array.Int8BytesRepresentation: ExpressibleByArrayLiteral {
   /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
   ///   (1, vector)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_int8(?))
   /// ```
   public init(arrayLiteral elements: Int8...) {
     self.init(queryOutput: elements)
@@ -117,7 +117,7 @@ extension FixedEmbeddingVector where Scalar == Int8 {
   /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
   ///   (1, components)
   /// }
-  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+  /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_int8(?))
   /// ```
   public struct Int8BytesRepresentation:
     Hashable, Sendable, QueryBindable, VectorBytesRepresentable
@@ -150,7 +150,7 @@ extension FixedEmbeddingVector where Scalar == Int8 {
     /// let insert = Document.insert { ($0.id, $0.embedding) } values: {
     ///   (1, vector)
     /// }
-    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, ?)
+    /// // INSERT INTO "documents" ("id", "embedding") VALUES (?, vec_int8(?))
     /// ```
     public init(queryOutput: FixedEmbeddingVector<count, Int8>) {
       self.queryOutput = queryOutput
@@ -181,4 +181,28 @@ extension FixedEmbeddingVector where Scalar == Int8 {
       )
     }
   }
+}
+
+extension Array.Int8BytesRepresentation: SQLiteVecTaggedBinding {
+  /// Binds the vector with SQLiteVec's Int8 subtype so vec0 columns accept it.
+  ///
+  /// ```swift
+  /// let vector: [Int8].Int8BytesRepresentation = [1, -2, 3]
+  /// let fragment = vector.queryFragment
+  /// // vec_int8(?)
+  /// ```
+  public var queryFragment: QueryFragment { self.taggedQueryFragment }
+}
+
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, visionOS 26.0, *)
+extension FixedEmbeddingVector.Int8BytesRepresentation: SQLiteVecTaggedBinding {
+  /// Binds the vector with SQLiteVec's Int8 subtype so vec0 columns accept it.
+  ///
+  /// ```swift
+  /// let vector = FixedEmbeddingVector<3, Int8>
+  ///   .Int8BytesRepresentation(queryOutput: FixedEmbeddingVector<3, Int8>([1, -2, 3]))
+  /// let fragment = vector.queryFragment
+  /// // vec_int8(?)
+  /// ```
+  public var queryFragment: QueryFragment { self.taggedQueryFragment }
 }

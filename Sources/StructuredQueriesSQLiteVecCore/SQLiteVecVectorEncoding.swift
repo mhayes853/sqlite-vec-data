@@ -130,6 +130,30 @@ extension SQLiteVecBinaryEncoding {
   }
 }
 
+/// A bound vector whose query fragment already attaches its SQLiteVec subtype.
+///
+/// SQLiteVec reads untagged blobs as Float32, so Int8 and packed-bit values render as
+/// `vec_int8(?)` and `vec_bit(?)` wherever StructuredQueries binds them, including record inserts,
+/// drafts, and updates.
+protocol SQLiteVecTaggedBinding: QueryBindable {}
+
+extension SQLiteVecTaggedBinding where Self: VectorBytesRepresentable, Encoding: SQLiteVecVectorEncoding {
+  var taggedQueryFragment: QueryFragment {
+    Self.Encoding.sqliteVecExpression("\(self.queryBinding)")
+  }
+}
+
+/// Renders a vector operand with its SQLiteVec subtype, without re-tagging bound values.
+func sqliteVecOperand<V: VectorBytesRepresentable>(
+  _ expression: some QueryExpression<V>
+) -> QueryFragment where V.Encoding: SQLiteVecVectorEncoding {
+  if expression is any SQLiteVecTaggedBinding {
+    expression.queryFragment
+  } else {
+    V.Encoding.sqliteVecExpression(expression.queryFragment)
+  }
+}
+
 extension Array.VectorBytesRepresentation:
   SQLiteVecVectorEncoding, SQLiteVecNumericEncoding, SQLiteVecFloat32Encoding
 where Element == Float {}
