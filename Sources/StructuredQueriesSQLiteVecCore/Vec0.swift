@@ -4,9 +4,8 @@ import StructuredQueriesCore
 
 /// A table backed by a sqlite-vec vec0 virtual table.
 ///
-/// Vec0 tracks the metadata vec0 needs for columns that store embeddings and
-/// surfaces helpers such as `.distance`, `.k`, and `.match`, so you write
-/// similarity queries with structured SQL instead of touching raw byte blobs.
+/// Conforming a `@Table` type adds vec0's hidden `distance` and `k` columns and `match` on its
+/// vector columns. The protocol has no requirements.
 ///
 /// First, create a virtual table using the `vec0` module:
 /// ```sql

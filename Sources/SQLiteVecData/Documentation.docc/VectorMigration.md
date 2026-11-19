@@ -1,4 +1,4 @@
-# Migrating vector APIs
+# Migrating from 0.x to 1.0
 
 Update existing SQLiteVec clients for the reusable vector core and stricter SQL format checks.
 
@@ -9,8 +9,8 @@ This release changes SQLiteVec APIs and behavior and adds Turso Database support
 | Existing API or behavior | Updated API or behavior |
 | --- | --- |
 | Swift 6.1 or later | Swift 6.3 or later |
-| `.sqliteVecAutoExtension` | Available across platforms; registration is a no-op on Apple. Prepare Apple connections with `Configuration.prepareSQLiteVecExtension()` |
-| `AVX` and `NEON` package traits | `SQLiteVecAVX` and `SQLiteVecNEON`, both enabled by default |
+| `Database.loadSQLiteVecExtension()` loads sqlite-vec on Apple platforms only | Also works on other platforms under the default `SQLiteVecStaticAPI` trait, and throws `SQLITE_MISUSE` there without it. The new `Configuration.prepareSQLiteVecExtension()` calls it for every connection |
+| `NEON` trait enabled by default; `AVX` trait opt-in | Renamed `SQLiteVecNEON` and `SQLiteVecAVX`, both enabled by default. x86 checks for AVX at runtime and falls back to scalar code |
 | sqlite-vec only uses the API table passed to its entry point | The default `SQLiteVecStaticAPI` trait calls the linked SQLite's functions directly; disable it for SQLite builds that do not export them |
 | Vector types defined in `StructuredQueriesSQLiteVecCore` | Shared types defined in `StructuredQueriesVectorCore`, re-exported by the SQLiteVec target |
 | Nominal `EmbeddingVector<N>` struct | `EmbeddingVector<N>` aliases `FixedEmbeddingVector<N, Float>` |

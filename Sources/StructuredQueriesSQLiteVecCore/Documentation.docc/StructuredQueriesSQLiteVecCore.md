@@ -119,8 +119,7 @@ let joined = Embedding
   }
 // SELECT "Embeddings"."label", "vec_each"."rowid", "vec_each"."value"
 // FROM "Embeddings"
-// JOIN "vec_each"
-// ON ?
+// JOIN "vec_each" ON ?
 // WHERE ("vec_each"."vector" = "Embeddings"."embedding")
 
 let withNegativeElements = Embedding
@@ -262,8 +261,9 @@ bit first within each byte.
 ### Encoding capabilities
 
 ``SQLiteVecVectorEncoding`` supplies the SQL subtype hook. ``SQLiteVecNumericEncoding`` supports
-Float32 and Int8 numeric operations; ``SQLiteVecFloat32Encoding``, ``SQLiteVecInt8Encoding``, and
-``SQLiteVecBinaryEncoding`` identify exact layouts. Binary also refines `BinaryVectorEncoding`.
+L2, cosine, and arithmetic for Float32 and Int8; L1 needs an exact layout.
+``SQLiteVecFloat32Encoding``, ``SQLiteVecInt8Encoding``, and ``SQLiteVecBinaryEncoding`` identify
+exact layouts. Binary also refines `BinaryVectorEncoding`.
 
 ```swift
 func numericDistance<L: VectorBytesRepresentable, R: VectorBytesRepresentable>(

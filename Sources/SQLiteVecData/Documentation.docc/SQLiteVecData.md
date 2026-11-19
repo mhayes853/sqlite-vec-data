@@ -121,4 +121,4 @@ Use per-connection preparation on Apple platforms or for isolated registration.
 Use `StructuredQueriesTursoVecCore` with a compatible driver for
 [native Turso queries](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriestursoveccore/).
 
-See the [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).
+Upgrading from 0.x? See <doc:VectorMigration>.

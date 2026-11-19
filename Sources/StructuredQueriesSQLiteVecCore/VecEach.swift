@@ -35,8 +35,7 @@ public typealias VecEach = VecEachOf<Float?>
 ///   }
 /// // SELECT "Embeddings"."label", "vec_each"."rowid", "vec_each"."value"
 /// // FROM "Embeddings"
-/// // JOIN "vec_each"
-/// // ON ?
+/// // JOIN "vec_each" ON ?
 /// // WHERE ("vec_each"."vector" = "Embeddings"."embedding")
 /// ```
 ///
