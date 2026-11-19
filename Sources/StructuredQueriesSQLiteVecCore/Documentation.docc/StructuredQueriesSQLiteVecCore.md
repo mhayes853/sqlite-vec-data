@@ -290,10 +290,6 @@ require matching canonical encodings and compatible dimensions.
 `BinaryEmbeddingVector<N>.PackedBitsRepresentation`. Fixed types require iOS 26,
 macOS 26, tvOS 26, watchOS 26, or visionOS 26.
 
-See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/),
-[sqlite-vec API reference](https://alexgarcia.xyz/sqlite-vec/api-reference.html), and
-[migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).
-
 ### Missing vectors and undefined scores
 
 Float32 distances and cosine can return `nil` for undefined numerical results, even with nonnull
@@ -325,3 +321,7 @@ let normalized = candidate.whenPresent { Vec.normalize($0) }
 `vec0.distance` is also nil outside KNN; `k` is a query constraint and returns NULL when selected.
 Float32 iteration yields `(Int, Float?)`: keep nil positions to preserve dimensions. Fetch the vector
 BLOB when NaN bit patterns matter.
+
+See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/),
+[sqlite-vec API reference](https://alexgarcia.xyz/sqlite-vec/api-reference.html), and
+[migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

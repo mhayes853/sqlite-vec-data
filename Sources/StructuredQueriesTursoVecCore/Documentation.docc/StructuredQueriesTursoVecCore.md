@@ -323,9 +323,6 @@ dense equality follows scalar semantics.
 Invalid components throw ``TursoVectorError``: handle `code`, use `reason` for diagnostics, and
 include a default in code switches. Malformed bytes throw `VectorDecodingError`.
 
-See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
-and [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).
-
 ### Missing vectors and undefined scores
 
 Numeric L2/dot (including Quantized8), cosine, and Jaccard return `Double?`: computations that
@@ -376,3 +373,6 @@ a large score for ordering; its selected score remains nullable. Avoid a zero fa
 zero represents a perfect match. Ascending SQL order puts NULL first.
 Missing inputs and undefined scores both decode as nil; inspect the input separately when that
 distinction matters. Malformed bytes and mismatched dimensions still throw.
+
+See the [shared vector documentation](https://swiftpackageindex.com/mhayes853/sqlite-vec-data/main/documentation/structuredqueriesvectorcore/)
+and [migration guide](https://github.com/mhayes853/sqlite-vec-data/blob/main/Sources/SQLiteVecData/Documentation.docc/VectorMigration.md).

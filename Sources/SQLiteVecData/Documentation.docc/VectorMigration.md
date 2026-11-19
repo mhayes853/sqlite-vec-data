@@ -42,8 +42,8 @@ qualified names. Existing imports need no extra product for `EmbeddingVector` or
 Use `StructuredQueriesVectorCore` for database-independent values; use `StructuredQueriesTursoVecCore`
 for Rust-based Turso Database, excluding libSQL DiskANN and `vector_top_k`.
 
-The package now requires Swift 6.3, up from 6.1. Fixed values require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26.
-Variable-size strategies support earlier package platforms.
+Fixed values require iOS 26, macOS 26, tvOS 26, watchOS 26, or visionOS 26. Variable-size
+strategies support earlier package platforms.
 
 ### Keep existing Float32 values and tables
 
@@ -282,9 +282,8 @@ let fixedPrefix = Embedding.columns.embedding.slice(0..<2, as: EmbeddingVector<2
 `VecEachOf<Int8>`, or `VecEachOf<Bool>` accordingly. Compare values with matching literals and
 update explicit Int8/binary table types.
 
-Float32 L1/L2 and all cosine distances now return `Double?`, as described in "Handle nullable
-results and inputs" below. Int8 L1/L2 and Hamming remain `Double`, and Int8 L1 now uses
-`CAST(... AS REAL)`.
+Int8 L1 now uses `CAST(... AS REAL)`. Distance nullability is covered in "Handle nullable results
+and inputs" below.
 
 ### Decode binary results as bits
 
