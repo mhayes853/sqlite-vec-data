@@ -20,6 +20,8 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Run Tests
         run: swift test
+      - name: Build For Intel macOS
+        run: swift build --build-tests --arch x86_64
 
   linux:
     name: Linux
@@ -30,11 +32,23 @@ jobs:
       - name: "Install SQLite"
         run: |
           apt-get update
-          apt-get install -y libsqlite3-dev
+          apt-get install -y libsqlite3-dev qemu-user
+      - name: "Test AVX Runtime Dispatch"
+        run: |
+          sh Scripts/prepare-sqlite-vec.sh "$PWD/Sources/CSQLiteVec" \
+            "$RUNNER_TEMP/sqlite-vec-generated" "$PWD"/Patches/sqlite-vec/*.patch
+          clang -O2 -DSQLITE_CORE -DSQLITE_VEC_ENABLE_AVX=1 \
+            -I "$RUNNER_TEMP/sqlite-vec-generated" -I Sources/CSQLiteVec \
+            Tests/CSQLiteVecTests/AVXRuntimeTests.c -lsqlite3 -lm \
+            -o "$RUNNER_TEMP/sqlite-vec-avx-test"
+          qemu-x86_64 -cpu Nehalem "$RUNNER_TEMP/sqlite-vec-avx-test" scalar
+          qemu-x86_64 -cpu Haswell "$RUNNER_TEMP/sqlite-vec-avx-test" avx
       - name: "Test Swift Package on Linux"
         run: swift test
-      - name: "Test AVX Trait on Linux"
-        run: swift test --traits AVX
+      - name: "Test Without SQLiteVecAVX on Linux"
+        run: swift test --disable-default-traits --traits SQLiteVecNEON,SQLiteVecStaticAPI
+      - name: "Build Without SQLiteVecStaticAPI on Linux"
+        run: swift build --disable-default-traits --traits SQLiteVecNEON,SQLiteVecAVX
 
   linux-arm64:
     name: Linux ARM64
@@ -48,3 +62,41 @@ jobs:
           apt-get install -y libsqlite3-dev
       - name: "Test Swift Package on Linux"
         run: swift test
+
+  sqlite-orbit:
+    name: SQLite Orbit (Turso)
+    runs-on: ubuntu-latest
+    container: swift:6.3
+    env:
+      # NB: A breaking change here fails this job until SQLite Orbit adopts it. Land the adoption
+      # on a SQLite Orbit branch, then point this at that commit.
+      SQLITE_ORBIT_REF: b47e0f8a98391ce7b5de2040327881bc48c64596
+      SQLITE_ORBIT_TRAITS: --disable-default-traits --traits Turso,StructuredQueries,Vectors
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sqlite-vec-data
+      - uses: actions/checkout@v4
+        with:
+          repository: mhayes853/sqlite-orbit
+          ref: ${{ env.SQLITE_ORBIT_REF }}
+          path: sqlite-orbit
+      # Vectors builds SQLite Orbit's Vec C bridge against SQLite's extension headers, even though
+      # these connections use Turso's native vector functions.
+      - name: "Install SQLite Headers"
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends libsqlite3-dev pkg-config
+      # SQLite Orbit runs the Turso helpers against the Turso engine, which this package's own
+      # tests cannot link. Editing the dependency builds its suites against this checkout.
+      - name: "Use This Checkout In SQLite Orbit"
+        working-directory: sqlite-orbit
+        run: |
+          git config --global --add safe.directory '*'
+          swift package $SQLITE_ORBIT_TRAITS edit sqlite-vec-data \
+            --path "$GITHUB_WORKSPACE/sqlite-vec-data"
+      - name: "Test Turso Vector Helpers"
+        working-directory: sqlite-orbit
+        run: |
+          swift test $SQLITE_ORBIT_TRAITS \
+            --filter 'TursoVectorTests|TursoVectorValueTests|EmbeddingVectorTests'

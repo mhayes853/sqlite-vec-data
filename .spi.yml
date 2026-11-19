@@ -4,3 +4,5 @@ builder:
     - documentation_targets:
         - SQLiteVecData
         - StructuredQueriesSQLiteVecCore
+        - StructuredQueriesTursoVecCore
+        - StructuredQueriesVectorCore

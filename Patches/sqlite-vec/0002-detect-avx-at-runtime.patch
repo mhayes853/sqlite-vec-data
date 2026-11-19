@@ -1,0 +1,14 @@
+Use the package-owned feature probe before entering the AVX kernel.
+
+diff --git a/sqlite-vec.c b/sqlite-vec.c
+--- a/sqlite-vec.c
++++ b/sqlite-vec.c
+@@ -397,7 +397,7 @@
+   }
+ #endif
+ #ifdef SQLITE_VEC_ENABLE_AVX
+-  if (((*(const size_t *)d) % 16 == 0)) {
++  if (((*(const size_t *)d) % 16 == 0) && sqlite_vec_cpu_supports_avx()) {
+     return l2_sqr_float_avx(a, b, d);
+   }
+ #endif
