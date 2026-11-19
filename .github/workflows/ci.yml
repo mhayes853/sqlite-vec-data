@@ -62,3 +62,41 @@ jobs:
           apt-get install -y libsqlite3-dev
       - name: "Test Swift Package on Linux"
         run: swift test
+
+  sqlite-orbit:
+    name: SQLite Orbit (Turso)
+    runs-on: ubuntu-latest
+    container: swift:6.3
+    env:
+      # NB: A breaking change here fails this job until SQLite Orbit adopts it. Land the adoption
+      # on a SQLite Orbit branch, then point this at that commit.
+      SQLITE_ORBIT_REF: b47e0f8a98391ce7b5de2040327881bc48c64596
+      SQLITE_ORBIT_TRAITS: --disable-default-traits --traits Turso,StructuredQueries,Vectors
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sqlite-vec-data
+      - uses: actions/checkout@v4
+        with:
+          repository: mhayes853/sqlite-orbit
+          ref: ${{ env.SQLITE_ORBIT_REF }}
+          path: sqlite-orbit
+      # Vectors builds SQLite Orbit's Vec C bridge against SQLite's extension headers, even though
+      # these connections use Turso's native vector functions.
+      - name: "Install SQLite Headers"
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends libsqlite3-dev pkg-config
+      # SQLite Orbit runs the Turso helpers against the Turso engine, which this package's own
+      # tests cannot link. Editing the dependency builds its suites against this checkout.
+      - name: "Use This Checkout In SQLite Orbit"
+        working-directory: sqlite-orbit
+        run: |
+          git config --global --add safe.directory '*'
+          swift package $SQLITE_ORBIT_TRAITS edit sqlite-vec-data \
+            --path "$GITHUB_WORKSPACE/sqlite-vec-data"
+      - name: "Test Turso Vector Helpers"
+        working-directory: sqlite-orbit
+        run: |
+          swift test $SQLITE_ORBIT_TRAITS \
+            --filter 'TursoVectorTests|TursoVectorValueTests|EmbeddingVectorTests'
